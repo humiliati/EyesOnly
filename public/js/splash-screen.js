@@ -123,6 +123,14 @@ const SplashScreen = (() => {
     'minigames':  'panther',
   };
 
+  // Theme → default video index (mirrors THEME_MAP ↔ MISSIONS[].videoIndex)
+  const THEME_VIDEO_INDEX = {
+    'silver':   0,
+    'amber':    1,
+    'phosphor': 2,
+    'panther':  3,
+  };
+
   const HOVER_SOUNDS  = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
   const SELECT_SOUNDS = ['card-fold_hand_1', 'card-fold_hand_2', 'card-fold_hand_3'];
   const WHEEL_SOUND   = 'clickandrelease-1';
@@ -841,6 +849,9 @@ const SplashScreen = (() => {
       dismissed = true;
       btn.classList.add('splash-close-pressed');
       playCloseSound();
+      // Stash current theme's video for debrief feed (default or previously persisted)
+      var currentTheme = document.body.getAttribute('data-theme') || 'phosphor';
+      _stashThemeVideo(currentTheme);
       removeSplash();
     });
   }
@@ -1165,6 +1176,27 @@ const SplashScreen = (() => {
   }
 
 
+  /* ---- Theme → Video stash for debrief feed ---- */
+
+  /**
+   * Write the active theme's default video URL into sessionStorage
+   * so the debrief-feed-controller can pick it up after init.
+   * Uses webm with mp4 fallback based on browser support.
+   */
+  function _stashThemeVideo(themeId) {
+    try {
+      var idx = THEME_VIDEO_INDEX[themeId];
+      if (idx == null || !VIDEO_SOURCES[idx]) return;
+      var src = VIDEO_SOURCES[idx];
+      // Prefer webm; most modern browsers support it
+      var url = src.webm || src.mp4 || '';
+      if (url) {
+        sessionStorage.setItem('eo_theme_video', url);
+        sessionStorage.setItem('eo_theme_video_theme', themeId);
+      }
+    } catch (_) {}
+  }
+
   /* ---- Selection & transition ---- */
 
   function selectMission(cardEl) {
@@ -1180,6 +1212,9 @@ const SplashScreen = (() => {
     const selectedTheme = THEME_MAP[missionId] || 'phosphor';
     document.body.setAttribute('data-theme', selectedTheme);
     try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (_) {}
+
+    // Stash theme's default video for debrief feed to pick up after init
+    _stashThemeVideo(selectedTheme);
 
     // Store wheel state for pre-fill on booking page
     if (cardState[missionId]) {

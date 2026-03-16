@@ -91,6 +91,10 @@ const DebriefFeedController = (function() {
 
     // Portrait Gone Rogue: tap to expand/collapse debrief width; drag to resize
     _setupPortraitDebriefSizing();
+
+    // Deferred theme-video: if splash stashed a video, queue it as lowest-priority
+    // Waits for init dust to settle before the CRT "clicks on"
+    _scheduleThemeVideo();
   }
 
   function _debounce(fn, ms) {
@@ -1277,18 +1281,29 @@ const DebriefFeedController = (function() {
     html += '<div class="video-player-container">';
     html += titleBar;
     html += '<video id="debrief-video-el" autoplay playsinline';
+    if (_isThemeVideo) html += ' muted loop';
     html += ' src="' + _videoUrl + '"';
     html += '></video>';
     html += '</div>';
     html += '</div>';
+
+    // Wrap with degauss CRT power-on effect for theme ambient video
+    if (_isThemeVideo) {
+      html = _wrapWithDegauss(html);
+    }
 
     _debriefScreen.innerHTML = html;
 
     // Wire up end / error handlers
     var vid = document.getElementById('debrief-video-el');
     if (vid) {
+      // Theme video loops as ambient feed; other videos play once
+      if (_isThemeVideo) {
+        vid.loop = true;
+        vid.muted = true;
+      }
       vid.addEventListener('ended', function() {
-        setVideoPlaying(false);
+        if (!vid.loop) setVideoPlaying(false);
       });
       vid.addEventListener('error', function() {
         // On error, show message briefly then restore
@@ -1365,8 +1380,68 @@ const DebriefFeedController = (function() {
     if (MODES[modeName]) {
       _currentMode = MODES[modeName];
       _currentDisplay = _currentMode.defaultDisplay;
+      // Kill ambient theme video when entering a game mode
+      if (_isThemeVideo && _videoPlaying) {
+        setVideoPlaying(false);
+      }
+      // Cancel pending theme video schedule
+      if (_themeVideoTimer) { clearTimeout(_themeVideoTimer); _themeVideoTimer = null; }
       _render();
     }
+  }
+
+  /* ── Theme default video — lowest-priority ambient feed ─────────
+     After splash closes, the active theme's drone footage "clicks on"
+     in the debrief feed with a CRT degauss power-on effect.
+     Rules:
+       • Only plays if nothing else is already playing
+       • Only plays if debrief feed exists and a theme video was stashed
+       • 3-second delay so all other init has settled
+       • Consumed on play (sessionStorage cleared)
+       • Safety timeout inherited from setVideoPlaying (60s)
+     ──────────────────────────────────────────────────────────────── */
+
+  var _themeVideoTimer = null;
+  var _isThemeVideo = false; // True when current video is the ambient theme feed
+
+  function _scheduleThemeVideo() {
+    try {
+      var url = sessionStorage.getItem('eo_theme_video');
+      if (!url) return;
+      // Don't auto-play if we're mid-game (gone-rogue mode)
+      if (document.body.classList.contains('mode-gone-rogue') ||
+          document.body.classList.contains('in-gone-rogue')) return;
+    } catch (_) { return; }
+
+    // Wait 3s for the page to finish initializing
+    _themeVideoTimer = setTimeout(function() {
+      _themeVideoTimer = null;
+      try {
+        var videoUrl = sessionStorage.getItem('eo_theme_video');
+        if (!videoUrl) return;
+        // Lowest priority: bail if anything else is playing or user is in-game
+        if (_videoPlaying) return;
+        if (document.body.classList.contains('mode-gone-rogue') ||
+            document.body.classList.contains('in-gone-rogue')) return;
+
+        // Consume the stashed URL
+        sessionStorage.removeItem('eo_theme_video');
+        sessionStorage.removeItem('eo_theme_video_theme');
+
+        // Play with degauss effect
+        _isThemeVideo = true;
+        setVideoPlaying(true, videoUrl, null);
+      } catch (_) {}
+    }, 3000);
+  }
+
+  /**
+   * Render video with CRT degauss power-on effect.
+   * Called by _renderVideo when _isThemeVideo is true.
+   * The degauss class triggers a CSS animation: color fringe → stabilize → fade in.
+   */
+  function _wrapWithDegauss(containerHtml) {
+    return '<div class="debrief-degauss">' + containerHtml + '</div>';
   }
 
   /**
@@ -1386,10 +1461,12 @@ const DebriefFeedController = (function() {
     if (!playing) {
       _videoUrl = null;
       _videoTitle = null;
+      _isThemeVideo = false;
     }
     // Auto-maximize debrief when video is pushed (any orientation)
+    // Theme ambient video does NOT auto-maximize — it plays in normal size
     try {
-      if (playing) {
+      if (playing && !_isThemeVideo) {
         if (DebriefFeedController._setDebriefState) {
           DebriefFeedController._setDebriefState('maximized');
         }
