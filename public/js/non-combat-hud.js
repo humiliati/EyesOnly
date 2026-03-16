@@ -44,6 +44,20 @@ var NonCombatHUD = (function() {
     _createExpanded();
     _attachGlobalListeners();
 
+    // ── NchOverlay bridge ──────────────────────────────────
+    // If NchOverlay is present and just handed off to game mode,
+    // inherit its saved position so the capsule appears at the
+    // same spot the player left the porthole widget.
+    if (typeof NchOverlay !== 'undefined') {
+      try {
+        var overlayPos = JSON.parse(localStorage.getItem('EYESONLY_NCH_OVERLAY_POS_V1'));
+        if (overlayPos && typeof overlayPos.left === 'number') {
+          _saveCapsulePos(overlayPos.left, overlayPos.top);
+          _applyCapsulePos();
+        }
+      } catch (e) {}
+    }
+
     // Subscribe to CardStateAuthority events (primary)
     if (typeof CardStateAuthority !== 'undefined') {
       CardStateAuthority.on('hand:changed', function() {
@@ -527,9 +541,22 @@ var NonCombatHUD = (function() {
     } catch (e) {}
 
     if (!rogueActive) {
+      // If NchOverlay is handling porthole mode, stay hidden — it owns the capsule.
       if (_capsule) _capsule.style.display = 'none';
       if (_expanded) _expanded.style.display = 'none';
       return;
+    }
+
+    // ── NchOverlay sync: when game mode activates, sync position back ──
+    if (typeof NchOverlay !== 'undefined' && NchOverlay.getMode() === 'game') {
+      // Keep overlay position and NCH capsule position in sync
+      try {
+        var rect = _capsule ? _capsule.getBoundingClientRect() : null;
+        if (rect && rect.left > 0) {
+          localStorage.setItem('EYESONLY_NCH_OVERLAY_POS_V1',
+            JSON.stringify({ left: rect.left, top: rect.top }));
+        }
+      } catch (e) {}
     }
 
     // Lock during STR combat

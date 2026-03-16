@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="css/passive-items.css">
   <link rel="stylesheet" href="css/environmental-synergy.css?v=20260305g">
   <link rel="stylesheet" href="css/tooltip-system.css">
+  <link rel="stylesheet" href="css/nch-overlay.css?v=20260315a">
   <link rel="stylesheet" href="css/non-combat-hud.css?v=20260307g">
   <link rel="stylesheet" href="css/enemy-hand-display.css">
   <link rel="stylesheet" href="css/rogue-sidebar.css">
@@ -432,6 +433,19 @@
 
   <!-- Shared starfield module — full-page master canvas + porthole blit pipeline -->
   <script src="js/starfield.js"></script>
+
+  <!-- NCH Overlay — portable capsule widget (porthole mode on all pages) -->
+  <script src="js/nch-overlay.js?v=20260315a"></script>
+  <script>
+    // Init the overlay in porthole mode. On this page (home/terminal),
+    // it will auto-transition to game mode when GoneRogue launches.
+    // autoStarfield: false because splash-screen.js handles its own
+    // starfield master canvas init.
+    document.addEventListener('DOMContentLoaded', function() {
+      NchOverlay.init({ autoStarfield: false });
+    });
+  </script>
+
   <!-- Phase 1: Splash screen critical path (sync, blocks render) -->
   <script src="js/splash-screen.js?v=20260314c"></script>
   <!-- WebGL 3D renderer disabled — card depth via CSS preserve-3d now -->

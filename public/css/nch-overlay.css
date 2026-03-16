@@ -1,0 +1,129 @@
+/* ============================================================
+   NCH Overlay — Portable Capsule Styles (Phase 0)
+   ============================================================
+   Standalone styles for the draggable joker-stack capsule.
+   Works on any page — no GoneRogue dependency.
+
+   Class prefix: .nch-overlay-* (avoids collision with NCH's
+   .nch-capsule-* classes which are game-mode-specific).
+   ============================================================ */
+
+/* ── 1. CAPSULE WRAPPER ─────────────────────────────────────
+   Fixed-position pill, draggable. Default: bottom-right.
+   JS overrides top/left via inline style when user drags.     */
+
+.nch-overlay-wrapper {
+  position: fixed;
+  bottom: 48px;
+  right: 14px;
+  z-index: 1801;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.nch-overlay-wrapper.nch-overlay-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+/* Transition animation when switching porthole → game */
+.nch-overlay-wrapper.nch-overlay-transitioning {
+  animation: nch-overlay-morph 0.3s ease-out forwards;
+}
+
+@keyframes nch-overlay-morph {
+  0%   { transform: scale(1);   opacity: 1;   }
+  50%  { transform: scale(1.15); opacity: 0.7; }
+  100% { transform: scale(0.8);  opacity: 0;   }
+}
+
+.nch-overlay-inner {
+  display: flex;
+  align-items: center;
+}
+
+/* ── 2. JOKER STACK ─────────────────────────────────────────
+   Overlapping joker emojis. Same layout math as NCH capsule
+   (20px base + 6px advance per card), but with its own class
+   namespace so both can coexist in DOM.                       */
+
+.nch-overlay-stack {
+  position: relative;
+  height: 28px;
+  min-width: 20px;
+}
+
+.nch-overlay-joker {
+  position: absolute;
+  font-size: 20px;
+  line-height: 1;
+  top: 0;
+  transition: left 0.25s ease, top 0.25s ease, filter 0.3s ease;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+/* Positional offsets — diagonal cascade, same as NCH */
+.nch-overlay-joker.joker-0 { left: 0;    top: 0;   }
+.nch-overlay-joker.joker-1 { left: 6px;  top: 2px; }
+.nch-overlay-joker.joker-2 { left: 12px; top: 4px; }
+.nch-overlay-joker.joker-3 { left: 18px; top: 2px; }
+.nch-overlay-joker.joker-4 { left: 24px; top: 0;   }
+.nch-overlay-joker.joker-5 { left: 30px; top: 2px; }
+.nch-overlay-joker.joker-6 { left: 36px; top: 4px; }
+.nch-overlay-joker.joker-7 { left: 42px; top: 2px; }
+
+/* Hover: fan out slightly */
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-0 { left: 0;    top: 0;   }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-1 { left: 8px;  top: 2px; }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-2 { left: 16px; top: 4px; }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-3 { left: 24px; top: 2px; }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-4 { left: 32px; top: 0;   }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-5 { left: 40px; top: 2px; }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-6 { left: 48px; top: 4px; }
+.nch-overlay-wrapper:hover .nch-overlay-joker.joker-7 { left: 56px; top: 2px; }
+
+/* ── 3. PORTHOLE MODE — Theme Card Colorization (Prep) ──────
+   Phase 3 will colorize each joker to preview its theme.
+   For now, set up the structure with BLVCK base treatment.
+   The BLVCK card method: dark base + tinted highlight/glow.   */
+
+.nch-overlay-joker[data-theme-id="silver"] {
+  /* Phase 3: filter: drop-shadow(0 0 3px rgba(180, 190, 210, 0.5)); */
+}
+
+.nch-overlay-joker[data-theme-id="amber"] {
+  /* Phase 3: filter: drop-shadow(0 0 3px rgba(201, 168, 76, 0.5)); */
+}
+
+.nch-overlay-joker[data-theme-id="phosphor"] {
+  /* Phase 3: filter: drop-shadow(0 0 3px rgba(28, 255, 155, 0.5)); */
+}
+
+.nch-overlay-joker[data-theme-id="panther"] {
+  /* Phase 3: filter: drop-shadow(0 0 3px rgba(160, 32, 240, 0.5)); */
+}
+
+/* Greyed joker (reusable — matches NCH BLVCK treatment) */
+.nch-overlay-joker.nch-overlay-greyed {
+  filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+  opacity: 0.55;
+}
+
+/* ── 4. RESPONSIVE ──────────────────────────────────────────
+   Mobile: smaller, safe-area aware.                           */
+
+@media (max-width: 768px) {
+  .nch-overlay-wrapper {
+    bottom: calc(40px + env(safe-area-inset-bottom));
+    right: 10px;
+  }
+}
