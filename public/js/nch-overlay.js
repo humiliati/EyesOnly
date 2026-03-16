@@ -57,6 +57,10 @@ var NchOverlay = (function () {
       btnLabel: 'BOOK',
       btnDuration: '24 HR',
       btnClass: '',
+      duration: '24 HR',
+      defaultGroup: 2,
+      minGroup: 2,
+      maxGroup: 60,
     },
     {
       id: 'scenario-2',
@@ -70,6 +74,10 @@ var NchOverlay = (function () {
       btnLabel: 'BOOK',
       btnDuration: '72 HR',
       btnClass: '',
+      duration: '72 HR',
+      defaultGroup: 3,
+      minGroup: 3,
+      maxGroup: 30,
     },
     {
       id: 'partner',
@@ -83,6 +91,8 @@ var NchOverlay = (function () {
       btnLabel: 'JOIN',
       btnDuration: 'NOW',
       btnClass: 'coin-book-partner',
+      duration: null,
+      tags: ['BUSINESSES', 'ACTORS'],
     },
     {
       id: 'minigames',
@@ -96,6 +106,7 @@ var NchOverlay = (function () {
       btnLabel: 'PLAY',
       btnDuration: 'NOW',
       btnClass: 'coin-book-diamond',
+      duration: null,
       tags: ['PUZZLES', 'DECRYPTION'],
     },
   ];
@@ -118,6 +129,36 @@ var NchOverlay = (function () {
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
       try { AudioSystem.play(key, opts || {}); } catch (_) {}
     }
+  }
+
+  // ── Pricing — Non-linear group scaling (mirrors splash-screen.js) ──
+
+  function _calcPrice(scenario, groupSize) {
+    if (scenario === 'scenario-1') {
+      var min = 2, max = 60, pMin = 500, pMax = 1100;
+      var t = Math.min(1, Math.max(0, (groupSize - min) / (max - min)));
+      return Math.round(pMin + (pMax - pMin) * Math.sqrt(t));
+    }
+    if (scenario === 'scenario-2') {
+      var min2 = 3, max2 = 30, pMin2 = 1200, pMax2 = 4200;
+      var t2 = Math.min(1, Math.max(0, (groupSize - min2) / (max2 - min2)));
+      return Math.round(pMin2 + (pMax2 - pMin2) * Math.sqrt(t2));
+    }
+    return 0;
+  }
+
+  // Per-card wheel state: { groupSize, price }
+  var _cardState = {};
+
+  function _initCardState() {
+    MISSIONS.forEach(function (m) {
+      if (m.duration !== null && m.defaultGroup) {
+        _cardState[m.id] = {
+          groupSize: m.defaultGroup,
+          price: _calcPrice(m.id, m.defaultGroup),
+        };
+      }
+    });
   }
 
   // ── Position Persistence ─────────────────────────────────
@@ -320,8 +361,35 @@ var NchOverlay = (function () {
       '</button>' +
     '</div>';
 
+    // Bottom strip: decoder wheels (bookable missions) or tags
     var bottomStrip = '';
-    if (mission.tags) {
+    var isBookable = mission.duration !== null && mission.defaultGroup;
+    if (isBookable) {
+      var state = _cardState[mission.id] || { groupSize: mission.defaultGroup, price: _calcPrice(mission.id, mission.defaultGroup) };
+      bottomStrip =
+        '<div class="coin-wheel-strip">' +
+          '<div class="coin-wheel" data-wheel="price" data-mission="' + mission.id + '" tabindex="-1" inputmode="none">' +
+            '<div class="coin-wheel-frame">' +
+              '<div class="coin-wheel-track" id="nch-wheel-price-' + mission.id + '" tabindex="-1" inputmode="none">' +
+                '<div class="coin-wheel-val coin-wheel-prev"></div>' +
+                '<div class="coin-wheel-val coin-wheel-current">$' + state.price + '</div>' +
+                '<div class="coin-wheel-val coin-wheel-next"></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="coin-wheel-ctx">' + state.groupSize + ' players</div>' +
+          '</div>' +
+          '<div class="coin-wheel" data-wheel="group" data-mission="' + mission.id + '" tabindex="-1" inputmode="none">' +
+            '<div class="coin-wheel-frame">' +
+              '<div class="coin-wheel-track" id="nch-wheel-group-' + mission.id + '" tabindex="-1" inputmode="none">' +
+                '<div class="coin-wheel-val coin-wheel-prev"></div>' +
+                '<div class="coin-wheel-val coin-wheel-current">' + state.groupSize + '</div>' +
+                '<div class="coin-wheel-val coin-wheel-next"></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="coin-wheel-ctx">$' + state.price + '</div>' +
+          '</div>' +
+        '</div>';
+    } else if (mission.tags) {
       bottomStrip = '<div class="coin-tag-strip">' +
         mission.tags.map(function (t) { return '<span class="coin-tag">' + t + '</span>'; }).join('') +
       '</div>';
@@ -395,6 +463,14 @@ var NchOverlay = (function () {
 
     // Bind card interactions
     _bindFanCards();
+
+    // Bind decoder ring wheels
+    _bindFanWheels();
+
+    // Initialize wheel displays with prev/next values
+    MISSIONS.forEach(function (m) {
+      if (_cardState[m.id]) _updateWheelDisplay(m.id);
+    });
   }
 
   function _bindFanCards() {
@@ -416,7 +492,7 @@ var NchOverlay = (function () {
         _playAudio(HOVER_SOUNDS[cardIndex % HOVER_SOUNDS.length], { volume: 0.4 });
       });
       cardEl.addEventListener('mouseleave', function () {
-        if (_cardDrag) return;
+        if (_cardDrag || _nchIsDraggingWheel) return;
         cardEl.classList.remove('coin-card-hovered');
         if (_hoveredCard === cardEl) _hoveredCard = null;
       });
@@ -424,8 +500,11 @@ var NchOverlay = (function () {
       // ── Pointer events for drag-to-reorder ──────────────
       cardEl.addEventListener('pointerdown', function (e) {
         if (e.button && e.button !== 0) return;
-        // Don't drag from the action button
+        // Don't drag from the action button or decoder wheels
         if (e.target.closest('.coin-book-btn')) return;
+        if (e.target.closest('.coin-wheel')) return;
+        if (e.target.closest('.coin-wheel-strip')) return;
+        if (_nchIsDraggingWheel || _nchActiveWheelPointerId >= 0) return;
         e.preventDefault();
 
         var rect = cardEl.getBoundingClientRect();
@@ -485,6 +564,219 @@ var NchOverlay = (function () {
           _selectMission(cardEl);
         });
       }
+    });
+  }
+
+  // ── Decoder Ring Wheel Logic (mirrors splash-screen.js) ──
+
+  function _updateWheelDisplay(missionId) {
+    var state = _cardState[missionId];
+    if (!state) return;
+    var mission = null;
+    for (var i = 0; i < MISSIONS.length; i++) {
+      if (MISSIONS[i].id === missionId) { mission = MISSIONS[i]; break; }
+    }
+    if (!mission) return;
+
+    // Update group wheel
+    var groupTrack = document.getElementById('nch-wheel-group-' + missionId);
+    if (groupTrack) {
+      var prevG = state.groupSize > mission.minGroup ? state.groupSize - 1 : '';
+      var nextG = state.groupSize < mission.maxGroup ? state.groupSize + 1 : '';
+      groupTrack.querySelector('.coin-wheel-prev').textContent = prevG;
+      groupTrack.querySelector('.coin-wheel-current').textContent = state.groupSize;
+      groupTrack.querySelector('.coin-wheel-next').textContent = nextG;
+    }
+
+    // Update price wheel
+    var priceTrack = document.getElementById('nch-wheel-price-' + missionId);
+    if (priceTrack) {
+      var prevPrice = state.groupSize > mission.minGroup
+        ? '$' + _calcPrice(missionId, state.groupSize - 1) : '';
+      var nextPrice = state.groupSize < mission.maxGroup
+        ? '$' + _calcPrice(missionId, state.groupSize + 1) : '';
+      priceTrack.querySelector('.coin-wheel-prev').textContent = prevPrice;
+      priceTrack.querySelector('.coin-wheel-current').textContent = '$' + state.price;
+      priceTrack.querySelector('.coin-wheel-next').textContent = nextPrice;
+    }
+
+    // Update context labels
+    if (_fanPanel) {
+      var card = _fanPanel.querySelector('[data-mission="' + missionId + '"]');
+      if (card) {
+        var priceWheel = card.querySelector('[data-wheel="price"] .coin-wheel-ctx');
+        var groupWheel = card.querySelector('[data-wheel="group"] .coin-wheel-ctx');
+        if (priceWheel) priceWheel.textContent = state.groupSize + ' players';
+        if (groupWheel) groupWheel.textContent = '$' + state.price;
+      }
+    }
+  }
+
+  function _adjustGroup(missionId, delta) {
+    var state = _cardState[missionId];
+    var mission = null;
+    for (var i = 0; i < MISSIONS.length; i++) {
+      if (MISSIONS[i].id === missionId) { mission = MISSIONS[i]; break; }
+    }
+    if (!state || !mission) return;
+
+    var newSize = state.groupSize + delta;
+    if (newSize < mission.minGroup || newSize > mission.maxGroup) return;
+
+    state.groupSize = newSize;
+    state.price = _calcPrice(missionId, newSize);
+
+    _playAudio(REORDER_SOUND, { volume: 0.35 });
+    _updateWheelDisplay(missionId);
+
+    // Persist to sessionStorage for booking page pickup
+    try {
+      sessionStorage.setItem('eo_group_size', String(state.groupSize));
+      sessionStorage.setItem('eo_price', String(state.price));
+    } catch (_) {}
+  }
+
+  var _nchActiveWheelPointerId = -1;
+  var _nchIsDraggingWheel = false;
+
+  function _bindFanWheels() {
+    if (!_fanPanel) return;
+    var wheels = _fanPanel.querySelectorAll('.coin-wheel');
+    wheels.forEach(function (wheel) {
+      var missionId = wheel.dataset.mission;
+      var ownerCard = null;
+      var dragStartY = null;
+      var dragAccum = 0;
+      var lastDragDir = 0;
+      var edgeAccelTimer = null;
+      var edgeAccelDelay = 200;
+      var dragMoved = false;
+
+      function getOwnerCard() {
+        if (!ownerCard) ownerCard = wheel.closest('.coin-card');
+        return ownerCard;
+      }
+
+      function isInsideCard(x, y) {
+        var card = getOwnerCard();
+        if (!card) return true;
+        var r = card.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      }
+
+      function startEdgeAccel(dir) {
+        if (edgeAccelTimer) return;
+        edgeAccelDelay = 200;
+        function tick() { _adjustGroup(missionId, dir); }
+        tick();
+        edgeAccelTimer = setInterval(function () {
+          tick();
+          if (edgeAccelDelay > 50) {
+            edgeAccelDelay = Math.max(50, edgeAccelDelay - 30);
+            clearInterval(edgeAccelTimer);
+            edgeAccelTimer = setInterval(tick, edgeAccelDelay);
+          }
+        }, edgeAccelDelay);
+      }
+
+      function stopEdgeAccel() {
+        if (edgeAccelTimer) { clearInterval(edgeAccelTimer); edgeAccelTimer = null; }
+      }
+
+      function endWheelDrag() {
+        dragStartY = null;
+        _nchIsDraggingWheel = false;
+        _nchActiveWheelPointerId = -1;
+        stopEdgeAccel();
+      }
+
+      // Click cycles up (only if pointer didn't drag)
+      wheel.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (dragMoved) return;
+        _adjustGroup(missionId, 1);
+      });
+
+      // Right-click cycles down
+      wheel.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _adjustGroup(missionId, -1);
+      });
+
+      // Unified pointer down
+      wheel.addEventListener('pointerdown', function (e) {
+        if (_nchActiveWheelPointerId >= 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        // Blur to prevent keyboard
+        if (document.activeElement && document.activeElement !== document.body) {
+          try { document.activeElement.blur(); } catch (_) {}
+        }
+        dragStartY = e.clientY;
+        dragAccum = 0;
+        lastDragDir = 0;
+        dragMoved = false;
+        _nchIsDraggingWheel = true;
+        _nchActiveWheelPointerId = e.pointerId;
+        try { wheel.setPointerCapture(e.pointerId); } catch (_) {}
+
+        // Hover the card while dragging
+        var card = getOwnerCard();
+        if (card && _hoveredCard !== card) {
+          if (_hoveredCard) _hoveredCard.classList.remove('coin-card-hovered');
+          card.classList.add('coin-card-hovered');
+          _hoveredCard = card;
+        }
+      });
+
+      wheel.addEventListener('pointermove', function (e) {
+        if (_nchActiveWheelPointerId !== e.pointerId || dragStartY === null) return;
+        var x = e.clientX, y = e.clientY;
+        if (Math.abs(y - dragStartY) > 3) dragMoved = true;
+
+        if (!isInsideCard(x, y)) {
+          if (lastDragDir !== 0 && !edgeAccelTimer) startEdgeAccel(lastDragDir);
+          dragStartY = y;
+          return;
+        }
+
+        stopEdgeAccel();
+        var dy = dragStartY - y;
+        dragAccum += dy;
+        dragStartY = y;
+
+        while (dragAccum > 20) {
+          _adjustGroup(missionId, 1);
+          lastDragDir = 1; dragAccum -= 20;
+        }
+        while (dragAccum < -20) {
+          _adjustGroup(missionId, -1);
+          lastDragDir = -1; dragAccum += 20;
+        }
+      });
+
+      wheel.addEventListener('pointerup', function (e) {
+        if (_nchActiveWheelPointerId !== e.pointerId) return;
+        try { wheel.releasePointerCapture(e.pointerId); } catch (_) {}
+        endWheelDrag();
+      });
+
+      wheel.addEventListener('pointercancel', function (e) {
+        if (_nchActiveWheelPointerId !== e.pointerId) return;
+        endWheelDrag();
+      });
+
+      wheel.addEventListener('lostpointercapture', function () {
+        if (_nchActiveWheelPointerId >= 0) endWheelDrag();
+      });
+
+      // Scroll wheel on the element
+      wheel.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _adjustGroup(missionId, e.deltaY > 0 ? 1 : -1);
+      }, { passive: false });
     });
   }
 
@@ -876,6 +1168,14 @@ var NchOverlay = (function () {
     document.documentElement.setAttribute('data-theme', selectedTheme);
     try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (e) {}
 
+    // Persist wheel state for booking page pre-fill
+    if (_cardState[missionId]) {
+      try {
+        sessionStorage.setItem('eo_group_size', String(_cardState[missionId].groupSize));
+        sessionStorage.setItem('eo_price', String(_cardState[missionId].price));
+      } catch (_) {}
+    }
+
     // Visual feedback
     cardEl.classList.add('splash-selected');
 
@@ -1182,6 +1482,7 @@ var NchOverlay = (function () {
 
     if (opts.visible === false) _visible = false;
 
+    _initCardState();
     _restoreCardOrder();
     _createCapsule();
     _renderPortholeStack();

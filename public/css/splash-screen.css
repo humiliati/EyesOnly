@@ -928,7 +928,9 @@
 
 
 /* ---- Mid-row — BOOK.duration / JOIN.NOW button ---- */
-/* Buttons shifted away from card bottom toward center */
+/* Buttons shifted away from card bottom toward center.
+   margin-top pulls mid-row downward; margin-bottom lifts it
+   (and decoder wheels/tags below) away from the coin border. */
 .coin-mid-row {
   padding: 6px 14px 2px;
   display: flex;
@@ -937,6 +939,7 @@
   position: relative;
   z-index: 10;
   margin-top: auto;
+  margin-bottom: 2px;
 }
 
 .coin-book-btn {
@@ -1056,7 +1059,7 @@
   justify-content: center;
   position: relative;
   z-index: 10;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .coin-wheel {
@@ -1186,6 +1189,7 @@
   flex-shrink: 0;
   max-height: 50px;
   overflow: hidden;
+  margin-bottom: 16px;
 }
 
 .coin-tag {
