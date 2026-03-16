@@ -867,6 +867,83 @@ const SplashScreen = (() => {
 
   var _dragState = null;  // { cardEl, index, ghostEl, placeholderEl, startX, startY, grabOffsetX, grabOffsetY, phase }
 
+  // ── Splash Drag Reveal Rendering (in-porthole) ─────────
+  // Same pattern as nch-overlay.js: render RevealGrid zone content
+  // inside the card drag ghost's porthole area (.coin-artwork).
+  var _splashRevealEl = null;
+  var _splashRevealZoneId = null;
+
+  function _updateSplashRevealContent(ghost) {
+    if (!window.RevealGrid || !ghost) {
+      _clearSplashRevealContent();
+      return;
+    }
+    var reveal = RevealGrid.getActiveReveal();
+    if (!reveal) {
+      _clearSplashRevealContent();
+      return;
+    }
+
+    var artwork = ghost.querySelector('.coin-artwork');
+    if (!artwork) return;
+
+    if (!_splashRevealEl || _splashRevealZoneId !== reveal.zoneId) {
+      _clearSplashRevealContent();
+      _splashRevealZoneId = reveal.zoneId;
+
+      var el = document.createElement('div');
+      el.className = 'splash-card-reveal-preview';
+      el.style.cssText = [
+        'position: absolute',
+        'inset: 0',
+        'display: flex',
+        'align-items: center',
+        'justify-content: center',
+        'flex-direction: column',
+        'pointer-events: none',
+        'will-change: transform, opacity',
+        'z-index: 5',
+        'border-radius: 50%',
+        'overflow: hidden'
+      ].join(';');
+
+      if (reveal.type === 'item') {
+        el.innerHTML =
+          '<span style="font-size:48px;line-height:1">' + (reveal.emoji || '❓') + '</span>' +
+          (reveal.label
+            ? '<span style="display:block;font-size:9px;color:var(--phosphor,#1cff9b);' +
+              'text-transform:uppercase;letter-spacing:0.1em;margin-top:3px;' +
+              'text-shadow:0 0 6px var(--phosphor-glow,rgba(28,255,155,0.4))">' +
+              reveal.label + '</span>'
+            : '');
+      } else {
+        el.textContent = reveal.emoji || '🔎';
+        el.style.fontSize = '48px';
+      }
+
+      var canvas = artwork.querySelector('.starfield-window');
+      artwork.insertBefore(el, canvas ? canvas.nextSibling : null);
+      _splashRevealEl = el;
+    }
+
+    if (_splashRevealEl) {
+      _splashRevealEl.style.opacity = reveal.opacity;
+      _splashRevealEl.style.transform = 'translate(' + reveal.offsetX + 'px, ' + reveal.offsetY + 'px)';
+      if (reveal.locked && !_splashRevealEl.dataset.locked) {
+        _splashRevealEl.dataset.locked = '1';
+        _splashRevealEl.style.filter = 'drop-shadow(0 0 8px var(--phosphor-glow, rgba(28,255,155,0.5)))';
+      }
+    }
+  }
+
+  function _clearSplashRevealContent() {
+    if (_splashRevealEl && _splashRevealEl.parentNode) {
+      _splashRevealEl.parentNode.removeChild(_splashRevealEl);
+    }
+    _splashRevealEl = null;
+    _splashRevealZoneId = null;
+  }
+
   function _createDragGhost(cardEl, grabX, grabY) {
     var rect = cardEl.getBoundingClientRect();
     var ghost = cardEl.cloneNode(true);
@@ -899,7 +976,9 @@ const SplashScreen = (() => {
       'overflow: hidden'
     ].join('; ');
     // Use setProperty with 'important' to override coin-card-hovered's !important
-    ghost.style.setProperty('transform', 'scale(0.92) rotate(0deg)', 'important');
+    // Zoom up on drag — 20% on mobile, 5% on desktop (matches NCH overlay)
+    var dragScale = isMobile ? 1.20 : 1.05;
+    ghost.style.setProperty('transform', 'scale(' + dragScale + ') rotate(0deg)', 'important');
     ghost.style.setProperty('z-index', '100000', 'important');
 
     // Center grab offset on the ghost
@@ -911,15 +990,38 @@ const SplashScreen = (() => {
     return ghost;
   }
 
+  // Theme primary colors for placeholder — keyed by data-card-theme.
+  var PLACEHOLDER_COLORS = {
+    silver:   { border: 'rgba(176, 196, 222, 0.5)', bg: 'rgba(176, 196, 222, 0.06)' },
+    amber:    { border: 'rgba(255, 176, 0, 0.5)',   bg: 'rgba(255, 176, 0, 0.06)'   },
+    phosphor: { border: 'rgba(51, 255, 51, 0.5)',    bg: 'rgba(51, 255, 51, 0.06)'    },
+    panther:  { border: 'rgba(255, 48, 144, 0.5)',   bg: 'rgba(255, 48, 144, 0.06)'   },
+  };
+
   function _createDragPlaceholder(cardEl) {
     var rect = cardEl.getBoundingClientRect();
     var cs = window.getComputedStyle(cardEl);
+    var isMobile = window.innerWidth < 769;
     var ph = document.createElement('div');
     ph.className = 'splash-card-placeholder';
     ph.style.width = rect.width + 'px';
     ph.style.height = rect.height + 'px';
     ph.style.margin = cs.margin;
     ph.style.flexShrink = '0';
+
+    // On mobile, copy transform and z-index for stacked layout
+    if (isMobile) {
+      ph.style.transform = cs.transform;
+      ph.style.zIndex = cs.zIndex;
+    }
+
+    // Color the placeholder to match the CARD's theme
+    var cardTheme = cardEl.dataset.cardTheme || '';
+    var tc = PLACEHOLDER_COLORS[cardTheme];
+    if (tc) {
+      ph.style.borderColor = tc.border;
+      ph.style.background = tc.bg;
+    }
 
     // Insert placeholder before the card
     cardEl.parentNode.insertBefore(ph, cardEl);
@@ -963,6 +1065,13 @@ const SplashScreen = (() => {
 
   function _cleanupDrag() {
     if (!_dragState) return;
+
+    // End RevealGrid lens session before cleanup
+    if (window.RevealGrid) {
+      RevealGrid.endLensSession();
+    }
+    _clearSplashRevealContent();
+
     var cardEl = _dragState.cardEl;
     var ghost = _dragState.ghostEl;
     var ph = _dragState.placeholderEl;
@@ -1010,6 +1119,18 @@ const SplashScreen = (() => {
     // Body cursor during drag
     document.body.style.cursor = 'grabbing';
 
+    // Begin RevealGrid lens session (card's porthole aperture is the lens)
+    if (window.RevealGrid) {
+      var portholeCanvas = _dragState.ghostEl.querySelector('.starfield-window');
+      var lensEl = portholeCanvas || _dragState.ghostEl;
+      var lr = lensEl.getBoundingClientRect();
+      RevealGrid.beginLensSession({
+        left: lr.left, top: lr.top,
+        right: lr.right, bottom: lr.bottom,
+        width: lr.width, height: lr.height,
+      });
+    }
+
     // Sound
     _ensureAudioInit();
     _playAudio(PICKUP_SOUNDS[index % PICKUP_SOUNDS.length], { volume: 0.4 });
@@ -1022,7 +1143,23 @@ const SplashScreen = (() => {
     // Subtle tilt based on drag velocity
     var dx = ev.clientX - _dragState.startX;
     var tilt = Math.max(-8, Math.min(8, dx * 0.04));
-    _dragState.ghostEl.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
+    var dragScale = window.innerWidth < 769 ? 1.20 : 1.05;
+    _dragState.ghostEl.style.setProperty('transform', 'scale(' + dragScale + ') rotate(' + tilt + 'deg)', 'important');
+
+    // Update RevealGrid lens position (porthole aperture)
+    if (window.RevealGrid) {
+      var ghost = _dragState.ghostEl;
+      var portholeCanvas = ghost.querySelector('.starfield-window');
+      var lensEl = portholeCanvas || ghost;
+      var lr = lensEl.getBoundingClientRect();
+      RevealGrid.updateLens({
+        left: lr.left, top: lr.top,
+        right: lr.right, bottom: lr.bottom,
+        width: lr.width, height: lr.height,
+      });
+      // Render zone content inside card's porthole area
+      _updateSplashRevealContent(ghost);
+    }
   }
 
   function _endCardDrag(ev) {

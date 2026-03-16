@@ -189,6 +189,8 @@ var NchOverlay = (function () {
   function _createCapsule() {
     _capsule = document.createElement('div');
     _capsule.className = 'nch-overlay-wrapper';
+    _capsule.setAttribute('tabindex', '-1');
+    _capsule.setAttribute('inputmode', 'none');
     _capsule.style.display = _visible ? 'flex' : 'none';
     _capsule.innerHTML =
       '<div class="nch-overlay-inner">' +
@@ -201,6 +203,10 @@ var NchOverlay = (function () {
     _capsule.addEventListener('pointerdown', function (e) {
       if (e.button && e.button !== 0) return;
       e.preventDefault();
+      // Dismiss virtual keyboard on mobile by blurring any focused element
+      if (document.activeElement && document.activeElement !== document.body) {
+        try { document.activeElement.blur(); } catch (_) {}
+      }
       var rect = _capsule.getBoundingClientRect();
       _capsuleDrag = {
         startX: e.clientX,
@@ -357,7 +363,7 @@ var NchOverlay = (function () {
     // No backdrop — cards float over page content which stays readable.
     // Close button sits above the card fan.
     _fanPanel.innerHTML =
-      '<button class="nch-fan-close-btn" id="nch-fan-close-btn" aria-label="Close">\u2715</button>' +
+      '<button class="nch-fan-close-btn" id="nch-fan-close-btn" aria-label="Close" tabindex="-1" inputmode="none">\u2715</button>' +
       '<div class="splash-card-fan" id="nch-card-fan">' +
         MISSIONS.map(function (m, i) { return _buildCardHTML(m, i); }).join('') +
       '</div>';
@@ -881,6 +887,11 @@ var NchOverlay = (function () {
   function _openFan() {
     if (_fanOpen) return;
     _fanOpen = true;
+
+    // Dismiss virtual keyboard on mobile before opening fan
+    if (document.activeElement && document.activeElement !== document.body) {
+      try { document.activeElement.blur(); } catch (_) {}
+    }
 
     // Expand SFX — shuffle sound as cards fan out
     _playAudio('card-shuffle_4', { volume: 0.5 });
