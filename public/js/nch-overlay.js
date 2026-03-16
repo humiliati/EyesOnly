@@ -410,7 +410,9 @@ var NchOverlay = (function () {
         if (!_cardDrag || _cardDrag.cardEl !== cardEl) return;
         var dx = e.clientX - _cardDrag.startX;
         var dy = e.clientY - _cardDrag.startY;
-        if (!_cardDrag.moved && Math.sqrt(dx * dx + dy * dy) < 10) return;
+        // Lower threshold on mobile (stacked cards have small exposed strips)
+        var threshold = window.innerWidth < 769 ? 5 : 10;
+        if (!_cardDrag.moved && Math.sqrt(dx * dx + dy * dy) < threshold) return;
 
         // First move past threshold — begin drag
         if (!_cardDrag.moved) {
@@ -418,7 +420,7 @@ var NchOverlay = (function () {
           _beginCardDrag(_cardDrag);
         }
         _moveCardGhost(e.clientX, e.clientY);
-        _updateDropGap(e.clientX);
+        _updateDropGap(e.clientX, e.clientY);
       });
 
       cardEl.addEventListener('pointerup', function (e) {
@@ -450,6 +452,15 @@ var NchOverlay = (function () {
   }
 
   // ── Card Drag-to-Reorder Internals ───────────────────────
+
+  // Theme primary colors for placeholder — keyed by data-card-theme.
+  // Avoids inheriting the body's applied theme; shows the CARD's color instead.
+  var THEME_COLORS = {
+    silver:  { border: 'rgba(176, 196, 222, 0.5)', bg: 'rgba(176, 196, 222, 0.06)' },
+    amber:   { border: 'rgba(255, 176, 0, 0.5)',   bg: 'rgba(255, 176, 0, 0.06)'   },
+    phosphor:{ border: 'rgba(51, 255, 51, 0.5)',    bg: 'rgba(51, 255, 51, 0.06)'    },
+    panther: { border: 'rgba(255, 48, 144, 0.5)',   bg: 'rgba(255, 48, 144, 0.06)'   },
+  };
 
   function _beginCardDrag(drag) {
     var cardEl = drag.cardEl;
@@ -506,6 +517,25 @@ var NchOverlay = (function () {
     placeholder.style.height = rect.height + 'px';
     placeholder.style.margin = cs.margin;
     placeholder.style.flexShrink = '0';
+
+    // On mobile, cards have per-nth-child transform + z-index for the
+    // vertical stack layout. Copy these onto the placeholder so it sits
+    // in the exact same visual slot the card occupied.
+    if (isMobile) {
+      placeholder.style.transform = cs.transform;
+      placeholder.style.zIndex = cs.zIndex;
+    }
+
+    // Color the placeholder to match the CARD's theme, not the body's.
+    // Splash-screen's .splash-card-placeholder uses var(--theme-btn-border)
+    // which resolves from the body theme — wrong when dragging a different card.
+    var cardTheme = cardEl.dataset.cardTheme || '';
+    var tc = THEME_COLORS[cardTheme];
+    if (tc) {
+      placeholder.style.borderColor = tc.border;
+      placeholder.style.background = tc.bg;
+    }
+
     cardEl.parentNode.insertBefore(placeholder, cardEl);
     drag.placeholderEl = placeholder;
 
@@ -532,12 +562,14 @@ var NchOverlay = (function () {
     ghost.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
   }
 
-  function _updateDropGap(clientX) {
-    // Find which gap the cursor is closest to and move the placeholder there
+  function _updateDropGap(clientX, clientY) {
+    // Find which gap the cursor is closest to and move the placeholder there.
+    // Desktop: compare X (horizontal fan). Mobile: compare Y (vertical stack).
     if (!_cardDrag || !_cardDrag.placeholderEl) return;
     var fanEl = _fanPanel.querySelector('#nch-card-fan');
     if (!fanEl) return;
 
+    var isMobile = window.innerWidth < 769;
     var cards = fanEl.querySelectorAll('.splash-dossier:not(.nch-fan-card-dragging)');
     var placeholder = _cardDrag.placeholderEl;
 
@@ -545,10 +577,20 @@ var NchOverlay = (function () {
     var insertBefore = null;
     for (var i = 0; i < cards.length; i++) {
       var rect = cards[i].getBoundingClientRect();
-      var midX = rect.left + rect.width / 2;
-      if (clientX < midX) {
-        insertBefore = cards[i];
-        break;
+      if (isMobile) {
+        // Vertical stack: compare Y midpoints
+        var midY = rect.top + rect.height / 2;
+        if (clientY < midY) {
+          insertBefore = cards[i];
+          break;
+        }
+      } else {
+        // Horizontal fan: compare X midpoints
+        var midX = rect.left + rect.width / 2;
+        if (clientX < midX) {
+          insertBefore = cards[i];
+          break;
+        }
       }
     }
 
