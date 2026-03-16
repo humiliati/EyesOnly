@@ -304,10 +304,11 @@
    Placeholder uses .splash-card-placeholder from splash-screen.css
    (dashed border, theme-colored fill, smooth collapse animation). */
 
-/* Original card hidden while being dragged */
+/* Original card removed from flow while being dragged.
+   display:none matches splash-screen's .coin-card-dragging —
+   the splash-card-placeholder alone holds the slot. */
 .nch-fan-card-dragging {
-  opacity: 0 !important;
-  pointer-events: none !important;
+  display: none !important;
 }
 
 /* ════════════════════════════════════════════════════════════
