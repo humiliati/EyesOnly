@@ -118,12 +118,85 @@
   opacity: 0.55;
 }
 
-/* ── 4. RESPONSIVE ──────────────────────────────────────────
-   Mobile: smaller, safe-area aware.                           */
+/* ════════════════════════════════════════════════════════════
+   4. PORTHOLE FAN PANEL
+   Floating coin-card fan — NO backdrop, NO overlay.
+   Page content stays fully visible and readable underneath.
+   Only the cards and close button capture pointer events.
+   Reuses .splash-dossier.coin-card + .splash-card-fan from
+   splash-screen.css for card internals.
+   ════════════════════════════════════════════════════════════ */
+
+.nch-porthole-fan {
+  position: fixed;
+  /* Anchor to bottom-center, above the capsule widget */
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1900;
+  /* Pass-through: page stays interactive everywhere
+     except on the cards and close button themselves */
+  pointer-events: none;
+  /* Entrance animation */
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.nch-porthole-fan.nch-fan-active {
+  opacity: 1;
+}
+
+/* Close button — floats above the card row */
+.nch-fan-close-btn {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  z-index: 3;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  color: rgba(28, 255, 155, 0.7);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s;
+  pointer-events: auto;
+}
+
+.nch-fan-close-btn:hover {
+  background: rgba(28, 255, 155, 0.12);
+  border-color: rgba(28, 255, 155, 0.8);
+  color: rgba(28, 255, 155, 0.95);
+}
+
+/* Card fan container — inherits flex layout from splash-screen.css.
+   Re-enable pointer-events on the cards themselves.
+   Override splash-screen.css's initial opacity:0 + delayed animation
+   so the fan is visible immediately when the panel appears. */
+.nch-porthole-fan .splash-card-fan {
+  pointer-events: auto;
+  opacity: 1;
+  animation: none;
+}
+
+/* ── 5. RESPONSIVE ──────────────────────────────────────────
+   Mobile: smaller capsule, safe-area aware, fan at bottom.    */
 
 @media (max-width: 768px) {
   .nch-overlay-wrapper {
     bottom: calc(40px + env(safe-area-inset-bottom));
     right: 10px;
+  }
+
+  .nch-porthole-fan {
+    bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  .nch-fan-close-btn {
+    top: -32px;
+    right: -4px;
   }
 }

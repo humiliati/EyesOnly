@@ -6,8 +6,9 @@
 
      PORTHOLE MODE (default):
        Joker stack acts as a theme/page-selector toy.
-       Click → opens hand-fan-component with coin-cards.
-       No GoneRogue dependency. Works on index.html, booking, etc.
+       Click → opens a coin-card fan panel (splash-screen style,
+       no background video) for theme selection & page navigation.
+       No GoneRogue dependency.
 
      GAME MODE (when GoneRogue is active):
        Delegates rendering to NonCombatHUD for full deck management.
@@ -23,10 +24,11 @@ var NchOverlay = (function () {
   // ── State ────────────────────────────────────────────────
   var _capsule = null;         // .nch-overlay-wrapper (the draggable pill)
   var _stackEl = null;         // #nch-overlay-stack   (joker container)
+  var _fanPanel = null;        // #nch-porthole-fan    (the coin-card overlay)
+  var _fanOpen = false;
   var _mode = 'porthole';      // 'porthole' | 'game' | 'transitioning'
   var _initialized = false;
   var _visible = true;
-  var _jokerCount = 4;         // default porthole-mode card count (theme cards)
 
   // Drag
   var _capsuleDrag = null;     // { startX, startY, origLeft, origTop, moved }
@@ -34,17 +36,72 @@ var NchOverlay = (function () {
   // Position persistence
   var POS_KEY = 'EYESONLY_NCH_OVERLAY_POS_V1';
 
-  // Porthole card config — each entry maps to a theme/coin-card
-  // This is the data the hand-fan-component will receive in porthole mode.
-  var _portholeCards = [
-    { id: 'theme-silver',   emoji: '🃏', theme: 'silver',   label: 'SILVER'   },
-    { id: 'theme-amber',    emoji: '🃏', theme: 'amber',    label: 'AMBER'    },
-    { id: 'theme-phosphor', emoji: '🃏', theme: 'phosphor', label: 'PHOSPHOR' },
-    { id: 'theme-panther',  emoji: '🃏', theme: 'panther',  label: 'PANTHER'  },
+  // ── Mission / Card Data ──────────────────────────────────
+  // Same MISSIONS structure as splash-screen.js so the coin-cards
+  // are identical. When the fan opens, these build real coin-card DOM
+  // reusing splash-screen.css classes.
+  var MISSIONS = [
+    {
+      id: 'scenario-1',
+      title: '1 Day Scenario',
+      desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history',
+      suit: '\u2660',            // ♠
+      suitClass: 'suit-spade',
+      classified: 'EYES ONLY',
+      label: 'MISSION DOSSIER',
+      route: '/booking.html#scenario-1',
+      btnLabel: 'BOOK',
+      btnDuration: '24 HR',
+      btnClass: '',
+    },
+    {
+      id: 'scenario-2',
+      title: '3 Day Scenario',
+      desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.',
+      suit: '\u2663',            // ♣
+      suitClass: 'suit-club',
+      classified: 'TOP SECRET',
+      label: 'MISSION DOSSIER',
+      route: '/booking.html#scenario-2',
+      btnLabel: 'BOOK',
+      btnDuration: '72 HR',
+      btnClass: '',
+    },
+    {
+      id: 'partner',
+      title: 'Partners',
+      desc: 'For Businesses, Actors, & Hosts',
+      suit: '\u2665',            // ♥
+      suitClass: 'suit-heart',
+      classified: 'UNCLASSIFIED',
+      label: 'RECRUITMENT',
+      route: '/partners.html',
+      btnLabel: 'JOIN',
+      btnDuration: 'NOW',
+      btnClass: 'coin-book-partner',
+    },
+    {
+      id: 'minigames',
+      title: 'Arcade',
+      desc: 'Decryption keys, Puzzles & Toys',
+      suit: '\u2666',            // ♦
+      suitClass: 'suit-diamond',
+      classified: 'FIELD KIT',
+      label: 'RECREATION',
+      route: '/games.html',
+      btnLabel: 'PLAY',
+      btnDuration: 'NOW',
+      btnClass: 'coin-book-diamond',
+      tags: ['PUZZLES', 'DECRYPTION'],
+    },
   ];
 
-  // Transition state
-  var _transitionCleanupFn = null;
+  var THEME_MAP = {
+    'scenario-1': 'silver',
+    'scenario-2': 'amber',
+    'partner':    'phosphor',
+    'minigames':  'panther',
+  };
 
   // ── Position Persistence ─────────────────────────────────
 
@@ -73,7 +130,6 @@ var NchOverlay = (function () {
       _capsule.style.left   = Math.max(0, Math.min(pos.left, window.innerWidth  - 40)) + 'px';
       _capsule.style.top    = Math.max(0, Math.min(pos.top,  window.innerHeight - 40)) + 'px';
     } else {
-      // Default: bottom-right
       _capsule.style.left   = '';
       _capsule.style.top    = '';
       _capsule.style.bottom = '';
@@ -94,7 +150,7 @@ var NchOverlay = (function () {
 
     _stackEl = _capsule.querySelector('#nch-overlay-stack');
 
-    // ── Drag (pointer events — works desktop + mobile) ────
+    // ── Drag (pointer events — desktop + mobile) ──────────
     _capsule.addEventListener('pointerdown', function (e) {
       if (e.button && e.button !== 0) return;
       e.preventDefault();
@@ -131,7 +187,6 @@ var NchOverlay = (function () {
         var rect = _capsule.getBoundingClientRect();
         _savePos(rect.left, rect.top);
       } else {
-        // Click (no drag) → action depends on mode
         _handleCapsuleClick();
       }
       _capsuleDrag = null;
@@ -150,10 +205,12 @@ var NchOverlay = (function () {
 
   function _handleCapsuleClick() {
     if (_mode === 'porthole') {
-      // Open hand-fan-component in porthole/theme-selector mode
-      _openPortholeHandFan();
+      if (_fanOpen) {
+        _closeFan();
+      } else {
+        _openFan();
+      }
     } else if (_mode === 'game') {
-      // Delegate to NonCombatHUD expand
       _delegateToGameMode('expand');
     }
   }
@@ -163,7 +220,7 @@ var NchOverlay = (function () {
   function _renderPortholeStack() {
     if (!_stackEl || _mode !== 'porthole') return;
 
-    var count = _portholeCards.length;
+    var count = MISSIONS.length;
     var sig = 'p:' + count;
     if (_stackEl.dataset.sig === sig) return;
     _stackEl.dataset.sig = sig;
@@ -176,32 +233,240 @@ var NchOverlay = (function () {
       var j = document.createElement('div');
       j.className = 'nch-overlay-joker joker-' + i;
       j.textContent = '\uD83C\uDCCF'; // 🃏
-      j.dataset.themeId = _portholeCards[i] ? _portholeCards[i].theme : '';
+      j.dataset.themeId = THEME_MAP[MISSIONS[i].id] || '';
       _stackEl.appendChild(j);
     }
   }
 
-  // ── Porthole Hand Fan Bridge ─────────────────────────────
-  // When clicked in porthole mode, we open the hand-fan-component
-  // with coin-card theme data instead of game cards.
-  // If HandFanComponent isn't loaded, we dispatch an event.
+  // ════════════════════════════════════════════════════════════
+  //  PORTHOLE FAN PANEL
+  //  Full coin-card fan overlay — identical to splash screen
+  //  but without background video. Reuses splash-screen.css.
+  // ════════════════════════════════════════════════════════════
 
-  function _openPortholeHandFan() {
-    var evt = new CustomEvent('nch-overlay:open-porthole-fan', {
-      detail: { cards: _portholeCards, source: 'nch-overlay' }
+  var _hoveredCard = null;
+
+  function _buildCardHTML(mission, index) {
+    var theme = THEME_MAP[mission.id] || 'phosphor';
+    var cornerTL = '<div class="coin-corner coin-corner-tl"><span class="coin-corner-suit ' +
+      mission.suitClass + '">' + mission.suit + '</span></div>';
+    var cornerBR = '<div class="coin-corner coin-corner-br"><span class="coin-corner-suit ' +
+      mission.suitClass + '">' + mission.suit + '</span></div>';
+
+    var btnClass = mission.btnClass || '';
+    var midRow = '<div class="coin-mid-row">' +
+      '<button class="coin-book-btn ' + btnClass + '" data-mission="' + mission.id + '" data-index="' + index + '">' +
+        '<span class="coin-book-label">' + mission.btnLabel + '</span>' +
+        '<span class="coin-book-dot">.</span>' +
+        '<span class="coin-book-duration">' + mission.btnDuration + '</span>' +
+      '</button>' +
+    '</div>';
+
+    var bottomStrip = '';
+    if (mission.tags) {
+      bottomStrip = '<div class="coin-tag-strip">' +
+        mission.tags.map(function (t) { return '<span class="coin-tag">' + t + '</span>'; }).join('') +
+      '</div>';
+    }
+
+    return '<div class="splash-dossier coin-card" data-mission="' + mission.id +
+      '" data-index="' + index + '" data-card-theme="' + theme + '">' +
+      '<div class="coin-border-outer">' +
+        '<div class="coin-border-inner">' +
+          cornerTL + cornerBR +
+          '<div class="coin-header">' +
+            '<div class="coin-classified">' + mission.classified + '</div>' +
+            '<div class="coin-label">' + mission.label + '</div>' +
+          '</div>' +
+          '<div class="coin-artwork" data-card-index="' + index + '">' +
+            '<canvas class="starfield-window" width="200" height="200"></canvas>' +
+            '<div class="coin-rings"></div>' +
+            '<div class="coin-suit-large ' + mission.suitClass + '">' + mission.suit + '</div>' +
+          '</div>' +
+          '<div class="coin-info">' +
+            '<div class="coin-title">' + mission.title + '</div>' +
+            '<div class="coin-desc">' + mission.desc + '</div>' +
+          '</div>' +
+          midRow +
+          bottomStrip +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function _buildFanPanel() {
+    if (_fanPanel) return;
+
+    _fanPanel = document.createElement('div');
+    _fanPanel.id = 'nch-porthole-fan';
+    _fanPanel.className = 'nch-porthole-fan';
+    _fanPanel.style.display = 'none';
+
+    // No backdrop — cards float over page content which stays readable.
+    // Close button sits above the card fan.
+    _fanPanel.innerHTML =
+      '<button class="nch-fan-close-btn" id="nch-fan-close-btn" aria-label="Close">\u2715</button>' +
+      '<div class="splash-card-fan" id="nch-card-fan">' +
+        MISSIONS.map(function (m, i) { return _buildCardHTML(m, i); }).join('') +
+      '</div>';
+
+    document.body.appendChild(_fanPanel);
+
+    // Close button
+    var closeBtn = _fanPanel.querySelector('#nch-fan-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _closeFan();
+      });
+    }
+
+    // Bind card interactions
+    _bindFanCards();
+  }
+
+  function _bindFanCards() {
+    if (!_fanPanel) return;
+    var cards = _fanPanel.querySelectorAll('.splash-dossier');
+
+    cards.forEach(function (cardEl) {
+      // Desktop hover
+      cardEl.addEventListener('mouseenter', function () {
+        if (_hoveredCard && _hoveredCard !== cardEl) {
+          _hoveredCard.classList.remove('coin-card-hovered');
+        }
+        cardEl.classList.add('coin-card-hovered');
+        _hoveredCard = cardEl;
+      });
+      cardEl.addEventListener('mouseleave', function () {
+        cardEl.classList.remove('coin-card-hovered');
+        if (_hoveredCard === cardEl) _hoveredCard = null;
+      });
+
+      // Card body click → select mission
+      cardEl.addEventListener('click', function (e) {
+        // Don't double-fire if the button was clicked
+        if (e.target.closest('.coin-book-btn')) return;
+        _selectMission(cardEl);
+      });
+
+      // BOOK/PLAY button click → select mission
+      var btn = cardEl.querySelector('.coin-book-btn');
+      if (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          _selectMission(cardEl);
+        });
+      }
     });
-    window.dispatchEvent(evt);
+  }
 
-    // Direct integration if HandFanComponent is available
-    // (Pages that load the hand-fan-component will handle the event)
+  function _selectMission(cardEl) {
+    var missionId = cardEl.dataset.mission;
+    var mission = null;
+    for (var i = 0; i < MISSIONS.length; i++) {
+      if (MISSIONS[i].id === missionId) { mission = MISSIONS[i]; break; }
+    }
+    if (!mission) return;
+
+    // Apply theme
+    var selectedTheme = THEME_MAP[missionId] || 'phosphor';
+    document.body.setAttribute('data-theme', selectedTheme);
+    document.documentElement.setAttribute('data-theme', selectedTheme);
+    try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (e) {}
+
+    // Visual feedback
+    cardEl.classList.add('splash-selected');
+
+    // Play selection sound if AudioSystem is available
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+        AudioSystem.play('card-fold_hand_1', { volume: 0.4 });
+      }
+    } catch (e) {}
+
+    // Fan exit animation, then navigate
+    setTimeout(function () {
+      var fanEl = _fanPanel.querySelector('#nch-card-fan');
+      if (fanEl) fanEl.classList.add('splash-fan-exit');
+    }, 100);
+
+    setTimeout(function () {
+      _closeFan();
+      if (mission.route) {
+        // If we're already on the target page, just apply theme and close
+        var currentPath = window.location.pathname;
+        var targetPath = mission.route.split('#')[0];
+        if (currentPath === targetPath || targetPath === '') {
+          // Same page — just apply theme, already done above
+        } else {
+          window.location.href = mission.route;
+        }
+      }
+    }, 600);
+  }
+
+  // ── Fan Open / Close ─────────────────────────────────────
+
+  function _openFan() {
+    if (_fanOpen) return;
+    _fanOpen = true;
+
+    // Build panel if first time
+    _buildFanPanel();
+
+    // Ensure starfield is running for porthole canvases
+    if (typeof EyesOnlyStarfield !== 'undefined') {
+      if (!EyesOnlyStarfield.isRunning()) {
+        EyesOnlyStarfield.init();
+      }
+    }
+
+    // Show with entrance animation
+    _fanPanel.style.display = '';
+    // Force reflow then add active class for CSS transition
+    void _fanPanel.offsetWidth;
+    _fanPanel.classList.add('nch-fan-active');
+
+    // Remove previous exit class if re-opening
+    var fanEl = _fanPanel.querySelector('#nch-card-fan');
+    if (fanEl) fanEl.classList.remove('splash-fan-exit');
+
+    // Reset card states
+    var cards = _fanPanel.querySelectorAll('.splash-dossier');
+    cards.forEach(function (c) {
+      c.classList.remove('splash-selected', 'coin-card-hovered');
+    });
+    _hoveredCard = null;
+
+    // Escape key closes
+    _fanEscHandler = function (e) {
+      if (e.key === 'Escape') _closeFan();
+    };
+    document.addEventListener('keydown', _fanEscHandler);
+  }
+
+  var _fanEscHandler = null;
+
+  function _closeFan() {
+    if (!_fanOpen) return;
+    _fanOpen = false;
+
+    if (_fanPanel) {
+      _fanPanel.classList.remove('nch-fan-active');
+      // Wait for CSS transition out, then hide
+      setTimeout(function () {
+        if (_fanPanel) _fanPanel.style.display = 'none';
+      }, 350);
+    }
+
+    if (_fanEscHandler) {
+      document.removeEventListener('keydown', _fanEscHandler);
+      _fanEscHandler = null;
+    }
   }
 
   // ── Game Mode Bridge ─────────────────────────────────────
-  // In game mode, the overlay capsule becomes the visual anchor
-  // but rendering is owned by NonCombatHUD. We hide our own
-  // stack and let NCH render into its own capsule DOM.
-
-  var _gameModeBridge = null;
 
   function _delegateToGameMode(action) {
     if (typeof NonCombatHUD === 'undefined') return;
@@ -215,24 +480,20 @@ var NchOverlay = (function () {
     var prevMode = _mode;
     _mode = 'transitioning';
 
-    // Animate capsule transition
+    // Close fan if open
+    if (_fanOpen) _closeFan();
+
     if (_capsule) _capsule.classList.add('nch-overlay-transitioning');
 
-    // After brief transition, hand control to NonCombatHUD
     setTimeout(function () {
       _mode = 'game';
       if (_capsule) {
         _capsule.classList.remove('nch-overlay-transitioning');
-        // Hide our overlay — NCH's own capsule takes over
         _capsule.style.display = 'none';
       }
-
-      // Tell NCH to init if it hasn't
       if (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.init) {
         NonCombatHUD.init();
       }
-
-      // Dispatch event for splash cleanup
       window.dispatchEvent(new CustomEvent('nch-overlay:entered-game-mode', {
         detail: { previousMode: prevMode }
       }));
@@ -243,10 +504,9 @@ var NchOverlay = (function () {
     if (_mode !== 'game') return;
     _mode = 'porthole';
 
-    // Show our capsule again
     if (_capsule) {
       _capsule.style.display = _visible ? 'flex' : 'none';
-      _stackEl.dataset.sig = ''; // force re-render
+      _stackEl.dataset.sig = '';
       _renderPortholeStack();
     }
 
@@ -254,8 +514,6 @@ var NchOverlay = (function () {
   }
 
   // ── Mode Detection Polling ───────────────────────────────
-  // Checks whether GoneRogue has become active/inactive
-  // and transitions between porthole ↔ game accordingly.
 
   function _pollMode() {
     var rogueActive = false;
@@ -272,8 +530,6 @@ var NchOverlay = (function () {
   }
 
   // ── Starfield Init Helper ────────────────────────────────
-  // Convenience: pages can call NchOverlay.initStarfield() to
-  // start the shared starfield module if it's loaded.
 
   function _initStarfield(opts) {
     if (typeof EyesOnlyStarfield !== 'undefined' && !EyesOnlyStarfield.isRunning()) {
@@ -283,34 +539,22 @@ var NchOverlay = (function () {
 
   // ── Public API ───────────────────────────────────────────
 
-  /**
-   * Initialize the NCH Overlay on the current page.
-   * @param {Object} [opts]
-   * @param {Array}  [opts.cards]         - Custom porthole card configs
-   * @param {boolean}[opts.autoStarfield] - Auto-init EyesOnlyStarfield (default: true)
-   * @param {Object} [opts.starfieldOpts] - Options passed to EyesOnlyStarfield.init()
-   * @param {boolean}[opts.visible]       - Start visible (default: true)
-   */
   function init(opts) {
     if (_initialized) return;
     _initialized = true;
     opts = opts || {};
 
-    if (opts.cards) _portholeCards = opts.cards;
     if (opts.visible === false) _visible = false;
 
     _createCapsule();
     _renderPortholeStack();
 
-    // Auto-start starfield unless opted out
     if (opts.autoStarfield !== false) {
       _initStarfield(opts.starfieldOpts || {});
     }
 
-    // Poll for GoneRogue presence (seamless transition)
     setInterval(_pollMode, 500);
 
-    // Listen for explicit game launch / exit events
     window.addEventListener('gone-rogue-started', function () {
       if (_mode === 'porthole') _enterGameMode();
     });
@@ -319,22 +563,17 @@ var NchOverlay = (function () {
     });
   }
 
-  /**
-   * Destroy the overlay and clean up.
-   */
   function destroy() {
-    if (_capsule && _capsule.parentNode) {
-      _capsule.parentNode.removeChild(_capsule);
-    }
+    _closeFan();
+    if (_fanPanel && _fanPanel.parentNode) _fanPanel.parentNode.removeChild(_fanPanel);
+    if (_capsule && _capsule.parentNode) _capsule.parentNode.removeChild(_capsule);
     _capsule = null;
     _stackEl = null;
+    _fanPanel = null;
     _initialized = false;
     _mode = 'porthole';
   }
 
-  /**
-   * Show/hide the overlay.
-   */
   function show() {
     _visible = true;
     if (_capsule && _mode !== 'game') _capsule.style.display = 'flex';
@@ -343,11 +582,9 @@ var NchOverlay = (function () {
   function hide() {
     _visible = false;
     if (_capsule) _capsule.style.display = 'none';
+    _closeFan();
   }
 
-  /**
-   * Reset capsule position to default (bottom-right).
-   */
   function resetPosition() {
     _clearPos();
     if (_capsule) {
@@ -358,32 +595,16 @@ var NchOverlay = (function () {
     }
   }
 
-  /**
-   * Get current mode.
-   * @returns {'porthole'|'game'|'transitioning'}
-   */
   function getMode() { return _mode; }
 
-  /**
-   * Set the porthole card configs (for custom per-page cards).
-   * @param {Array} cards - [{ id, emoji, theme, label }, ...]
-   */
-  function setPortholeCards(cards) {
-    _portholeCards = cards || [];
-    if (_stackEl) _stackEl.dataset.sig = '';
-    _renderPortholeStack();
-  }
+  function isFanOpen() { return _fanOpen; }
 
-  /**
-   * Force enter/exit game mode (used by splash screen launcher).
-   */
+  function openFan()  { _openFan();  }
+  function closeFan() { _closeFan(); }
+
   function enterGameMode()  { _enterGameMode(); }
   function exitGameMode()   { _exitGameMode();  }
 
-  /**
-   * Get the capsule DOM element (for animation anchoring).
-   * @returns {HTMLElement|null}
-   */
   function getCapsuleElement() { return _capsule; }
 
   return {
@@ -393,7 +614,9 @@ var NchOverlay = (function () {
     hide:             hide,
     resetPosition:    resetPosition,
     getMode:          getMode,
-    setPortholeCards: setPortholeCards,
+    isFanOpen:        isFanOpen,
+    openFan:          openFan,
+    closeFan:         closeFan,
     enterGameMode:    enterGameMode,
     exitGameMode:     exitGameMode,
     getCapsuleElement: getCapsuleElement,
