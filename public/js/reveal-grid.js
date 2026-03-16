@@ -71,7 +71,7 @@ var RevealGrid = (function () {
     _gridLayer.style.cssText = [
       'position: fixed',
       'inset: 0',
-      'z-index: 1',          // above starfield (z:-1), below page content
+      'z-index: 50',         // above #crt-frame (z:15), below CRT overlays (z:80+)
       'pointer-events: none',
       'overflow: hidden',
     ].join('; ');

@@ -13,7 +13,7 @@
 .reveal-grid-layer {
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 50;              /* above #crt-frame (z:15), below CRT overlays (z:80+) */
   pointer-events: none;
   overflow: hidden;
 }
