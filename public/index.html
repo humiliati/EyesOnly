@@ -209,6 +209,11 @@
             }
             labels[i].setAttribute('data-abbr', abbr.join(' ').toUpperCase());
           }
+          /* Set data-text on sidebar buttons for CSS ::after rendering (FIG 3) */
+          document.querySelectorAll('.control-buttons button').forEach(function(btn) {
+            var text = btn.textContent.trim();
+            if (text) btn.setAttribute('data-text', text.toUpperCase());
+          });
         })();
       </script>
 
@@ -217,7 +222,7 @@
           <aside id="control-rail">
             <div class="control-buttons">
               <button type="button" data-action="back" data-sound="ui-04">back</button>
-              <button type="button" data-action="inventory" data-sound="ui-04">inventory</button>
+              <button type="button" data-action="inventory" data-sound="ui-04">items</button>
               <button type="button" data-action="login" data-sound="ui-04">login</button>
               <button type="button" data-action="kernel" class="kernel-btn" data-sound="ui-04" disabled>kernel</button>
               <button type="button" data-action="help" data-sound="ui-04">help</button>

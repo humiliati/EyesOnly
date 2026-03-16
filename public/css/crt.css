@@ -4689,3 +4689,73 @@ body.cascade-active {
 .awol-livehelp-link:focus-visible {
   outline: 1px solid var(--phosphor);
 }
+
+/* ============================================================
+   UX PATCH — Mobile-focused layout tightening
+   ============================================================ */
+
+/* FIG 1: Nav single row; account name wraps */
+.mok-header-copy { flex-shrink: 1; }
+.mok-header-sub {
+  white-space: normal; word-break: break-word;
+  overflow: visible; text-overflow: unset; line-height: 1.2;
+}
+.mok-header-nav { flex-wrap: nowrap; }
+
+/* Header nav labels bold */
+.header-nav-label,
+.header-nav-label::after { font-weight: bold; }
+
+/* Tighten header-to-sidebar gap */
+@media (max-width: 767px) {
+  #crt-frame { gap: 2px; padding-top: 4px; }
+  #control-rail { padding: 2px; gap: 2px; }
+  .mok-header-copy { max-width: 20%; }
+
+  /* FIG 2: AWOL — 9px tall bar overlaying top of item stack */
+  .mok-header-right {
+    position: relative;
+    flex-direction: row;
+    flex-shrink: 0;
+    gap: 0;
+    min-width: 68px;
+    width: 68px;
+  }
+  .accountability-indicator {
+    position: absolute; top: 0; left: 0; right: 0;
+    width: 100%; max-height: 9px; height: 9px;
+    overflow: hidden; border-radius: 4px; padding: 0 4px;
+    background: rgba(6,14,8,0.92);
+    border: 1px solid rgba(51,255,51,0.3);
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px; z-index: 100; box-sizing: border-box;
+    font-weight: bold; white-space: nowrap;
+  }
+  .accountability-label { display: inline; font-size: 9px; letter-spacing: 0.06em; }
+  .awol-chevron { display: inline; font-size: 9px; }
+  .accountability-icon { font-size: 10px; }
+  #mok-header.monitor-header { height: 44px; padding: 4px 8px; gap: 4px; align-items: center; }
+}
+
+/* Show AWOL label on tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .accountability-label { display: inline; font-size: 9px; }
+  .awol-chevron { display: inline; font-size: 9px; }
+}
+
+/* FIG 3: Sidebar buttons — large direct text via ::after / data-text */
+@media (max-width: 600px) and (orientation: portrait) {
+  .control-buttons button {
+    font-size: 0; line-height: 0; overflow: hidden;
+    padding: 4px 2px; min-height: 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .control-buttons button::after {
+    content: attr(data-text);
+    font-size: 18px; letter-spacing: 0.06em;
+    line-height: 1.2; text-transform: uppercase; font-family: inherit;
+  }
+}
+
+/* Tighten log-column to mok-interjections footer gap */
+#log-column { gap: 2px; }
