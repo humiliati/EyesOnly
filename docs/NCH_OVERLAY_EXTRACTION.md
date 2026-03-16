@@ -114,10 +114,61 @@ This extraction covers:
 - Position sync between overlay and NCH
 
 **Not yet implemented** (future phases):
-- Phase 1: Starfield underlayment per-page (starfield.js is ready, needs page integration)
+- Phase 1: Starfield underlayment per-page — palette system complete, needs per-page `init()` calls
 - Phase 3: Joker colorization via BLVCK card method (CSS hooks stubbed in nch-overlay.css)
 - Phase 4: Drag-to-rearrange coin-cards (needs hand-fan-component bridge)
 - Phase 5: Porthole puzzle integration (PORTHOLE_PUZZLE_TOOLKIT)
+
+---
+
+## Starfield Palette System (Phase 1)
+
+The starfield renderer now supports named color palettes that control all 7 color domains: void fill, star tint, star color bias, Milky Way glow, Milky Way stars, cluster glow, cluster stars, and an optional atmosphere wash.
+
+### Built-in Palettes
+
+| Name | Void | Nebulae | Mood |
+|------|------|---------|------|
+| `night` | Pure black | Blue | Default — crisp white stars |
+| `sunset` | Warm dark brown | Rose/amber | Golden hour, warm tint |
+| `mono` | Black | Grey | Black & white, no color |
+| `silver` | Dark steel | Icy blue | Cool, metallic |
+| `amber` | Dark gold | Bronze | Warm gold field |
+| `phosphor` | Dark green | Green | Matrix / terminal glow |
+| `panther` | Dark violet | Magenta/purple | Neon noir |
+| `daytime` | Blue (#1a3a5c) | Pale blue | Sky wash (clouds TBD) |
+
+### Usage
+
+```js
+// Initialize with a named palette
+EyesOnlyStarfield.init({ palette: 'sunset' });
+
+// Initialize with a custom palette (merges with night defaults)
+EyesOnlyStarfield.init({ palette: { void: '#0a0000', starTint: [1, 0.8, 0.6] } });
+
+// Switch palette at runtime (regenerates stars)
+EyesOnlyStarfield.setPalette('phosphor');
+
+// Query current palette
+EyesOnlyStarfield.getPalette(); // → 'phosphor'
+
+// Access all presets
+EyesOnlyStarfield.PALETTES; // { night: {...}, sunset: {...}, ... }
+```
+
+### Palette Fields
+
+| Field | Type | Effect |
+|-------|------|--------|
+| `void` | CSS color string | Background fill |
+| `starTint` | `[r, g, b]` (0–1 floats) | Multiplier on generated star RGB |
+| `starColorBias` | `'cool'` / `'warm'` / `'neutral'` | Shifts warm/cool star distribution |
+| `milkyWayGlow` | `[r, g, b]` (0–255) | Milky Way band nebular glow |
+| `milkyWayStar` | `[r, g, b]` (0–255) | Dense Milky Way star color |
+| `clusterGlow` | `[r, g, b]` (0–255) | Turing cluster nebula glow |
+| `clusterStar` | `[r, g, b]` (0–255) | Cluster star color |
+| `atmosphere` | `[r, g, b, a]` or `null` | Full-frame gradient wash (sky tint) |
 
 ---
 

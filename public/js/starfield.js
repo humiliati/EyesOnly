@@ -46,6 +46,111 @@
     };
   }
 
+  /* ---- Palette Presets ────────────────────────────────────
+     Each palette controls all color domains in the renderer.
+     Pages pass a palette name or custom object to init().
+
+     Fields:
+       void:          background fill color
+       starTint:      [r, g, b] multiplier applied to generated star colors (1.0 = unchanged)
+       milkyWayGlow:  [r, g, b] for the band's nebular glow
+       milkyWayStar:  [r, g, b] for the dense band stars
+       clusterGlow:   [r, g, b] for Turing cluster nebula glow
+       clusterStar:   [r, g, b] for cluster stars
+       starColorBias: 'cool' | 'warm' | 'neutral' — shifts star generation distribution
+       atmosphere:    optional [r, g, b, a] gradient wash over entire frame (daytime sky, sunset haze)
+     ──────────────────────────────────────────────────────── */
+  var PALETTES = {
+    // Default: crisp white stars on pure black, blue nebulae
+    night: {
+      void:         '#000000',
+      starTint:     [1.0, 1.0, 1.0],
+      milkyWayGlow: [20, 40, 120],
+      milkyWayStar: [240, 242, 255],
+      clusterGlow:  [40, 80, 200],
+      clusterStar:  [235, 240, 255],
+      starColorBias: 'neutral',
+      atmosphere:   null,
+    },
+    // Sunset: warm amber/orange void, gold-tinted stars, rose nebulae
+    sunset: {
+      void:         '#0c0604',
+      starTint:     [1.0, 0.85, 0.6],
+      milkyWayGlow: [120, 50, 20],
+      milkyWayStar: [255, 220, 180],
+      clusterGlow:  [180, 80, 40],
+      clusterStar:  [255, 225, 190],
+      starColorBias: 'warm',
+      atmosphere:   [40, 15, 5, 0.04],
+    },
+    // Monochrome: pure black/white, no color at all
+    mono: {
+      void:         '#000000',
+      starTint:     [1.0, 1.0, 1.0],
+      milkyWayGlow: [50, 50, 50],
+      milkyWayStar: [240, 240, 240],
+      clusterGlow:  [80, 80, 80],
+      clusterStar:  [230, 230, 230],
+      starColorBias: 'neutral',
+      atmosphere:   null,
+    },
+    // Silver: cool steel-blue tint, icy nebulae
+    silver: {
+      void:         '#020408',
+      starTint:     [0.85, 0.92, 1.0],
+      milkyWayGlow: [30, 50, 140],
+      milkyWayStar: [210, 225, 255],
+      clusterGlow:  [50, 90, 220],
+      clusterStar:  [215, 230, 255],
+      starColorBias: 'cool',
+      atmosphere:   null,
+    },
+    // Amber: warm gold field, bronze nebulae
+    amber: {
+      void:         '#080600',
+      starTint:     [1.0, 0.9, 0.65],
+      milkyWayGlow: [100, 60, 15],
+      milkyWayStar: [255, 230, 190],
+      clusterGlow:  [160, 90, 30],
+      clusterStar:  [255, 235, 200],
+      starColorBias: 'warm',
+      atmosphere:   null,
+    },
+    // Phosphor: green terminal glow, matrix-style
+    phosphor: {
+      void:         '#000800',
+      starTint:     [0.6, 1.0, 0.7],
+      milkyWayGlow: [10, 80, 40],
+      milkyWayStar: [200, 255, 220],
+      clusterGlow:  [20, 140, 60],
+      clusterStar:  [210, 255, 225],
+      starColorBias: 'cool',
+      atmosphere:   null,
+    },
+    // Panther: magenta/violet neon, deep purple void
+    panther: {
+      void:         '#06000a',
+      starTint:     [1.0, 0.7, 1.0],
+      milkyWayGlow: [80, 20, 120],
+      milkyWayStar: [245, 210, 255],
+      clusterGlow:  [140, 40, 200],
+      clusterStar:  [240, 215, 255],
+      starColorBias: 'neutral',
+      atmosphere:   null,
+    },
+    // Daytime: placeholder — blue sky wash, faint stars, clouds in future
+    daytime: {
+      void:         '#1a3a5c',
+      starTint:     [0.8, 0.85, 1.0],
+      milkyWayGlow: [80, 120, 180],
+      milkyWayStar: [200, 210, 230],
+      clusterGlow:  [100, 140, 200],
+      clusterStar:  [210, 220, 240],
+      starColorBias: 'cool',
+      atmosphere:   [135, 180, 230, 0.12],
+    },
+  };
+
   /* ---- State ---- */
   var _state = {
     layers:         [],
@@ -57,6 +162,7 @@
     running:        false,
     selector:       '.starfield-window',
     ownsCanvas:     false, // did we create the master canvas?
+    palette:        PALETTES.night, // active palette
   };
 
   /* ---- Generate star data ---- */
@@ -79,19 +185,29 @@
       var driftX = Math.cos(def.driftAngle) * def.speed;
       var driftY = Math.sin(def.driftAngle) * def.speed;
       for (var i = 0; i < def.count; i++) {
-        // Star color: strongly biased toward crisp white
+        // Star color: distribution shifted by palette.starColorBias,
+        // then tinted by palette.starTint
+        var pal = _state.palette;
+        var bias = pal.starColorBias || 'neutral';
+        var warmThresh = bias === 'warm' ? 0.15 : bias === 'cool' ? 0.03 : 0.06;
+        var coolThresh = bias === 'cool' ? 0.25 : bias === 'warm' ? 0.08 : 0.15;
         var temp = rng();
         var cr, cg, cb;
-        if (temp < 0.06) {
-          // Rare warm star
+        if (temp < warmThresh) {
+          // Warm star
           cr = 255; cg = 240 + Math.floor(rng() * 15); cb = 220 + Math.floor(rng() * 20);
-        } else if (temp < 0.15) {
-          // Occasional cool blue-white
+        } else if (temp < coolThresh) {
+          // Cool blue-white star
           cr = 220 + Math.floor(rng() * 20); cg = 225 + Math.floor(rng() * 20); cb = 255;
         } else {
           // Clean white (dominant)
           cr = 240 + Math.floor(rng() * 15); cg = 240 + Math.floor(rng() * 15); cb = 245 + Math.floor(rng() * 10);
         }
+        // Apply palette tint
+        var tint = pal.starTint || [1, 1, 1];
+        cr = Math.min(255, Math.round(cr * tint[0]));
+        cg = Math.min(255, Math.round(cg * tint[1]));
+        cb = Math.min(255, Math.round(cb * tint[2]));
         stars.push({
           x:          rng(),
           y:          rng(),
@@ -187,8 +303,9 @@
     var W = mc.width;
     var H = mc.height;
 
-    // Pure black void
-    ctx.fillStyle = '#000000';
+    // Void fill (palette-aware)
+    var pal = _state.palette;
+    ctx.fillStyle = pal.void || '#000000';
     ctx.fillRect(0, 0, W, H);
 
     // Very slow cosmic rotation for deepest layer
@@ -244,19 +361,20 @@
       });
     });
 
-    // --- Milky Way blue glow ---
+    // --- Milky Way glow (palette-colored) ---
+    var mwg = pal.milkyWayGlow || [20, 40, 120];
     ctx.save();
     ctx.translate(W * 0.5, H * 0.5);
     ctx.rotate(0.55);
-    var mwBlue = ctx.createLinearGradient(-W * 0.6, 0, W * 0.6, 0);
-    mwBlue.addColorStop(0,    'rgba(0, 0, 0, 0)');
-    mwBlue.addColorStop(0.25, 'rgba(20, 40, 120, 0.02)');
-    mwBlue.addColorStop(0.45, 'rgba(30, 60, 180, 0.04)');
-    mwBlue.addColorStop(0.5,  'rgba(35, 70, 200, 0.05)');
-    mwBlue.addColorStop(0.55, 'rgba(30, 60, 180, 0.04)');
-    mwBlue.addColorStop(0.75, 'rgba(20, 40, 120, 0.02)');
-    mwBlue.addColorStop(1,    'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = mwBlue;
+    var mwGrad = ctx.createLinearGradient(-W * 0.6, 0, W * 0.6, 0);
+    mwGrad.addColorStop(0,    'rgba(0, 0, 0, 0)');
+    mwGrad.addColorStop(0.25, 'rgba(' + mwg[0] + ',' + mwg[1] + ',' + mwg[2] + ', 0.02)');
+    mwGrad.addColorStop(0.45, 'rgba(' + Math.min(255, mwg[0]*1.5|0) + ',' + Math.min(255, mwg[1]*1.5|0) + ',' + Math.min(255, mwg[2]*1.5|0) + ', 0.04)');
+    mwGrad.addColorStop(0.5,  'rgba(' + Math.min(255, mwg[0]*1.75|0) + ',' + Math.min(255, mwg[1]*1.75|0) + ',' + Math.min(255, mwg[2]*1.67|0) + ', 0.05)');
+    mwGrad.addColorStop(0.55, 'rgba(' + Math.min(255, mwg[0]*1.5|0) + ',' + Math.min(255, mwg[1]*1.5|0) + ',' + Math.min(255, mwg[2]*1.5|0) + ', 0.04)');
+    mwGrad.addColorStop(0.75, 'rgba(' + mwg[0] + ',' + mwg[1] + ',' + mwg[2] + ', 0.02)');
+    mwGrad.addColorStop(1,    'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = mwGrad;
     ctx.fillRect(-W, -H * 0.06, W * 2, H * 0.12);
     ctx.restore();
 
@@ -274,11 +392,12 @@
       var twinkle = 0.4 + 0.6 * Math.sin(t * star.twinkleRate + star.twinklePhase);
       var alpha = star.brightness * twinkle * 0.6;
 
-      ctx.fillStyle = 'rgba(240, 242, 255, ' + alpha + ')';
+      var mws = pal.milkyWayStar || [240, 242, 255];
+      ctx.fillStyle = 'rgba(' + mws[0] + ',' + mws[1] + ',' + mws[2] + ',' + alpha + ')';
       ctx.fillRect(Math.round(px), Math.round(py), 1, 1);
     });
 
-    // --- Turing pattern clusters with blue glow ---
+    // --- Turing pattern clusters (palette-colored glow) ---
     var clDriftX = t * 0.00008;
     var clDriftY = t * 0.00005;
     _state.turingClusters.forEach(function (cluster) {
@@ -292,9 +411,10 @@
 
       var glowPulse = 0.7 + 0.3 * Math.sin(t * 0.003 + centX * 0.01);
       var glowRadius = Math.max(W, H) * 0.04;
+      var cg = pal.clusterGlow || [40, 80, 200];
       var clusterGlow = ctx.createRadialGradient(centX, centY, 0, centX, centY, glowRadius);
-      clusterGlow.addColorStop(0,   'rgba(40, 80, 200, ' + (0.12 * glowPulse) + ')');
-      clusterGlow.addColorStop(0.4, 'rgba(30, 60, 160, ' + (0.06 * glowPulse) + ')');
+      clusterGlow.addColorStop(0,   'rgba(' + cg[0] + ',' + cg[1] + ',' + cg[2] + ',' + (0.12 * glowPulse) + ')');
+      clusterGlow.addColorStop(0.4, 'rgba(' + (cg[0]*0.75|0) + ',' + (cg[1]*0.75|0) + ',' + (cg[2]*0.8|0) + ',' + (0.06 * glowPulse) + ')');
       clusterGlow.addColorStop(1,   'rgba(0, 0, 0, 0)');
       ctx.fillStyle = clusterGlow;
       ctx.fillRect(centX - glowRadius, centY - glowRadius, glowRadius * 2, glowRadius * 2);
@@ -311,7 +431,8 @@
         var alpha = star.brightness * twinkle * 0.85;
         var r = star.r;
 
-        ctx.fillStyle = 'rgba(235, 240, 255, ' + alpha + ')';
+        var cs = pal.clusterStar || [235, 240, 255];
+        ctx.fillStyle = 'rgba(' + cs[0] + ',' + cs[1] + ',' + cs[2] + ',' + alpha + ')';
         if (r < 0.45) {
           ctx.fillRect(Math.round(px), Math.round(py), 1, 1);
         } else {
@@ -321,6 +442,18 @@
         }
       });
     });
+
+    // --- Atmosphere wash (optional tinted gradient over entire frame) ---
+    if (pal.atmosphere) {
+      var atm = pal.atmosphere; // [r, g, b, a]
+      var atmGrad = ctx.createLinearGradient(0, 0, 0, H);
+      atmGrad.addColorStop(0,   'rgba(' + atm[0] + ',' + atm[1] + ',' + atm[2] + ',' + atm[3] + ')');
+      atmGrad.addColorStop(0.4, 'rgba(' + atm[0] + ',' + atm[1] + ',' + atm[2] + ',' + (atm[3] * 0.6) + ')');
+      atmGrad.addColorStop(0.7, 'rgba(' + atm[0] + ',' + atm[1] + ',' + atm[2] + ',' + (atm[3] * 0.3) + ')');
+      atmGrad.addColorStop(1,   'rgba(' + atm[0] + ',' + atm[1] + ',' + atm[2] + ',' + (atm[3] * 0.15) + ')');
+      ctx.fillStyle = atmGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   /* ---- Blit from master into all porthole canvases ---- */
@@ -390,6 +523,7 @@
    * @param {HTMLCanvasElement} [opts.masterEl] Reuse an existing canvas as master
    * @param {HTMLElement} [opts.parentEl=document.body] Where to append auto-created master
    * @param {string} [opts.masterClass='starfield-master'] CSS class for auto-created master
+   * @param {string|Object} [opts.palette='night'] Palette name (key in PALETTES) or custom palette object
    */
   function init(opts) {
     if (_state.running) return; // already running
@@ -397,6 +531,28 @@
     opts = opts || {};
     _state.selector = opts.selector || '.starfield-window';
     var seed = opts.seed != null ? opts.seed : 42;
+
+    // Resolve palette: string name → preset lookup, object → use directly
+    if (opts.palette) {
+      if (typeof opts.palette === 'string') {
+        _state.palette = PALETTES[opts.palette] || PALETTES.night;
+      } else {
+        // Merge with night defaults so partial palettes work
+        var base = PALETTES.night;
+        _state.palette = {
+          void:          opts.palette.void          || base.void,
+          starTint:      opts.palette.starTint      || base.starTint,
+          milkyWayGlow:  opts.palette.milkyWayGlow  || base.milkyWayGlow,
+          milkyWayStar:  opts.palette.milkyWayStar  || base.milkyWayStar,
+          clusterGlow:   opts.palette.clusterGlow   || base.clusterGlow,
+          clusterStar:   opts.palette.clusterStar   || base.clusterStar,
+          starColorBias: opts.palette.starColorBias || base.starColorBias,
+          atmosphere:    opts.palette.atmosphere !== undefined ? opts.palette.atmosphere : base.atmosphere,
+        };
+      }
+    } else {
+      _state.palette = PALETTES.night;
+    }
 
     // Master canvas: reuse existing or create new
     var mc;
@@ -473,12 +629,54 @@
     return _state.running;
   }
 
+  /**
+   * Switch palette at runtime. Stars regenerate with new color bias/tint,
+   * and the next render frame uses the new glow/atmosphere colors.
+   * @param {string|Object} palette - Palette name or custom palette object
+   */
+  function setPalette(palette) {
+    if (typeof palette === 'string') {
+      _state.palette = PALETTES[palette] || PALETTES.night;
+    } else if (palette && typeof palette === 'object') {
+      var base = PALETTES.night;
+      _state.palette = {
+        void:          palette.void          || base.void,
+        starTint:      palette.starTint      || base.starTint,
+        milkyWayGlow:  palette.milkyWayGlow  || base.milkyWayGlow,
+        milkyWayStar:  palette.milkyWayStar  || base.milkyWayStar,
+        clusterGlow:   palette.clusterGlow   || base.clusterGlow,
+        clusterStar:   palette.clusterStar   || base.clusterStar,
+        starColorBias: palette.starColorBias || base.starColorBias,
+        atmosphere:    palette.atmosphere !== undefined ? palette.atmosphere : base.atmosphere,
+      };
+    }
+    // Regenerate stars so starTint + starColorBias take effect
+    if (_state.running) {
+      var rng = makePRNG(42);
+      _generateStars(rng);
+    }
+  }
+
+  /**
+   * Get the current palette name (if standard) or 'custom'.
+   * @returns {string}
+   */
+  function getPalette() {
+    for (var key in PALETTES) {
+      if (PALETTES[key] === _state.palette) return key;
+    }
+    return 'custom';
+  }
+
   // Expose as global
   root.EyesOnlyStarfield = {
     init:    init,
     destroy: destroy,
     getMasterCanvas: getMasterCanvas,
     isRunning: isRunning,
+    setPalette: setPalette,
+    getPalette: getPalette,
+    PALETTES: PALETTES,
   };
 
 })(typeof window !== 'undefined' ? window : this);

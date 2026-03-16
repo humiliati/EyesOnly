@@ -69,6 +69,8 @@
   top: 0;
   transition: left 0.25s ease, top 0.25s ease, filter 0.3s ease;
   filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+  /* Needed for ::after tint overlay positioning */
+  display: inline-block;
 }
 
 /* Positional offsets — diagonal cascade, same as NCH */
@@ -91,31 +93,79 @@
 .nch-overlay-wrapper:hover .nch-overlay-joker.joker-6 { left: 48px; top: 4px; }
 .nch-overlay-wrapper:hover .nch-overlay-joker.joker-7 { left: 56px; top: 2px; }
 
-/* ── 3. PORTHOLE MODE — Theme Card Colorization (Prep) ──────
-   Phase 3 will colorize each joker to preview its theme.
-   For now, set up the structure with BLVCK base treatment.
-   The BLVCK card method: dark base + tinted highlight/glow.   */
+/* ── 3. PORTHOLE MODE — Theme Card Colorization ────────────
+   Each joker gets a tinted wash via ::after pseudo-element at
+   ~25% opacity, plus a matching color glow via drop-shadow.
+   Lighter than BLVCK's dark overlay — a translucent color hint
+   so users can visually identify each card's theme at a glance.
 
+   Stack order (DOM order, left → right, bottom → top):
+     joker-0 = silver  (bottommost)
+     joker-1 = amber
+     joker-2 = phosphor
+     joker-3 = panther (topmost)
+   This order is critical for Phase 4 drag-to-rearrange.       */
+
+/* Shared ::after tint layer */
+.nch-overlay-joker::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 3px;
+  pointer-events: none;
+  mix-blend-mode: color;
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+}
+
+/* Silver: cool steel-blue (#b0c4de) */
 .nch-overlay-joker[data-theme-id="silver"] {
-  /* Phase 3: filter: drop-shadow(0 0 3px rgba(180, 190, 210, 0.5)); */
+  filter: drop-shadow(0 0 4px rgba(176, 196, 222, 0.45))
+          drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+.nch-overlay-joker[data-theme-id="silver"]::after {
+  background: #b0c4de;
 }
 
+/* Amber: warm gold (#ffb000) */
 .nch-overlay-joker[data-theme-id="amber"] {
-  /* Phase 3: filter: drop-shadow(0 0 3px rgba(201, 168, 76, 0.5)); */
+  filter: drop-shadow(0 0 4px rgba(255, 176, 0, 0.45))
+          drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+.nch-overlay-joker[data-theme-id="amber"]::after {
+  background: #ffb000;
 }
 
+/* Phosphor: green terminal (#33ff33) */
 .nch-overlay-joker[data-theme-id="phosphor"] {
-  /* Phase 3: filter: drop-shadow(0 0 3px rgba(28, 255, 155, 0.5)); */
+  filter: drop-shadow(0 0 4px rgba(51, 255, 51, 0.45))
+          drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+.nch-overlay-joker[data-theme-id="phosphor"]::after {
+  background: #33ff33;
 }
 
+/* Panther: magenta/pink (#ff3090) */
 .nch-overlay-joker[data-theme-id="panther"] {
-  /* Phase 3: filter: drop-shadow(0 0 3px rgba(160, 32, 240, 0.5)); */
+  filter: drop-shadow(0 0 4px rgba(255, 48, 144, 0.45))
+          drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+.nch-overlay-joker[data-theme-id="panther"]::after {
+  background: #ff3090;
+}
+
+/* Hover boost — make tint slightly more visible when expanded */
+.nch-overlay-wrapper:hover .nch-overlay-joker::after {
+  opacity: 0.35;
 }
 
 /* Greyed joker (reusable — matches NCH BLVCK treatment) */
 .nch-overlay-joker.nch-overlay-greyed {
-  filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+  filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7)) !important;
   opacity: 0.55;
+}
+.nch-overlay-joker.nch-overlay-greyed::after {
+  opacity: 0 !important;
 }
 
 /* ════════════════════════════════════════════════════════════
