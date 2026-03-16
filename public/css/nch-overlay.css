@@ -94,10 +94,11 @@
 .nch-overlay-wrapper:hover .nch-overlay-joker.joker-7 { left: 56px; top: 2px; }
 
 /* ── 3. PORTHOLE MODE — Theme Card Colorization ────────────
-   Each joker gets a tinted wash via ::after pseudo-element at
-   ~25% opacity, plus a matching color glow via drop-shadow.
-   Lighter than BLVCK's dark overlay — a translucent color hint
-   so users can visually identify each card's theme at a glance.
+   Miniature coin-card layer stack on each joker emoji:
+     1. Bright glow        — drop-shadow on .nch-overlay-joker
+     2. Emoji               — .nch-joker-emoji (the 🃏 glyph)
+     3. Dark tint overlay   — .nch-joker-tint (dark contrast of theme color, 25% opacity)
+     4. Metallic sheen      — .nch-joker-sheen (sweeping coin highlight)
 
    Stack order (DOM order, left → right, bottom → top):
      joker-0 = silver  (bottommost)
@@ -106,56 +107,135 @@
      joker-3 = panther (topmost)
    This order is critical for Phase 4 drag-to-rearrange.       */
 
-/* Shared ::after tint layer */
-.nch-overlay-joker::after {
-  content: '';
+/* ---- Layer 1: Emoji glyph ---- */
+.nch-joker-emoji {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Layer 2: Dark tint overlay (on top of emoji) ---- */
+.nch-joker-tint {
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: 3px;
   pointer-events: none;
-  mix-blend-mode: color;
+  z-index: 2;
   opacity: 0.25;
   transition: opacity 0.3s ease;
 }
 
-/* Silver: cool steel-blue (#b0c4de) */
+/* ---- Layer 3: Metallic sheen sweep (topmost) ---- */
+.nch-joker-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.08) 44%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.08) 56%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  animation: nch-joker-sheen 5s ease-in-out infinite;
+}
+
+@keyframes nch-joker-sheen {
+  0%, 100% { background-position: 250% 0; }
+  50%      { background-position: -250% 0; }
+}
+
+/* ── Per-theme colors ─────────────────────────────────────
+   Glow: bright theme color, drop-shadow at 2px spread (~50% tighter)
+   Tint: deep dark shade of the same hue                     */
+
+/* Silver: glow #b0c4de → tint dark steel #1a2535 */
 .nch-overlay-joker[data-theme-id="silver"] {
-  filter: drop-shadow(0 0 4px rgba(176, 196, 222, 0.45))
+  filter: drop-shadow(0 0 2px rgba(176, 196, 222, 0.5))
           drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
 }
-.nch-overlay-joker[data-theme-id="silver"]::after {
-  background: #b0c4de;
+.nch-overlay-joker[data-theme-id="silver"] .nch-joker-tint {
+  background: #1a2535;
+}
+.nch-overlay-joker[data-theme-id="silver"] .nch-joker-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 0%, transparent 35%,
+    rgba(176, 196, 222, 0.06) 44%,
+    rgba(176, 196, 222, 0.12) 50%,
+    rgba(176, 196, 222, 0.06) 56%,
+    transparent 65%, transparent 100%
+  );
+  background-size: 250% 100%;
 }
 
-/* Amber: warm gold (#ffb000) */
+/* Amber: glow #ffb000 → tint dark bronze #2a1a00 */
 .nch-overlay-joker[data-theme-id="amber"] {
-  filter: drop-shadow(0 0 4px rgba(255, 176, 0, 0.45))
+  filter: drop-shadow(0 0 2px rgba(255, 176, 0, 0.5))
           drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
 }
-.nch-overlay-joker[data-theme-id="amber"]::after {
-  background: #ffb000;
+.nch-overlay-joker[data-theme-id="amber"] .nch-joker-tint {
+  background: #2a1a00;
+}
+.nch-overlay-joker[data-theme-id="amber"] .nch-joker-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 0%, transparent 35%,
+    rgba(255, 200, 80, 0.06) 44%,
+    rgba(255, 200, 80, 0.12) 50%,
+    rgba(255, 200, 80, 0.06) 56%,
+    transparent 65%, transparent 100%
+  );
+  background-size: 250% 100%;
 }
 
-/* Phosphor: green terminal (#33ff33) */
+/* Phosphor: glow #33ff33 → tint dark forest #0a2a0a */
 .nch-overlay-joker[data-theme-id="phosphor"] {
-  filter: drop-shadow(0 0 4px rgba(51, 255, 51, 0.45))
+  filter: drop-shadow(0 0 2px rgba(51, 255, 51, 0.5))
           drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
 }
-.nch-overlay-joker[data-theme-id="phosphor"]::after {
-  background: #33ff33;
+.nch-overlay-joker[data-theme-id="phosphor"] .nch-joker-tint {
+  background: #0a2a0a;
+}
+.nch-overlay-joker[data-theme-id="phosphor"] .nch-joker-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 0%, transparent 35%,
+    rgba(51, 255, 51, 0.06) 44%,
+    rgba(51, 255, 51, 0.12) 50%,
+    rgba(51, 255, 51, 0.06) 56%,
+    transparent 65%, transparent 100%
+  );
+  background-size: 250% 100%;
 }
 
-/* Panther: magenta/pink (#ff3090) */
+/* Panther: glow #ff3090 → tint dark plum #2a0a18 */
 .nch-overlay-joker[data-theme-id="panther"] {
-  filter: drop-shadow(0 0 4px rgba(255, 48, 144, 0.45))
+  filter: drop-shadow(0 0 2px rgba(255, 48, 144, 0.5))
           drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
 }
-.nch-overlay-joker[data-theme-id="panther"]::after {
-  background: #ff3090;
+.nch-overlay-joker[data-theme-id="panther"] .nch-joker-tint {
+  background: #2a0a18;
+}
+.nch-overlay-joker[data-theme-id="panther"] .nch-joker-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 0%, transparent 35%,
+    rgba(255, 48, 144, 0.06) 44%,
+    rgba(255, 48, 144, 0.12) 50%,
+    rgba(255, 48, 144, 0.06) 56%,
+    transparent 65%, transparent 100%
+  );
+  background-size: 250% 100%;
 }
 
-/* Hover boost — make tint slightly more visible when expanded */
-.nch-overlay-wrapper:hover .nch-overlay-joker::after {
+/* Hover boost — tint darkens slightly more when fan expands */
+.nch-overlay-wrapper:hover .nch-joker-tint {
   opacity: 0.35;
 }
 
@@ -164,7 +244,8 @@
   filter: grayscale(1) brightness(0.5) drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7)) !important;
   opacity: 0.55;
 }
-.nch-overlay-joker.nch-overlay-greyed::after {
+.nch-overlay-joker.nch-overlay-greyed .nch-joker-tint,
+.nch-overlay-joker.nch-overlay-greyed .nch-joker-sheen {
   opacity: 0 !important;
 }
 

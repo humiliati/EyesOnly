@@ -232,8 +232,13 @@ var NchOverlay = (function () {
     for (var i = 0; i < numJokers; i++) {
       var j = document.createElement('div');
       j.className = 'nch-overlay-joker joker-' + i;
-      j.textContent = '\uD83C\uDCCF'; // 🃏
       j.dataset.themeId = THEME_MAP[MISSIONS[i].id] || '';
+      // Layered internals: emoji → dark tint → metallic sheen
+      // (real DOM so tint reliably paints over emoji bitmap)
+      j.innerHTML =
+        '<span class="nch-joker-emoji">\uD83C\uDCCF</span>' +
+        '<span class="nch-joker-tint"></span>' +
+        '<span class="nch-joker-sheen"></span>';
       _stackEl.appendChild(j);
     }
   }
