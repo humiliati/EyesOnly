@@ -107,6 +107,19 @@ var NchOverlay = (function () {
     'minigames':  'panther',
   };
 
+  // ── SFX (mirrors splash-screen.js sound arrays) ────────
+  var HOVER_SOUNDS   = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
+  var SELECT_SOUNDS  = ['card-fold_hand_1', 'card-fold_hand_2', 'card-fold_hand_3'];
+  var PICKUP_SOUNDS  = ['card-pick_up_card_1', 'card-pick_up_card_2', 'card-pick_up_card_3'];
+  var PUTDOWN_SOUNDS = ['card-place_card_1', 'card-place_card_2', 'card-place_card_3'];
+  var REORDER_SOUND  = 'clickandrelease-1';
+
+  function _playAudio(key, opts) {
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      try { AudioSystem.play(key, opts || {}); } catch (_) {}
+    }
+  }
+
   // ── Position Persistence ─────────────────────────────────
 
   function _loadPos() {
@@ -369,6 +382,8 @@ var NchOverlay = (function () {
     var cards = _fanPanel.querySelectorAll('.splash-dossier');
 
     cards.forEach(function (cardEl) {
+      var cardIndex = parseInt(cardEl.dataset.index, 10) || 0;
+
       // Desktop hover (suppress during drag)
       cardEl.addEventListener('mouseenter', function () {
         if (_cardDrag) return;
@@ -377,6 +392,8 @@ var NchOverlay = (function () {
         }
         cardEl.classList.add('coin-card-hovered');
         _hoveredCard = cardEl;
+        // Hover SFX
+        _playAudio(HOVER_SOUNDS[cardIndex % HOVER_SOUNDS.length], { volume: 0.4 });
       });
       cardEl.addEventListener('mouseleave', function () {
         if (_cardDrag) return;
@@ -451,6 +468,91 @@ var NchOverlay = (function () {
     });
   }
 
+  // ── Card Drag Reveal Rendering ──────────────────────────
+  // Renders RevealGrid zone content inside the card drag ghost's
+  // porthole area (coin-artwork) using the same in-porthole approach
+  // as magnifying-glass-drag.js.
+
+  var _cardRevealEl = null;    // current reveal content inside card ghost
+  var _cardRevealZoneId = null;
+
+  function _updateCardRevealContent(ghost) {
+    if (!window.RevealGrid || !ghost) {
+      _clearCardRevealContent();
+      return;
+    }
+
+    var reveal = RevealGrid.getActiveReveal();
+    if (!reveal) {
+      _clearCardRevealContent();
+      return;
+    }
+
+    // Find the coin-artwork porthole area in the ghost
+    var artwork = ghost.querySelector('.coin-artwork');
+    if (!artwork) return;
+
+    // Create reveal element if zone changed or doesn't exist
+    if (!_cardRevealEl || _cardRevealZoneId !== reveal.zoneId) {
+      _clearCardRevealContent();
+      _cardRevealZoneId = reveal.zoneId;
+
+      var el = document.createElement('div');
+      el.className = 'nch-card-reveal-preview';
+      el.style.cssText = [
+        'position: absolute',
+        'inset: 0',
+        'display: flex',
+        'align-items: center',
+        'justify-content: center',
+        'flex-direction: column',
+        'pointer-events: none',
+        'will-change: transform, opacity',
+        'z-index: 5',
+        'border-radius: 50%',
+        'overflow: hidden'
+      ].join(';');
+
+      if (reveal.type === 'item') {
+        el.innerHTML =
+          '<span style="font-size:48px;line-height:1">' + (reveal.emoji || '❓') + '</span>' +
+          (reveal.label
+            ? '<span style="display:block;font-size:9px;color:var(--phosphor,#1cff9b);' +
+              'text-transform:uppercase;letter-spacing:0.1em;margin-top:3px;' +
+              'text-shadow:0 0 6px var(--phosphor-glow,rgba(28,255,155,0.4))">' +
+              reveal.label + '</span>'
+            : '');
+      } else {
+        el.textContent = reveal.emoji || '🔎';
+        el.style.fontSize = '48px';
+      }
+
+      // Insert after starfield canvas, before coin-rings
+      var canvas = artwork.querySelector('.starfield-window');
+      artwork.insertBefore(el, canvas ? canvas.nextSibling : null);
+      _cardRevealEl = el;
+    }
+
+    // Update position/opacity each frame
+    if (_cardRevealEl) {
+      _cardRevealEl.style.opacity = reveal.opacity;
+      _cardRevealEl.style.transform = 'translate(' + reveal.offsetX + 'px, ' + reveal.offsetY + 'px)';
+
+      if (reveal.locked && !_cardRevealEl.dataset.locked) {
+        _cardRevealEl.dataset.locked = '1';
+        _cardRevealEl.style.filter = 'drop-shadow(0 0 8px var(--phosphor-glow, rgba(28,255,155,0.5)))';
+      }
+    }
+  }
+
+  function _clearCardRevealContent() {
+    if (_cardRevealEl && _cardRevealEl.parentNode) {
+      _cardRevealEl.parentNode.removeChild(_cardRevealEl);
+    }
+    _cardRevealEl = null;
+    _cardRevealZoneId = null;
+  }
+
   // ── Card Drag-to-Reorder Internals ───────────────────────
 
   // Theme primary colors for placeholder — keyed by data-card-theme.
@@ -499,7 +601,8 @@ var NchOverlay = (function () {
       'will-change: transform, left, top',
       'overflow: hidden',
     ].join('; ');
-    ghost.style.setProperty('transform', 'scale(0.92) rotate(0deg)', 'important');
+    var dragScale = isMobile ? 1.20 : 1.05;
+    ghost.style.setProperty('transform', 'scale(' + dragScale + ') rotate(0deg)', 'important');
     ghost.style.setProperty('z-index', '100000', 'important');
 
     // Center grab offset on the ghost (same as splash-screen)
@@ -554,12 +657,9 @@ var NchOverlay = (function () {
     // Hide original card
     cardEl.classList.add('nch-fan-card-dragging');
 
-    // Sound feedback
-    try {
-      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-        AudioSystem.play('card-fold_hand_1', { volume: 0.25 });
-      }
-    } catch (e) {}
+    // Pickup SFX
+    var pickIdx = drag.index % PICKUP_SOUNDS.length;
+    _playAudio(PICKUP_SOUNDS[pickIdx], { volume: 0.4 });
   }
 
   function _moveCardGhost(clientX, clientY) {
@@ -571,7 +671,8 @@ var NchOverlay = (function () {
     // Subtle tilt based on horizontal drag delta (same as splash-screen)
     var dx = clientX - _cardDrag.startX;
     var tilt = Math.max(-8, Math.min(8, dx * 0.04));
-    ghost.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
+    var dragScale = window.innerWidth < 769 ? 1.20 : 1.05;
+    ghost.style.setProperty('transform', 'scale(' + dragScale + ') rotate(' + tilt + 'deg)', 'important');
 
     // Update RevealGrid lens position (porthole aperture, not full card)
     if (window.RevealGrid) {
@@ -583,6 +684,8 @@ var NchOverlay = (function () {
         right: lr.right, bottom: lr.bottom,
         width: lr.width, height: lr.height,
       });
+      // Render zone content inside card's porthole area
+      _updateCardRevealContent(ghost);
     }
   }
 
@@ -619,18 +722,29 @@ var NchOverlay = (function () {
     }
 
     // Move placeholder to the right gap (only if it actually changes position)
+    var moved = false;
     if (insertBefore) {
       if (placeholder.nextElementSibling !== insertBefore) {
         fanEl.insertBefore(placeholder, insertBefore);
+        moved = true;
       }
     } else {
       // After all cards — append (but before the dragging card if it's last)
       var dragging = fanEl.querySelector('.nch-fan-card-dragging');
       if (dragging) {
-        fanEl.insertBefore(placeholder, dragging);
+        if (placeholder.nextElementSibling !== dragging) {
+          fanEl.insertBefore(placeholder, dragging);
+          moved = true;
+        }
       } else if (placeholder !== fanEl.lastElementChild) {
         fanEl.appendChild(placeholder);
+        moved = true;
       }
+    }
+
+    // Reorder SFX when placeholder snaps to a new position
+    if (moved) {
+      _playAudio(REORDER_SOUND, { volume: 0.35 });
     }
   }
 
@@ -643,6 +757,7 @@ var NchOverlay = (function () {
     if (window.RevealGrid) {
       RevealGrid.endLensSession();
     }
+    _clearCardRevealContent();
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;
@@ -687,12 +802,9 @@ var NchOverlay = (function () {
     if (_stackEl) _stackEl.dataset.sig = '';
     _renderPortholeStack();
 
-    // Sound feedback
-    try {
-      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-        AudioSystem.play('card-fold_hand_1', { volume: 0.2 });
-      }
-    } catch (e) {}
+    // Putdown SFX
+    var putIdx = (drag.index || 0) % PUTDOWN_SOUNDS.length;
+    _playAudio(PUTDOWN_SOUNDS[putIdx], { volume: 0.5 });
   }
 
   function _reorderMissions(idOrder) {
@@ -721,12 +833,9 @@ var NchOverlay = (function () {
     // Visual feedback
     cardEl.classList.add('splash-selected');
 
-    // Play selection sound if AudioSystem is available
-    try {
-      if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-        AudioSystem.play('card-fold_hand_1', { volume: 0.4 });
-      }
-    } catch (e) {}
+    // Selection SFX
+    var selIdx = parseInt(cardEl.dataset.index, 10) || 0;
+    _playAudio(SELECT_SOUNDS[selIdx % SELECT_SOUNDS.length], { volume: 0.6 });
 
     // Fan exit animation, then navigate
     setTimeout(function () {
@@ -772,6 +881,9 @@ var NchOverlay = (function () {
   function _openFan() {
     if (_fanOpen) return;
     _fanOpen = true;
+
+    // Expand SFX — shuffle sound as cards fan out
+    _playAudio('card-shuffle_4', { volume: 0.5 });
 
     // Build panel if first time
     _buildFanPanel();
@@ -844,6 +956,9 @@ var NchOverlay = (function () {
   function _closeFan() {
     if (!_fanOpen) return;
     _fanOpen = false;
+
+    // Collapse SFX — UI close sound
+    _playAudio('ui-01', { volume: 0.5 });
 
     // Cancel any active card drag
     if (_cardDrag) _endCardDrag(true);

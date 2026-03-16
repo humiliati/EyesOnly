@@ -375,6 +375,26 @@
   animation: none;
 }
 
+/* ── 4b. CARD ZOOM (hover & picked-up) ──────────────────────
+   Hovered or selected card zooms ~5% desktop, ~20% mobile.
+   Overrides splash-screen.css scale(1.08)/scale(1.03).
+   Ghost drag also gets the bigger zoom so the porthole
+   enlarges without over-zooming viewport contents.           */
+
+/* Desktop: subtle 5% zoom on hover */
+.nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
+  transform: perspective(800px) rotateX(4deg) rotateY(0deg)
+             translateY(-30px) scale(1.05) !important;
+  z-index: 10 !important;
+}
+
+/* Desktop: selected card gets the same 5% zoom */
+.nch-porthole-fan .splash-dossier.coin-card.splash-selected {
+  transform: perspective(800px) rotateX(2deg)
+             translateY(-20px) scale(1.05) !important;
+  z-index: 10 !important;
+}
+
 /* ── 5. RESPONSIVE ──────────────────────────────────────────
    Mobile: smaller capsule, safe-area aware, fan at bottom.    */
 
@@ -391,5 +411,18 @@
   .nch-fan-close-btn {
     top: -32px;
     right: -4px;
+  }
+
+  /* Mobile: 20% zoom on hovered/picked-up card */
+  .nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
+    transform: perspective(800px) rotateX(2deg) rotateY(0deg)
+               translateY(-20px) translateX(0px) scale(1.20) !important;
+    z-index: 10 !important;
+  }
+
+  .nch-porthole-fan .splash-dossier.coin-card.splash-selected {
+    transform: perspective(800px) rotateX(1deg)
+               translateY(-15px) scale(1.20) !important;
+    z-index: 10 !important;
   }
 }

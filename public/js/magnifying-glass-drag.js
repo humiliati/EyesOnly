@@ -207,6 +207,114 @@ var MagnifyingGlassDrag = (function () {
     }
   }
 
+  // ── Reveal Zone Content (in-porthole rendering) ────────
+  // Track last reveal state so we can diff and avoid unnecessary DOM churn.
+  var _lastRevealId = null;
+
+  /**
+   * Check RevealGrid for active zone overlap and render content
+   * inside the porthole ghost with directional slide offset.
+   * Called every frame during drag.
+   */
+  function _updateRevealContent() {
+    if (!window.RevealGrid || !_ghost) {
+      _clearRevealContent();
+      return;
+    }
+
+    var reveal = RevealGrid.getActiveReveal();
+
+    if (!reveal) {
+      _clearRevealContent();
+      return;
+    }
+
+    var porthole = _ghost.querySelector('.mag-drag-porthole');
+    if (!porthole) return;
+
+    // Create preview element if zone changed or doesn't exist
+    if (!_previewEl || _lastRevealId !== reveal.zoneId) {
+      _clearRevealContent();
+      _lastRevealId = reveal.zoneId;
+
+      var preview = document.createElement('div');
+      preview.className = 'mag-drag-preview';
+      preview.style.cssText = [
+        'position: absolute',
+        'inset: 0',
+        'display: flex',
+        'align-items: center',
+        'justify-content: center',
+        'font-size: ' + Math.round(PORTHOLE_SIZE * 0.42) + 'px',
+        'line-height: 1',
+        'pointer-events: none',
+        'will-change: transform, opacity'
+      ].join(';');
+
+      // Render content based on zone type
+      if (reveal.type === 'item') {
+        preview.textContent = reveal.emoji || '❓';
+        if (reveal.label) {
+          preview.innerHTML =
+            '<span style="font-size:' + Math.round(PORTHOLE_SIZE * 0.42) + 'px;line-height:1">' +
+              (reveal.emoji || '❓') +
+            '</span>' +
+            '<span style="display:block;font-size:10px;color:var(--phosphor,#1cff9b);' +
+              'text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;' +
+              'text-shadow:0 0 6px var(--phosphor-glow,rgba(28,255,155,0.4))">' +
+              reveal.label +
+            '</span>';
+          preview.style.flexDirection = 'column';
+        }
+      } else if (reveal.type === 'text') {
+        preview.innerHTML =
+          '<div style="font-size:12px;color:var(--phosphor,#1cff9b);' +
+            'text-align:center;padding:12px;text-shadow:0 0 4px var(--phosphor-glow,rgba(28,255,155,0.3))">' +
+            (reveal.content.html || reveal.content.text || '') +
+          '</div>';
+      } else if (reveal.type === 'qr') {
+        var qrCanvas = document.createElement('canvas');
+        qrCanvas.width = Math.round(PORTHOLE_SIZE * 0.7);
+        qrCanvas.height = Math.round(PORTHOLE_SIZE * 0.7);
+        qrCanvas.style.cssText = 'border-radius:4px;';
+        preview.appendChild(qrCanvas);
+        // Defer QR render to next frame (RevealGrid._renderQR not accessible,
+        // but QR zones are rare — placeholder glow is fine for now)
+      } else {
+        // image/video/other — show emoji fallback
+        preview.textContent = reveal.emoji || '🔎';
+      }
+
+      // Insert after starfield canvas, before vignette (DOM order = paint order)
+      var canvas = porthole.querySelector('.starfield-window');
+      porthole.insertBefore(preview, canvas ? canvas.nextSibling : null);
+      _previewEl = preview;
+    }
+
+    // Update position/opacity each frame for smooth slide-in
+    if (_previewEl) {
+      _previewEl.style.opacity = reveal.opacity;
+      _previewEl.style.transform = 'translate(' + reveal.offsetX + 'px, ' + reveal.offsetY + 'px)';
+
+      // Lock-in visual feedback: add glow class
+      if (reveal.locked && !_previewEl.dataset.locked) {
+        _previewEl.dataset.locked = '1';
+        _previewEl.style.filter = 'drop-shadow(0 0 8px var(--phosphor-glow, rgba(28,255,155,0.5)))';
+      }
+    }
+  }
+
+  /**
+   * Clear the reveal content from the porthole.
+   */
+  function _clearRevealContent() {
+    if (_previewEl && _previewEl.parentNode) {
+      _previewEl.parentNode.removeChild(_previewEl);
+    }
+    _previewEl = null;
+    _lastRevealId = null;
+  }
+
   /**
    * Show an emoji preview inside the porthole lens.
    * The preview appears above the starfield layer but below the vignette,
@@ -257,6 +365,7 @@ var MagnifyingGlassDrag = (function () {
       _previewEl.parentNode.removeChild(_previewEl);
     }
     _previewEl = null;
+    _lastRevealId = null;
   }
 
   /**
@@ -283,6 +392,7 @@ var MagnifyingGlassDrag = (function () {
 
     // Preview element is a child of ghost and will be removed with it
     _previewEl = null;
+    _lastRevealId = null;
 
     if (_ghost) {
       _ghost.style.opacity = '0';
@@ -321,6 +431,8 @@ var MagnifyingGlassDrag = (function () {
       if (window.RevealGrid) {
         RevealGrid.updateLens(_getLensRect(e.clientX, e.clientY));
       }
+      // Render zone content inside porthole
+      _updateRevealContent();
       return;
     }
 
@@ -367,6 +479,8 @@ var MagnifyingGlassDrag = (function () {
       if (window.RevealGrid) {
         RevealGrid.updateLens(_getLensRect(touch.clientX, touch.clientY));
       }
+      // Render zone content inside porthole
+      _updateRevealContent();
       return;
     }
 
