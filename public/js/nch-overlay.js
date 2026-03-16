@@ -509,6 +509,16 @@ var NchOverlay = (function () {
     document.body.appendChild(ghost);
     drag.ghostEl = ghost;
 
+    // Begin RevealGrid lens session (card porthole acts as a lens)
+    if (window.RevealGrid) {
+      var ghostRect = ghost.getBoundingClientRect();
+      RevealGrid.beginLensSession({
+        left: ghostRect.left, top: ghostRect.top,
+        right: ghostRect.right, bottom: ghostRect.bottom,
+        width: ghostRect.width, height: ghostRect.height,
+      });
+    }
+
     // ── Placeholder (mirrors splash-screen's _createDragPlaceholder) ──
     var cs = window.getComputedStyle(cardEl);
     var placeholder = document.createElement('div');
@@ -560,6 +570,16 @@ var NchOverlay = (function () {
     var dx = clientX - _cardDrag.startX;
     var tilt = Math.max(-8, Math.min(8, dx * 0.04));
     ghost.style.setProperty('transform', 'scale(0.92) rotate(' + tilt + 'deg)', 'important');
+
+    // Update RevealGrid lens position
+    if (window.RevealGrid) {
+      var ghostRect = ghost.getBoundingClientRect();
+      RevealGrid.updateLens({
+        left: ghostRect.left, top: ghostRect.top,
+        right: ghostRect.right, bottom: ghostRect.bottom,
+        width: ghostRect.width, height: ghostRect.height,
+      });
+    }
   }
 
   function _updateDropGap(clientX, clientY) {
@@ -614,6 +634,11 @@ var NchOverlay = (function () {
     if (!_cardDrag) return;
     var drag = _cardDrag;
     _cardDrag = null;
+
+    // End RevealGrid lens session before cleanup
+    if (window.RevealGrid) {
+      RevealGrid.endLensSession();
+    }
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;

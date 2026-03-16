@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/crt.css?v=20260314e">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
   <link rel="stylesheet" href="css/games.css?v=20260314e">
+  <link rel="stylesheet" href="css/reveal-zone.css?v=20260315a">
 
   <script>
     (function() {
@@ -408,7 +409,8 @@
   <script src="js/starfield.js"></script>
 
   <!-- Magnifying glass drag interaction -->
-  <script src="js/magnifying-glass-drag.js?v=20260314b"></script>
+  <script src="js/reveal-grid.js?v=20260315a"></script>
+  <script src="js/magnifying-glass-drag.js?v=20260315a"></script>
 
   <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
   <script src="js/item-popup.js"></script>
@@ -678,222 +680,123 @@
       }
     })();
 
-    /* ---- Magnifying glass drag-to-reveal: hidden items beneath the page ---- */
+    /* ---- Reveal Grid: hidden items beneath the page (Phase 5) ---- */
     /* ARCHITECTURE:
-     * - Any element with data-mag-reveal="itemKey" is a detection zone.
-     *   The porthole hovering over that element triggers the reveal.
-     * - The reveal is coordinate-based (getBoundingClientRect), not slot-index-based.
-     * - HIDDEN_ITEMS defines what gets revealed and how to add it to inventory.
-     * - Revealed items populate the next empty inventory slot (no hardcoded position).
-     * - This pattern works on any page — inventory grids, map regions, etc.
+     * - Zones are declared via JSON, managed by RevealGrid module.
+     * - Lens sources (magnifying glass, coin-card portholes) call
+     *   RevealGrid.beginLensSession / updateLens / endLensSession.
+     * - Overlap detection, slide-in animation, lock-in threshold,
+     *   and release actions are all handled by reveal-grid.js.
+     * - This replaces the old hardcoded data-mag-reveal collision system.
      */
-    (function initDragReveal() {
-      if (typeof MagnifyingGlassDrag === 'undefined') return;
+    (function initRevealGrid() {
+      if (typeof RevealGrid === 'undefined') return;
 
-      var REVEAL_KEY = 'eyesonly_revealed_items';
-
-      // Registry of hidden items. Each entry describes:
-      //   itemKey  — matches data-mag-reveal="..." on the detection zone element
-      //   itemId   — ITM-XXX for AccountInventory
-      //   emoji    — what shows in the porthole preview and inventory slot
-      //   label    — display name for the inventory slot
-      //   meta     — full item metadata for AccountInventory.addItem()
-      var HIDDEN_ITEMS = {
-        'cypher-note-2': {
-          itemKey: 'cypher-note-2',
-          itemId: 'ITM-201',
-          emoji: '\uD83D\uDCDC',
-          label: 'CYPHER NOTE',
-          meta: {
-            name: 'Cypher Note',
-            emoji: '\uD83D\uDCDC',
-            type: 'equipment',
-            subtype: 'investigation',
-            rarity: 'uncommon',
-            platformItem: true,
-            noteIndex: 2
-          }
-        }
-      };
-
-      function getRevealed() {
-        try {
-          var raw = localStorage.getItem(REVEAL_KEY);
-          return raw ? JSON.parse(raw) : {};
-        } catch (_) { return {}; }
-      }
-
-      function saveRevealed(revealed) {
-        try { localStorage.setItem(REVEAL_KEY, JSON.stringify(revealed)); }
-        catch (_) {}
-      }
-
-      // Find the first empty inventory slot in any grid on the page
-      function findNextEmptySlot() {
+      // Helper: populate an inventory slot when an item is deposited
+      function depositToSlot(zone) {
+        var c = zone.content || {};
         var grid = document.getElementById('decryption-inventory');
-        if (!grid) return null;
+        if (!grid) return;
         var slots = grid.querySelectorAll('.games-inv-slot');
+        var slot = null;
         for (var i = 0; i < slots.length; i++) {
-          if (!slots[i].getAttribute('data-item')) return slots[i];
+          if (!slots[i].getAttribute('data-item')) { slot = slots[i]; break; }
         }
-        return null;
-      }
+        if (!slot) return;
 
-      function revealItem(config) {
-        var slot = findNextEmptySlot();
-        if (!slot) return; // inventory full
-
-        // Populate the slot
-        slot.setAttribute('data-item', config.itemKey);
-        slot.setAttribute('data-item-id', config.itemId);
+        slot.setAttribute('data-item', c.itemKey || zone.id);
+        slot.setAttribute('data-item-id', c.itemId || zone.id);
         slot.classList.add('mag-revealed');
 
         var inner = slot.querySelector('.games-inv-slot-inner');
         if (inner) {
           inner.className = 'games-inv-slot-inner games-inv-occupied';
+          var label = c.label || zone.id;
           var abbrLabel = (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName)
-            ? SharedItemRenderer.abbreviateName(config.label, 10).toUpperCase()
-            : config.label.substring(0, 10).toUpperCase();
+            ? SharedItemRenderer.abbreviateName(label, 10).toUpperCase()
+            : label.substring(0, 10).toUpperCase();
           inner.innerHTML =
-            '<span class="games-inv-item-icon">' + config.emoji + '</span>' +
+            '<span class="games-inv-item-icon">' + (c.emoji || '❓') + '</span>' +
             '<span class="games-inv-slot-label">' + abbrLabel + '</span>';
         }
 
-        // Clean up: remove data-mag-reveal from the detection zone so it
-        // no longer glows or triggers on future drags
-        var zone = document.querySelector('[data-mag-reveal="' + config.itemKey + '"]');
-        if (zone) {
-          zone.removeAttribute('data-mag-reveal');
-          zone.classList.remove('mag-reveal-active');
-        }
-
-        // Persist reveal state
-        var revealed = getRevealed();
-        revealed[config.itemKey] = true;
-        saveRevealed(revealed);
-
-        // Add to account inventory
-        if (typeof AccountInventory !== 'undefined') {
-          AccountInventory.addItem({
-            id: config.itemId,
-            qty: 1,
-            meta: config.meta
-          });
-        }
-
-        // SFX
-        if (window.AudioSystem && AudioSystem.playSFX) {
-          AudioSystem.playSFX('ui-04');
+        // Clean up old data-mag-reveal zone (backwards compat)
+        var oldZone = document.querySelector('[data-mag-reveal="' + zone.id + '"]');
+        if (oldZone) {
+          oldZone.removeAttribute('data-mag-reveal');
+          oldZone.classList.remove('mag-reveal-active');
         }
       }
 
       // Restore previously revealed items on page load
-      var revealed = getRevealed();
-      Object.keys(HIDDEN_ITEMS).forEach(function (key) {
-        if (!revealed[key]) return;
-        var config = HIDDEN_ITEMS[key];
-        // Only restore if the item still exists in AccountInventory
-        var stillExists = typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(config.itemId);
-        if (stillExists) {
-          // If populateInventory() already placed this item in a slot,
-          // just clean up the detection zone — don't double-populate
-          var alreadyInGrid = document.querySelector(
-            '.games-inv-slot[data-item="' + config.itemKey + '"]'
-          );
-          if (alreadyInGrid) {
-            var zone = document.querySelector('[data-mag-reveal="' + config.itemKey + '"]');
-            if (zone) {
-              zone.removeAttribute('data-mag-reveal');
-              zone.classList.remove('mag-reveal-active');
+      function restoreRevealed(zones) {
+        zones.forEach(function (zone) {
+          if (!RevealGrid.isRevealed(zone.id)) return;
+          if (!zone.oneShot) return;
+          var c = zone.content || {};
+          var stillExists = typeof AccountInventory !== 'undefined' &&
+            AccountInventory.hasItem(c.itemId || zone.id);
+          if (stillExists) {
+            var alreadyInGrid = document.querySelector(
+              '.games-inv-slot[data-item="' + (c.itemKey || zone.id) + '"]'
+            );
+            if (!alreadyInGrid) {
+              depositToSlot(zone);
             }
-          } else {
-            revealItem(config);
+            // Clean up old detection zone either way
+            var oldZone = document.querySelector('[data-mag-reveal="' + zone.id + '"]');
+            if (oldZone) {
+              oldZone.removeAttribute('data-mag-reveal');
+              oldZone.classList.remove('mag-reveal-active');
+            }
           }
+        });
+      }
+
+      // Zone definitions for /games.html
+      var GAMES_ZONES = [
+        {
+          id: 'cypher-note-2',
+          type: 'item',
+          anchor: { selector: '[data-slot="2"]', offset: [0, 0] },
+          size: [120, 120],
+          content: {
+            emoji: '\uD83D\uDCDC',
+            itemId: 'ITM-201',
+            itemKey: 'cypher-note-2',
+            label: 'CYPHER NOTE',
+            meta: {
+              name: 'Cypher Note',
+              emoji: '\uD83D\uDCDC',
+              type: 'equipment',
+              subtype: 'investigation',
+              rarity: 'uncommon',
+              platformItem: true,
+              noteIndex: 2
+            }
+          },
+          reveal: {
+            enter: 'slide',
+            lockThreshold: 0.75,
+            lockAnimation: 'pulse-glow',
+            onRelease: 'deposit-to-inventory'
+          },
+          tier: 'SEMI_HIDDEN',
+          oneShot: true,
+          palette: 'phosphor'
+        }
+      ];
+
+      // Initialize the reveal grid with zone definitions
+      RevealGrid.init({
+        zones: GAMES_ZONES,
+        onDeposit: function (zone) {
+          depositToSlot(zone);
         }
       });
 
-      // Drag-over detection: check all [data-mag-reveal] elements on the page
-      var lastRevealCheck = 0;
-      var activeGlow = null;
-
-      document.addEventListener('pointermove', function (e) {
-        if (!window.MagnifyingGlassDrag || !MagnifyingGlassDrag.isDragging()) {
-          if (activeGlow) {
-            activeGlow.classList.remove('mag-reveal-active');
-            activeGlow = null;
-          }
-          return;
-        }
-
-        var now = Date.now();
-        if (now - lastRevealCheck < 33) return;
-        lastRevealCheck = now;
-
-        // Check all reveal zones on the page (not just inventory slots)
-        var zones = document.querySelectorAll('[data-mag-reveal]');
-        var hitZone = null;
-        var hitConfig = null;
-
-        for (var i = 0; i < zones.length; i++) {
-          var zone = zones[i];
-          var key = zone.getAttribute('data-mag-reveal');
-          var config = HIDDEN_ITEMS[key];
-          if (!config || getRevealed()[key]) continue;
-
-          var rect = zone.getBoundingClientRect();
-          if (e.clientX >= rect.left && e.clientX <= rect.right &&
-              e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            hitZone = zone;
-            hitConfig = config;
-            break;
-          }
-        }
-
-        if (hitZone) {
-          if (activeGlow !== hitZone) {
-            if (activeGlow) activeGlow.classList.remove('mag-reveal-active');
-            hitZone.classList.add('mag-reveal-active');
-            activeGlow = hitZone;
-            if (MagnifyingGlassDrag.setRevealPreview) {
-              MagnifyingGlassDrag.setRevealPreview(hitConfig.emoji);
-            }
-          }
-        } else {
-          if (activeGlow) {
-            activeGlow.classList.remove('mag-reveal-active');
-            activeGlow = null;
-            if (MagnifyingGlassDrag.clearRevealPreview) {
-              MagnifyingGlassDrag.clearRevealPreview();
-            }
-          }
-        }
-      });
-
-      // On drop, reveal if over a detection zone
-      document.addEventListener('mag-drag-drop', function (e) {
-        var dropX = e.detail ? e.detail.clientX : 0;
-        var dropY = e.detail ? e.detail.clientY : 0;
-
-        var zones = document.querySelectorAll('[data-mag-reveal]');
-        for (var i = 0; i < zones.length; i++) {
-          var zone = zones[i];
-          var key = zone.getAttribute('data-mag-reveal');
-          var config = HIDDEN_ITEMS[key];
-          if (!config || getRevealed()[key]) continue;
-
-          var rect = zone.getBoundingClientRect();
-          if (dropX >= rect.left && dropX <= rect.right &&
-              dropY >= rect.top && dropY <= rect.bottom) {
-            revealItem(config);
-            break;
-          }
-        }
-
-        if (activeGlow) {
-          activeGlow.classList.remove('mag-reveal-active');
-          activeGlow = null;
-        }
-      });
+      // Restore previously deposited items
+      restoreRevealed(GAMES_ZONES);
 
     })();
 

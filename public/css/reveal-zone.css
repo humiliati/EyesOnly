@@ -1,0 +1,370 @@
+/* ============================================================
+   REVEAL ZONE — Hidden Content Discovery Styles (Phase 5)
+   ============================================================
+   Styles for the reveal grid layer and its zones. Zones sit
+   between the starfield and page content; porthole lenses
+   expose them via overlap detection + slide-in animation.
+
+   Class prefix: .reveal-zone-* / .reveal-grid-* / .reveal-lock-*
+   ============================================================ */
+
+/* ── 1. GRID LAYER ────────────────────────────────────────── */
+
+.reveal-grid-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── 2. ZONE CONTAINER ────────────────────────────────────── */
+
+.reveal-zone {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.05s ease;
+}
+
+/* Zone visible through lens — content is sliding/fading in */
+.reveal-zone.reveal-zone-visible {
+  opacity: 1;
+}
+
+/* Zone content wrapper — receives slide transform + opacity from JS */
+.reveal-zone-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  opacity: 0;
+  transform: translate(0, 0);
+  /* Smooth transitions for JS-driven slide-in; kept short so
+     RAF-driven updates don't feel laggy */
+  transition: opacity 0.08s ease, transform 0.08s ease;
+}
+
+/* ── 3. CONTENT TYPE RENDERERS ────────────────────────────── */
+
+/* Item: emoji + label */
+.reveal-zone-emoji {
+  font-size: 48px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+  text-align: center;
+}
+
+.reveal-zone-label {
+  display: block;
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* QR code canvas */
+.reveal-zone-qr {
+  image-rendering: pixelated;
+  border-radius: 4px;
+}
+
+/* Video */
+.reveal-zone-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* Image */
+.reveal-zone-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Text block */
+.reveal-zone-text {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  padding: 8px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* ── 4. TIER-BASED GLOW INTENSITY ─────────────────────────── */
+
+/* SURFACE — barely hidden, easy to find */
+.reveal-zone[data-zone-tier="SURFACE"] .reveal-zone-content {
+  filter: drop-shadow(0 0 4px rgba(28, 255, 155, 0.15));
+}
+
+/* SEMI_HIDDEN — moderate concealment */
+.reveal-zone[data-zone-tier="SEMI_HIDDEN"] .reveal-zone-content {
+  filter: drop-shadow(0 0 6px rgba(28, 255, 155, 0.25));
+}
+
+/* CONCEALED — difficult to discover */
+.reveal-zone[data-zone-tier="CONCEALED"] .reveal-zone-content {
+  filter: drop-shadow(0 0 8px rgba(28, 255, 155, 0.35));
+}
+
+/* HIDDEN — very hard to find, strong glow reward */
+.reveal-zone[data-zone-tier="HIDDEN"] .reveal-zone-content {
+  filter: drop-shadow(0 0 12px rgba(28, 255, 155, 0.5));
+}
+
+/* ── 4b. PALETTE-TINTED GLOW ──────────────────────────────── */
+
+.reveal-zone[data-zone-palette="silver"] .reveal-zone-content {
+  filter: drop-shadow(0 0 8px rgba(176, 196, 222, 0.35));
+}
+.reveal-zone[data-zone-palette="amber"] .reveal-zone-content {
+  filter: drop-shadow(0 0 8px rgba(255, 176, 0, 0.35));
+}
+.reveal-zone[data-zone-palette="phosphor"] .reveal-zone-content {
+  filter: drop-shadow(0 0 8px rgba(51, 255, 51, 0.35));
+}
+.reveal-zone[data-zone-palette="panther"] .reveal-zone-content {
+  filter: drop-shadow(0 0 8px rgba(255, 48, 144, 0.35));
+}
+
+/* ── 5. LOCK-IN STATE ─────────────────────────────────────── */
+
+.reveal-zone.reveal-zone-locked .reveal-zone-content {
+  opacity: 1 !important;
+  transform: translate(0, 0) !important;
+}
+
+/* ── 5a. Lock animation: pulse-glow ────────────────────────
+   Brief radial glow burst, then settle to a steady ring.     */
+
+.reveal-zone.reveal-lock-pulse-glow {
+  animation: reveal-pulse-glow 0.5s ease-out forwards;
+}
+
+@keyframes reveal-pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(28, 255, 155, 0.6);
+  }
+  40% {
+    box-shadow: 0 0 24px 8px rgba(28, 255, 155, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 8px 2px rgba(28, 255, 155, 0.15);
+  }
+}
+
+/* Palette-tinted pulse-glow */
+.reveal-zone[data-zone-palette="silver"].reveal-lock-pulse-glow {
+  animation-name: reveal-pulse-glow-silver;
+}
+@keyframes reveal-pulse-glow-silver {
+  0%   { box-shadow: 0 0 0 0 rgba(176, 196, 222, 0.6); }
+  40%  { box-shadow: 0 0 24px 8px rgba(176, 196, 222, 0.45); }
+  100% { box-shadow: 0 0 8px 2px rgba(176, 196, 222, 0.15); }
+}
+
+.reveal-zone[data-zone-palette="amber"].reveal-lock-pulse-glow {
+  animation-name: reveal-pulse-glow-amber;
+}
+@keyframes reveal-pulse-glow-amber {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 176, 0, 0.6); }
+  40%  { box-shadow: 0 0 24px 8px rgba(255, 176, 0, 0.45); }
+  100% { box-shadow: 0 0 8px 2px rgba(255, 176, 0, 0.15); }
+}
+
+.reveal-zone[data-zone-palette="phosphor"].reveal-lock-pulse-glow {
+  animation-name: reveal-pulse-glow-phosphor;
+}
+@keyframes reveal-pulse-glow-phosphor {
+  0%   { box-shadow: 0 0 0 0 rgba(51, 255, 51, 0.6); }
+  40%  { box-shadow: 0 0 24px 8px rgba(51, 255, 51, 0.45); }
+  100% { box-shadow: 0 0 8px 2px rgba(51, 255, 51, 0.15); }
+}
+
+.reveal-zone[data-zone-palette="panther"].reveal-lock-pulse-glow {
+  animation-name: reveal-pulse-glow-panther;
+}
+@keyframes reveal-pulse-glow-panther {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 48, 144, 0.6); }
+  40%  { box-shadow: 0 0 24px 8px rgba(255, 48, 144, 0.45); }
+  100% { box-shadow: 0 0 8px 2px rgba(255, 48, 144, 0.15); }
+}
+
+/* ── 5b. Lock animation: scan-line ─────────────────────────
+   Horizontal line sweeps down the zone, like a barcode scan.  */
+
+.reveal-zone.reveal-lock-scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(28, 255, 155, 0.8) 30%,
+    rgba(28, 255, 155, 1) 50%,
+    rgba(28, 255, 155, 0.8) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(28, 255, 155, 0.5);
+  animation: reveal-scan-line 0.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes reveal-scan-line {
+  0%   { top: 0;    opacity: 1; }
+  100% { top: 100%; opacity: 0.3; }
+}
+
+/* Palette-tinted scan lines */
+.reveal-zone[data-zone-palette="silver"].reveal-lock-scan-line::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(176,196,222,0.8) 30%, rgba(176,196,222,1) 50%, rgba(176,196,222,0.8) 70%, transparent 100%);
+  box-shadow: 0 0 8px rgba(176, 196, 222, 0.5);
+}
+.reveal-zone[data-zone-palette="amber"].reveal-lock-scan-line::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,176,0,0.8) 30%, rgba(255,176,0,1) 50%, rgba(255,176,0,0.8) 70%, transparent 100%);
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.5);
+}
+.reveal-zone[data-zone-palette="phosphor"].reveal-lock-scan-line::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(51,255,51,0.8) 30%, rgba(51,255,51,1) 50%, rgba(51,255,51,0.8) 70%, transparent 100%);
+  box-shadow: 0 0 8px rgba(51, 255, 51, 0.5);
+}
+.reveal-zone[data-zone-palette="panther"].reveal-lock-scan-line::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,48,144,0.8) 30%, rgba(255,48,144,1) 50%, rgba(255,48,144,0.8) 70%, transparent 100%);
+  box-shadow: 0 0 8px rgba(255, 48, 144, 0.5);
+}
+
+/* ── 5c. Lock animation: border-glow ───────────────────────
+   Zone border lights up and pulses once, then fades to steady. */
+
+.reveal-zone.reveal-lock-border-glow {
+  border: 2px solid transparent;
+  animation: reveal-border-glow 0.6s ease-out forwards;
+  border-radius: 6px;
+}
+
+@keyframes reveal-border-glow {
+  0% {
+    border-color: rgba(28, 255, 155, 0.8);
+    box-shadow: inset 0 0 12px rgba(28, 255, 155, 0.3), 0 0 16px rgba(28, 255, 155, 0.4);
+  }
+  50% {
+    border-color: rgba(28, 255, 155, 0.5);
+    box-shadow: inset 0 0 8px rgba(28, 255, 155, 0.15), 0 0 10px rgba(28, 255, 155, 0.25);
+  }
+  100% {
+    border-color: rgba(28, 255, 155, 0.2);
+    box-shadow: inset 0 0 4px rgba(28, 255, 155, 0.05), 0 0 4px rgba(28, 255, 155, 0.1);
+  }
+}
+
+/* Palette-tinted border-glow */
+.reveal-zone[data-zone-palette="silver"].reveal-lock-border-glow {
+  animation-name: reveal-border-glow-silver;
+}
+@keyframes reveal-border-glow-silver {
+  0%   { border-color: rgba(176,196,222,0.8); box-shadow: inset 0 0 12px rgba(176,196,222,0.3), 0 0 16px rgba(176,196,222,0.4); }
+  50%  { border-color: rgba(176,196,222,0.5); box-shadow: inset 0 0 8px rgba(176,196,222,0.15), 0 0 10px rgba(176,196,222,0.25); }
+  100% { border-color: rgba(176,196,222,0.2); box-shadow: inset 0 0 4px rgba(176,196,222,0.05), 0 0 4px rgba(176,196,222,0.1); }
+}
+
+.reveal-zone[data-zone-palette="amber"].reveal-lock-border-glow {
+  animation-name: reveal-border-glow-amber;
+}
+@keyframes reveal-border-glow-amber {
+  0%   { border-color: rgba(255,176,0,0.8); box-shadow: inset 0 0 12px rgba(255,176,0,0.3), 0 0 16px rgba(255,176,0,0.4); }
+  50%  { border-color: rgba(255,176,0,0.5); box-shadow: inset 0 0 8px rgba(255,176,0,0.15), 0 0 10px rgba(255,176,0,0.25); }
+  100% { border-color: rgba(255,176,0,0.2); box-shadow: inset 0 0 4px rgba(255,176,0,0.05), 0 0 4px rgba(255,176,0,0.1); }
+}
+
+.reveal-zone[data-zone-palette="phosphor"].reveal-lock-border-glow {
+  animation-name: reveal-border-glow-phosphor;
+}
+@keyframes reveal-border-glow-phosphor {
+  0%   { border-color: rgba(51,255,51,0.8); box-shadow: inset 0 0 12px rgba(51,255,51,0.3), 0 0 16px rgba(51,255,51,0.4); }
+  50%  { border-color: rgba(51,255,51,0.5); box-shadow: inset 0 0 8px rgba(51,255,51,0.15), 0 0 10px rgba(51,255,51,0.25); }
+  100% { border-color: rgba(51,255,51,0.2); box-shadow: inset 0 0 4px rgba(51,255,51,0.05), 0 0 4px rgba(51,255,51,0.1); }
+}
+
+.reveal-zone[data-zone-palette="panther"].reveal-lock-border-glow {
+  animation-name: reveal-border-glow-panther;
+}
+@keyframes reveal-border-glow-panther {
+  0%   { border-color: rgba(255,48,144,0.8); box-shadow: inset 0 0 12px rgba(255,48,144,0.3), 0 0 16px rgba(255,48,144,0.4); }
+  50%  { border-color: rgba(255,48,144,0.5); box-shadow: inset 0 0 8px rgba(255,48,144,0.15), 0 0 10px rgba(255,48,144,0.25); }
+  100% { border-color: rgba(255,48,144,0.2); box-shadow: inset 0 0 4px rgba(255,48,144,0.05), 0 0 4px rgba(255,48,144,0.1); }
+}
+
+/* ── 6. DEPOSIT ANIMATION ─────────────────────────────────── */
+
+.reveal-zone.reveal-zone-depositing .reveal-zone-content {
+  animation: reveal-deposit 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes reveal-deposit {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(0.3) translateY(-40px);
+    opacity: 0;
+    filter: brightness(2);
+  }
+}
+
+/* ── 7. PERSIST STATE ─────────────────────────────────────── */
+
+.reveal-zone.reveal-zone-persisted {
+  opacity: 1;
+}
+
+.reveal-zone.reveal-zone-persisted .reveal-zone-content {
+  opacity: 0.85 !important;
+  transform: translate(0, 0) !important;
+  transition: none;
+}
+
+/* ── 8. EXIT ANIMATION ────────────────────────────────────── */
+
+.reveal-zone.reveal-zone-exiting .reveal-zone-content {
+  transition: opacity 0.3s ease, transform 0.3s ease !important;
+}
+
+/* ── 9. RESPONSIVE ────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .reveal-zone-emoji {
+    font-size: 36px;
+  }
+
+  .reveal-zone-label {
+    font-size: 9px;
+  }
+
+  .reveal-zone-text {
+    font-size: 10px;
+  }
+}

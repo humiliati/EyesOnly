@@ -156,6 +156,27 @@ var MagnifyingGlassDrag = (function () {
   }
 
   /**
+   * Compute the porthole circle's bounding rect in viewport coordinates.
+   * Used by RevealGrid to detect overlap with hidden zones.
+   */
+  function _getLensRect(clientX, clientY) {
+    var halfW = _ghost ? _ghost.offsetWidth / 2 : (PORTHOLE_SIZE / 2 + HANDLE_OFFSET);
+    var halfH = _ghost ? _ghost.offsetHeight / 2 : (PORTHOLE_SIZE / 2 + HANDLE_OFFSET);
+    // Porthole is centered within the ghost, inset by HANDLE_OFFSET
+    var cx = clientX;
+    var cy = clientY;
+    var r = PORTHOLE_SIZE / 2;
+    return {
+      left:   cx - r,
+      top:    cy - r,
+      right:  cx + r,
+      bottom: cy + r,
+      width:  PORTHOLE_SIZE,
+      height: PORTHOLE_SIZE,
+    };
+  }
+
+  /**
    * Start the drag interaction
    */
   function _startDrag(clientX, clientY) {
@@ -179,6 +200,11 @@ var MagnifyingGlassDrag = (function () {
     }
 
     document.body.style.cursor = 'none';
+
+    // Begin RevealGrid lens session
+    if (window.RevealGrid) {
+      RevealGrid.beginLensSession(_getLensRect(clientX, clientY));
+    }
   }
 
   /**
@@ -241,6 +267,11 @@ var MagnifyingGlassDrag = (function () {
   function _endDrag(clientX, clientY) {
     if (!_isDragging) return;
 
+    // End RevealGrid lens session BEFORE clearing state
+    if (window.RevealGrid) {
+      RevealGrid.endLensSession();
+    }
+
     // Dispatch drop event BEFORE clearing state — listeners can check isDragging()
     try {
       document.dispatchEvent(new CustomEvent('mag-drag-drop', {
@@ -286,6 +317,10 @@ var MagnifyingGlassDrag = (function () {
     if (_isDragging) {
       e.preventDefault();
       _positionGhost(e.clientX, e.clientY);
+      // Update RevealGrid lens position each frame
+      if (window.RevealGrid) {
+        RevealGrid.updateLens(_getLensRect(e.clientX, e.clientY));
+      }
       return;
     }
 
@@ -328,6 +363,10 @@ var MagnifyingGlassDrag = (function () {
     if (_isDragging) {
       e.preventDefault();
       _positionGhost(touch.clientX, touch.clientY);
+      // Update RevealGrid lens position each frame
+      if (window.RevealGrid) {
+        RevealGrid.updateLens(_getLensRect(touch.clientX, touch.clientY));
+      }
       return;
     }
 
@@ -424,7 +463,8 @@ var MagnifyingGlassDrag = (function () {
     dispose: dispose,
     isDragging: function () { return _isDragging; },
     setRevealPreview: setRevealPreview,
-    clearRevealPreview: clearRevealPreview
+    clearRevealPreview: clearRevealPreview,
+    getLensRect: _getLensRect,
   };
 
 })();
