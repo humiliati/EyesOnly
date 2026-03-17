@@ -15,121 +15,98 @@ const SplashScreen = (() => {
      ============================================================ */
 
   function calcPrice(scenario, groupSize) {
-    if (scenario === 'scenario-1') {
-      var min = 2, max = 60, pMin = 500, pMax = 1100;
-      var t = Math.min(1, Math.max(0, (groupSize - min) / (max - min)));
-      return Math.round(pMin + (pMax - pMin) * Math.sqrt(t));
-    }
-    if (scenario === 'scenario-2') {
-      var min2 = 3, max2 = 30, pMin2 = 1200, pMax2 = 4200;
-      var t2 = Math.min(1, Math.max(0, (groupSize - min2) / (max2 - min2)));
-      return Math.round(pMin2 + (pMax2 - pMin2) * Math.sqrt(t2));
-    }
-    return 0;
+    var cfg = PRICING_CONFIG[scenario];
+    if (!cfg) return 0;
+    var t = Math.min(1, Math.max(0, (groupSize - cfg.min) / (cfg.max - cfg.min)));
+    // Default curve: sqrt (ease-out)
+    var curved = (cfg.curve === 'linear') ? t : Math.sqrt(t);
+    return Math.round(cfg.priceMin + (cfg.priceMax - cfg.priceMin) * curved);
   }
 
-  /* ---- Configuration ---- */
+  /* ---- Configuration (loaded from /data/coin-cards.json at init) ---- */
 
-  const MISSIONS = [
-    {
-      id: 'scenario-1',
-      title: '1 Day Scenario',
-      desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history',
-      suit: '\u2660',        // ♠
-      suitClass: 'suit-spade',
-      duration: '24 HR',
-      defaultGroup: 2,
-      minGroup: 2,
-      maxGroup: 60,
-      classified: 'EYES ONLY',
-      label: 'MISSION DOSSIER',
-      videoIndex: 0,
-      route: '/booking.html#scenario-1',
-    },
-    {
-      id: 'scenario-2',
-      title: '3 Day Scenario',
-      desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.',
-      suit: '\u2663',        // ♣
-      suitClass: 'suit-club',
-      duration: '72 HR',
-      defaultGroup: 3,
-      minGroup: 3,
-      maxGroup: 30,
-      classified: 'TOP SECRET',
-      label: 'MISSION DOSSIER',
-      videoIndex: 1,
-      route: '/booking.html#scenario-2',
-    },
-    {
-      id: 'partner',
-      title: 'Partners',
-      desc: 'For Businesses, Actors, & Hosts',
-      suit: '\u2665',        // ♥
-      suitClass: 'suit-heart',
-      duration: null,         // no booking wheel
-      defaultGroup: null,
-      minGroup: null,
-      maxGroup: null,
-      classified: 'UNCLASSIFIED',
-      label: 'RECRUITMENT',
-      videoIndex: 2,
-      route: '/partners.html',
-    },
-    {
-      id: 'minigames',
-      title: 'Arcade',
-      desc: 'Decryption keys, Puzzles & Toys',
-      suit: '\u2666',        // ♦
-      suitClass: 'suit-diamond',
-      duration: null,         // no booking wheel
-      defaultGroup: null,
-      minGroup: null,
-      maxGroup: null,
-      classified: 'FIELD KIT',
-      label: 'RECREATION',
-      videoIndex: 3,
-      route: '/games.html',
-      btnLabel: 'PLAY',
-      btnDuration: 'NOW',
-      btnClass: 'coin-book-diamond',
-      tags: ['PUZZLES', 'DECRYPTION'],
-    },
+  // Mutable — populated by _loadCardData() from external JSON, with inline fallback.
+  var MISSIONS = [];
+  var VIDEO_SOURCES = [];
+  var SIL_POOL = [];
+  var THEME_MAP = {};
+  var THEME_VIDEO_INDEX = {};
+  var PRICING_CONFIG = {};
+
+  // Inline fallback — only used if fetch fails
+  var _FALLBACK_MISSIONS = [
+    { id: 'scenario-1', title: '1 Day Scenario', desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history', suit: '\u2660', suitClass: 'suit-spade', theme: 'silver', duration: '24 HR', defaultGroup: 2, minGroup: 2, maxGroup: 60, classified: 'EYES ONLY', label: 'MISSION DOSSIER', videoIndex: 0, route: '/booking.html#scenario-1', btnLabel: 'BOOK', btnDuration: '24 HR', btnClass: '', tags: [] },
+    { id: 'scenario-2', title: '3 Day Scenario', desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.', suit: '\u2663', suitClass: 'suit-club', theme: 'amber', duration: '72 HR', defaultGroup: 3, minGroup: 3, maxGroup: 30, classified: 'TOP SECRET', label: 'MISSION DOSSIER', videoIndex: 1, route: '/booking.html#scenario-2', btnLabel: 'BOOK', btnDuration: '72 HR', btnClass: '', tags: [] },
+    { id: 'partner', title: 'Partners', desc: 'For Businesses, Actors, & Hosts', suit: '\u2665', suitClass: 'suit-heart', theme: 'phosphor', duration: null, defaultGroup: null, minGroup: null, maxGroup: null, classified: 'UNCLASSIFIED', label: 'RECRUITMENT', videoIndex: 2, route: '/partners.html', btnLabel: 'JOIN', btnDuration: 'NOW', btnClass: 'coin-book-partner', tags: ['BUSINESSES', 'ACTORS'] },
+    { id: 'minigames', title: 'Arcade', desc: 'Decryption keys, Puzzles & Toys', suit: '\u2666', suitClass: 'suit-diamond', theme: 'panther', duration: null, defaultGroup: null, minGroup: null, maxGroup: null, classified: 'FIELD KIT', label: 'RECREATION', videoIndex: 3, route: '/games.html', btnLabel: 'PLAY', btnDuration: 'NOW', btnClass: 'coin-book-diamond', tags: ['PUZZLES', 'DECRYPTION'] },
   ];
 
-  // Background drone footage (optimized 480p, no audio)
-  // webm: clean names for future VP9 uploads; mp4: original R2 names (URL-encoded spaces)
-  const VIDEO_SOURCES = [
-    { webm: '/video/Sandpoint2_LakePendOreille.webm', mp4: '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4' },
-    { webm: '/video/Sandpoint3_LakePendOreille.webm', mp4: '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4' },
-    { webm: '/video/Sandpoint_LakePendOreille.webm',  mp4: '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4' },
-    { webm: '/video/Sandpoint1_SchweitzerMountain.webm', mp4: '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4' },
-  ];
+  /**
+   * Load card data from external JSON. Populates MISSIONS, VIDEO_SOURCES,
+   * SIL_POOL, THEME_MAP, THEME_VIDEO_INDEX. Falls back to inline defs.
+   */
+  function _loadCardData(callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/data/coin-cards.json?v=20260316c', true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          _applyCardData(data);
+          console.log('[SplashScreen] Loaded ' + MISSIONS.length + ' cards from coin-cards.json');
+        } catch (e) {
+          console.warn('[SplashScreen] Failed to parse coin-cards.json, using fallback:', e);
+          _applyFallback();
+        }
+      } else {
+        console.warn('[SplashScreen] Could not fetch coin-cards.json (status ' + xhr.status + '), using fallback');
+        _applyFallback();
+      }
+      if (typeof callback === 'function') callback();
+    };
+    xhr.send();
+  }
 
-  // Silhouette image assets
-  const SIL_POOL = [
-    '/assets/Images/Splash/spy_classic_splash.png',
-    '/assets/Images/Splash/spy_female_splash.png',
-    '/assets/Images/Splash/spy_female_classic_splash.png',
-    '/assets/Images/Splash/spy_male2_splash.png',
-    '/assets/Images/Splash/spy_male_splash.png',
-  ];
+  function _applyCardData(data) {
+    MISSIONS = data.missions || _FALLBACK_MISSIONS;
+    VIDEO_SOURCES = data.videoSources || [];
+    SIL_POOL = data.silhouettePool || [];
+    PRICING_CONFIG = data.pricing || {};
 
-  // Theme map — mission id → CSS data-card-theme value
-  const THEME_MAP = {
-    'scenario-1': 'silver',
-    'scenario-2': 'amber',
-    'partner':    'phosphor',
-    'minigames':  'panther',
-  };
+    // Build derived maps
+    THEME_MAP = {};
+    THEME_VIDEO_INDEX = {};
+    MISSIONS.forEach(function (m) {
+      if (m.theme) {
+        THEME_MAP[m.id] = m.theme;
+        if (m.videoIndex != null) THEME_VIDEO_INDEX[m.theme] = m.videoIndex;
+      }
+    });
+  }
 
-  // Theme → default video index (mirrors THEME_MAP ↔ MISSIONS[].videoIndex)
-  const THEME_VIDEO_INDEX = {
-    'silver':   0,
-    'amber':    1,
-    'phosphor': 2,
-    'panther':  3,
-  };
+  function _applyFallback() {
+    _applyCardData({
+      missions: _FALLBACK_MISSIONS,
+      videoSources: [
+        { webm: '/video/Sandpoint2_LakePendOreille.webm', mp4: '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4' },
+        { webm: '/video/Sandpoint3_LakePendOreille.webm', mp4: '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4' },
+        { webm: '/video/Sandpoint_LakePendOreille.webm',  mp4: '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4' },
+        { webm: '/video/Sandpoint1_SchweitzerMountain.webm', mp4: '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4' },
+      ],
+      silhouettePool: [
+        '/assets/Images/Splash/spy_classic_splash.png',
+        '/assets/Images/Splash/spy_female_splash.png',
+        '/assets/Images/Splash/spy_female_classic_splash.png',
+        '/assets/Images/Splash/spy_male2_splash.png',
+        '/assets/Images/Splash/spy_male_splash.png',
+      ],
+      pricing: {
+        'scenario-1': { min: 2, max: 60, priceMin: 500, priceMax: 1100, curve: 'sqrt' },
+        'scenario-2': { min: 3, max: 30, priceMin: 1200, priceMax: 4200, curve: 'sqrt' }
+      }
+    });
+  }
 
   const HOVER_SOUNDS  = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
   const SELECT_SOUNDS = ['card-fold_hand_1', 'card-fold_hand_2', 'card-fold_hand_3'];
@@ -1385,25 +1362,25 @@ const SplashScreen = (() => {
       if (prm) prm.classList.add('splash-fan-exit');
     }, 100);
 
-    // Step 1: Silhouettes (200ms)
+    // Step 1: Silhouettes rise from bottom (150ms)
     setTimeout(() => {
       const silLayer = document.getElementById('splash-silhouettes');
       silLayer.classList.add('splash-sil-active');
-    }, 200);
+    }, 150);
 
-    // Step 2: Fade to black (1150ms)
+    // Step 2: Fade to black — starts while silhouettes are still zooming (750ms)
     setTimeout(() => {
       const fadeOverlay = document.getElementById('splash-fade-overlay');
       fadeOverlay.classList.add('splash-fade-active');
-    }, 1150);
+    }, 750);
 
-    // Step 3: Remove & route (2650ms)
+    // Step 3: Remove & route (2200ms)
     setTimeout(() => {
       removeSplash();
       if (mission && mission.route) {
         window.location.href = mission.route;
       }
-    }, 2650);
+    }, 2200);
   }
 
   /* ---- Lifecycle ---- */
@@ -1488,35 +1465,38 @@ const SplashScreen = (() => {
       if (sessionStorage.getItem('splash_seen') === '1') return;
     } catch (_) {}
 
-    splashEl = buildSplash();
-    document.body.prepend(splashEl);
-    prepareBottomSilhouettes();
+    // Load card data from external JSON, then build UI
+    _loadCardData(function () {
+      splashEl = buildSplash();
+      document.body.prepend(splashEl);
+      prepareBottomSilhouettes();
 
-    const particleContainer = document.getElementById('splash-particles');
-    if (particleContainer) spawnParticles(particleContainer);
+      const particleContainer = document.getElementById('splash-particles');
+      if (particleContainer) spawnParticles(particleContainer);
 
-    startVideos();
-    bindCards();
-    bindWheels();
-    bindCardDrag();
-    bindCloseButton();
+      startVideos();
+      bindCards();
+      bindWheels();
+      bindCardDrag();
+      bindCloseButton();
 
-    // Mount Three.js 3D card layer (no-op — WebGL disabled)
-    var fanEl = document.getElementById('splash-card-fan');
-    if (fanEl) Card3D.mount(fanEl, MISSIONS);
+      // Mount Three.js 3D card layer (no-op — WebGL disabled)
+      var fanEl = document.getElementById('splash-card-fan');
+      if (fanEl) Card3D.mount(fanEl, MISSIONS);
 
-    // Start shared parallax starfield (porthole windows in all cards)
-    _initStarfield();
+      // Start shared parallax starfield (porthole windows in all cards)
+      _initStarfield();
 
-    // Initialize wheel displays with prev/next values
-    MISSIONS.forEach(function (m) {
-      if (cardState[m.id]) updateWheelDisplay(m.id);
+      // Initialize wheel displays with prev/next values
+      MISSIONS.forEach(function (m) {
+        if (cardState[m.id]) updateWheelDisplay(m.id);
+      });
+
+      setTimeout(() => {
+        _ensureAudioInit();
+        playPopupSounds();
+      }, 400);
     });
-
-    setTimeout(() => {
-      _ensureAudioInit();
-      playPopupSounds();
-    }, 400);
   }
 
   if (document.readyState === 'loading') {

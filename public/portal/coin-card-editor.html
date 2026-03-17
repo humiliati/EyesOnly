@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin-Card Editor — EYES ONLY Portal</title>
+<style>
+  :root {
+    --bg: #0e0e12; --surface: #16161c; --border: #2a2a35;
+    --text: #c8c8d0; --dim: #6a6a78; --accent: #d4a843;
+    --brass: #c09838; --code-bg: #1a1a24; --ok: #33cc66; --err: #cc3344;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  h1 { font-size: 1.5rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 8px; letter-spacing: 0.08em; }
+  .subtitle { font-size: 0.82rem; color: var(--dim); margin-bottom: 24px; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .toolbar .status { font-size: 0.78rem; color: var(--dim); margin-left: auto; font-family: 'Courier New', monospace; }
+  .toolbar .status.ok { color: var(--ok); }
+  .toolbar .status.err { color: var(--err); }
+
+  button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  button:hover { border-color: var(--accent); background: #1e1e28; }
+  button.primary { background: #2a2820; border-color: var(--brass); color: var(--accent); font-weight: 600; }
+  button.primary:hover { background: #3a3828; }
+  button.danger { border-color: var(--err); color: var(--err); }
+  button.danger:hover { background: #1c1418; }
+
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); gap: 20px; }
+
+  .card-editor {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; position: relative;
+  }
+  .card-editor .card-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--border); padding-bottom: 12px;
+  }
+  .card-editor .card-suit { font-size: 1.8rem; }
+  .card-editor .card-suit.suit-spade { color: #b8c8d8; }
+  .card-editor .card-suit.suit-club { color: #d4a843; }
+  .card-editor .card-suit.suit-heart { color: #33ff33; }
+  .card-editor .card-suit.suit-diamond { color: #ff69b4; }
+  .card-editor .card-id { font-family: 'Courier New', monospace; font-size: 0.78rem; color: var(--dim); }
+  .card-editor .card-theme-badge {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border);
+    background: var(--code-bg); color: var(--accent);
+  }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-grid .full { grid-column: 1 / -1; }
+
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--dim); font-weight: 500;
+  }
+  .field input, .field select, .field textarea {
+    background: var(--code-bg); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 10px; border-radius: 5px; font-size: 0.84rem; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 50px; }
+  .field .hint { font-size: 0.68rem; color: var(--dim); }
+
+  /* Pricing section */
+  .pricing-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .pricing-section h3 { font-size: 0.85rem; color: var(--accent); margin-bottom: 12px; }
+
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 16px; margin-top: 20px; }
+  .pricing-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+  }
+  .pricing-card h4 { font-size: 0.82rem; color: var(--accent); margin-bottom: 10px; }
+
+  /* Video & Silhouette sections */
+  .media-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .media-section h3 { font-size: 0.85rem; color: var(--accent); margin-bottom: 12px; }
+  .media-list { display: flex; flex-direction: column; gap: 8px; }
+  .media-item {
+    display: flex; gap: 8px; align-items: center;
+    background: var(--code-bg); padding: 6px 10px; border-radius: 5px;
+    font-family: 'Courier New', monospace; font-size: 0.78rem; color: var(--dim);
+  }
+  .media-item input { flex: 1; }
+  .media-item .idx { min-width: 24px; color: var(--accent); text-align: center; }
+
+  /* JSON preview */
+  .json-section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .json-section h3 { font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; cursor: pointer; }
+  .json-preview {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; font-family: 'Courier New', monospace; font-size: 0.72rem;
+    color: #a0b8d0; max-height: 400px; overflow: auto; white-space: pre-wrap;
+    word-wrap: break-word; line-height: 1.4;
+  }
+
+  @media (max-width: 600px) {
+    .cards-grid { grid-template-columns: 1fr; }
+    .field-grid { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>COIN-CARD EDITOR</h1>
+  <div class="subtitle">
+    Edit coin-card contents, pricing, and styling. Changes are saved to
+    <code>/data/coin-cards.json</code> and take effect on next page load.
+  </div>
+
+  <div class="toolbar">
+    <button class="primary" id="btn-save" title="Save changes to coin-cards.json">Save Changes</button>
+    <button id="btn-reload" title="Reload data from server">Reload</button>
+    <button id="btn-add" title="Add a new card">+ Add Card</button>
+    <button id="btn-preview-json" title="Toggle JSON preview">View JSON</button>
+    <button id="btn-download" title="Download coin-cards.json">Download</button>
+    <span class="status" id="status-msg"></span>
+  </div>
+
+  <!-- Card editors rendered here -->
+  <div class="cards-grid" id="cards-grid"></div>
+
+  <!-- Pricing -->
+  <div class="pricing-section">
+    <h3>PRICING CURVES</h3>
+    <div class="pricing-grid" id="pricing-grid"></div>
+  </div>
+
+  <!-- Video Sources -->
+  <div class="media-section">
+    <h3>VIDEO SOURCES</h3>
+    <div class="media-list" id="video-list"></div>
+    <button id="btn-add-video" style="margin-top: 8px;">+ Add Video</button>
+  </div>
+
+  <!-- Silhouette Pool -->
+  <div class="media-section">
+    <h3>SILHOUETTE POOL</h3>
+    <div class="media-list" id="sil-list"></div>
+    <button id="btn-add-sil" style="margin-top: 8px;">+ Add Silhouette</button>
+  </div>
+
+  <!-- JSON Preview -->
+  <div class="json-section" id="json-section" style="display:none;">
+    <h3>RAW JSON PREVIEW</h3>
+    <div class="json-preview" id="json-preview"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var DATA_URL = '/data/coin-cards.json?v=' + Date.now();
+  var SAVE_URL = '/api/portal/coin-cards'; // POST endpoint (Phase 3+)
+
+  var _data = null; // full coin-cards.json object
+
+  var SUIT_OPTIONS = [
+    { value: '\u2660', label: '\u2660 Spade', cls: 'suit-spade' },
+    { value: '\u2663', label: '\u2663 Club',  cls: 'suit-club' },
+    { value: '\u2665', label: '\u2665 Heart', cls: 'suit-heart' },
+    { value: '\u2666', label: '\u2666 Diamond', cls: 'suit-diamond' },
+  ];
+
+  var THEME_OPTIONS = ['silver', 'amber', 'phosphor', 'panther'];
+  var CURVE_OPTIONS = ['sqrt', 'linear'];
+
+  // ── Load ──
+
+  function load() {
+    setStatus('Loading...', '');
+    fetch(DATA_URL)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        _data = data;
+        render();
+        setStatus('Loaded ' + (_data.missions || []).length + ' cards', 'ok');
+      })
+      .catch(function (err) {
+        setStatus('Load failed: ' + err.message, 'err');
+      });
+  }
+
+  // ── Render ──
+
+  function render() {
+    renderCards();
+    renderPricing();
+    renderVideos();
+    renderSilhouettes();
+    updateJsonPreview();
+  }
+
+  function renderCards() {
+    var grid = document.getElementById('cards-grid');
+    grid.innerHTML = '';
+    (_data.missions || []).forEach(function (m, idx) {
+      grid.appendChild(buildCardEditor(m, idx));
+    });
+  }
+
+  function buildCardEditor(m, idx) {
+    var el = document.createElement('div');
+    el.className = 'card-editor';
+    el.dataset.idx = idx;
+
+    var suitObj = SUIT_OPTIONS.find(function (s) { return s.value === m.suit; }) || SUIT_OPTIONS[0];
+
+    el.innerHTML =
+      '<div class="card-header">' +
+        '<span class="card-suit ' + suitObj.cls + '">' + m.suit + '</span>' +
+        '<div><strong>' + esc(m.title || 'Untitled') + '</strong><br>' +
+        '<span class="card-id">' + esc(m.id) + '</span></div>' +
+        '<span class="card-theme-badge">' + esc(m.theme || '') + '</span>' +
+        '<button class="danger" style="margin-left:auto;padding:4px 10px;" data-action="delete" data-idx="' + idx + '" title="Remove card">&times;</button>' +
+      '</div>' +
+      '<div class="field-grid">' +
+        field('id', 'ID (slug)', m.id, 'text', idx) +
+        field('title', 'Title', m.title, 'text', idx) +
+        fieldFull('desc', 'Description', m.desc, 'textarea', idx) +
+        fieldSelect('suit', 'Suit', m.suit, SUIT_OPTIONS.map(function (s) { return { value: s.value, label: s.label }; }), idx) +
+        fieldSelect('theme', 'Theme', m.theme, THEME_OPTIONS.map(function (t) { return { value: t, label: t }; }), idx) +
+        field('classified', 'Classified Label', m.classified, 'text', idx) +
+        field('label', 'Card Label', m.label, 'text', idx) +
+        field('route', 'Route (URL)', m.route, 'text', idx) +
+        field('btnLabel', 'Button Label', m.btnLabel || '', 'text', idx) +
+        field('btnDuration', 'Button Duration', m.btnDuration || '', 'text', idx) +
+        field('btnClass', 'Button CSS Class', m.btnClass || '', 'text', idx) +
+        field('duration', 'Duration Text', m.duration || '', 'text', idx) +
+        field('defaultGroup', 'Default Group', m.defaultGroup, 'number', idx) +
+        field('minGroup', 'Min Group', m.minGroup, 'number', idx) +
+        field('maxGroup', 'Max Group', m.maxGroup, 'number', idx) +
+        field('videoIndex', 'Video Index', m.videoIndex, 'number', idx) +
+        fieldFull('tags', 'Tags (comma-separated)', (m.tags || []).join(', '), 'text', idx) +
+      '</div>';
+
+    // Bind inputs
+    el.querySelectorAll('[data-field]').forEach(function (inp) {
+      inp.addEventListener('change', function () { updateField(idx, inp); });
+      inp.addEventListener('input', function () { updateField(idx, inp); });
+    });
+
+    el.querySelector('[data-action="delete"]').addEventListener('click', function () {
+      if (confirm('Remove card "' + m.id + '"?')) {
+        _data.missions.splice(idx, 1);
+        render();
+      }
+    });
+
+    return el;
+  }
+
+  function field(name, label, value, type, idx) {
+    if (value === null || value === undefined) value = '';
+    return '<div class="field">' +
+      '<label>' + esc(label) + '</label>' +
+      '<input type="' + type + '" data-field="' + name + '" data-idx="' + idx + '" value="' + esc(String(value)) + '">' +
+      '</div>';
+  }
+
+  function fieldFull(name, label, value, tag, idx) {
+    if (value === null || value === undefined) value = '';
+    if (tag === 'textarea') {
+      return '<div class="field full">' +
+        '<label>' + esc(label) + '</label>' +
+        '<textarea data-field="' + name + '" data-idx="' + idx + '" rows="2">' + esc(String(value)) + '</textarea>' +
+        '</div>';
+    }
+    return '<div class="field full">' +
+      '<label>' + esc(label) + '</label>' +
+      '<input type="text" data-field="' + name + '" data-idx="' + idx + '" value="' + esc(String(value)) + '">' +
+      '</div>';
+  }
+
+  function fieldSelect(name, label, value, options, idx) {
+    var opts = options.map(function (o) {
+      return '<option value="' + esc(o.value) + '"' + (o.value === value ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+    }).join('');
+    return '<div class="field">' +
+      '<label>' + esc(label) + '</label>' +
+      '<select data-field="' + name + '" data-idx="' + idx + '">' + opts + '</select>' +
+      '</div>';
+  }
+
+  function updateField(idx, inp) {
+    var m = _data.missions[idx];
+    if (!m) return;
+    var name = inp.dataset.field;
+    var val = inp.value;
+
+    // Type coercion
+    if (['defaultGroup', 'minGroup', 'maxGroup', 'videoIndex'].indexOf(name) !== -1) {
+      m[name] = val === '' ? null : Number(val);
+    } else if (name === 'tags') {
+      m[name] = val.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    } else if (name === 'duration' && val === '') {
+      m[name] = null;
+    } else if (name === 'suit') {
+      m[name] = val;
+      var suitObj = SUIT_OPTIONS.find(function (s) { return s.value === val; });
+      m.suitClass = suitObj ? suitObj.cls : '';
+    } else {
+      m[name] = val;
+    }
+
+    updateJsonPreview();
+  }
+
+  // ── Pricing ──
+
+  function renderPricing() {
+    var grid = document.getElementById('pricing-grid');
+    grid.innerHTML = '';
+    var pricing = _data.pricing || {};
+    Object.keys(pricing).forEach(function (key) {
+      var cfg = pricing[key];
+      var el = document.createElement('div');
+      el.className = 'pricing-card';
+      el.innerHTML =
+        '<h4>' + esc(key) + '</h4>' +
+        '<div class="field-grid">' +
+          pricingField(key, 'min', 'Min Players', cfg.min) +
+          pricingField(key, 'max', 'Max Players', cfg.max) +
+          pricingField(key, 'priceMin', 'Price Min ($)', cfg.priceMin) +
+          pricingField(key, 'priceMax', 'Price Max ($)', cfg.priceMax) +
+          '<div class="field">' +
+            '<label>Curve</label>' +
+            '<select data-pricing="' + esc(key) + '" data-pfield="curve">' +
+              CURVE_OPTIONS.map(function (c) {
+                return '<option value="' + c + '"' + (c === cfg.curve ? ' selected' : '') + '>' + c + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+        '</div>';
+
+      el.querySelectorAll('[data-pricing]').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          var k = inp.dataset.pricing;
+          var f = inp.dataset.pfield;
+          if (['min', 'max', 'priceMin', 'priceMax'].indexOf(f) !== -1) {
+            _data.pricing[k][f] = Number(inp.value) || 0;
+          } else {
+            _data.pricing[k][f] = inp.value;
+          }
+          updateJsonPreview();
+        });
+      });
+
+      grid.appendChild(el);
+    });
+  }
+
+  function pricingField(key, fname, label, value) {
+    return '<div class="field">' +
+      '<label>' + esc(label) + '</label>' +
+      '<input type="number" data-pricing="' + esc(key) + '" data-pfield="' + fname + '" value="' + (value || 0) + '">' +
+      '</div>';
+  }
+
+  // ── Videos ──
+
+  function renderVideos() {
+    var list = document.getElementById('video-list');
+    list.innerHTML = '';
+    (_data.videoSources || []).forEach(function (v, i) {
+      var el = document.createElement('div');
+      el.className = 'media-item';
+      el.innerHTML =
+        '<span class="idx">' + i + '</span>' +
+        '<input type="text" data-vidx="' + i + '" data-vfield="webm" value="' + esc(v.webm || '') + '" placeholder="webm path">' +
+        '<input type="text" data-vidx="' + i + '" data-vfield="mp4" value="' + esc(v.mp4 || '') + '" placeholder="mp4 path">' +
+        '<button class="danger" data-action="del-video" data-vidx="' + i + '" style="padding:2px 8px;">&times;</button>';
+
+      el.querySelectorAll('input').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          _data.videoSources[Number(inp.dataset.vidx)][inp.dataset.vfield] = inp.value;
+          updateJsonPreview();
+        });
+      });
+      el.querySelector('[data-action="del-video"]').addEventListener('click', function () {
+        _data.videoSources.splice(i, 1);
+        renderVideos();
+        updateJsonPreview();
+      });
+      list.appendChild(el);
+    });
+  }
+
+  // ── Silhouettes ──
+
+  function renderSilhouettes() {
+    var list = document.getElementById('sil-list');
+    list.innerHTML = '';
+    (_data.silhouettePool || []).forEach(function (path, i) {
+      var el = document.createElement('div');
+      el.className = 'media-item';
+      el.innerHTML =
+        '<span class="idx">' + i + '</span>' +
+        '<input type="text" data-sidx="' + i + '" value="' + esc(path) + '" placeholder="/assets/...">' +
+        '<button class="danger" data-action="del-sil" data-sidx="' + i + '" style="padding:2px 8px;">&times;</button>';
+      el.querySelector('input').addEventListener('change', function () {
+        _data.silhouettePool[i] = this.value;
+        updateJsonPreview();
+      });
+      el.querySelector('[data-action="del-sil"]').addEventListener('click', function () {
+        _data.silhouettePool.splice(i, 1);
+        renderSilhouettes();
+        updateJsonPreview();
+      });
+      list.appendChild(el);
+    });
+  }
+
+  // ── JSON Preview ──
+
+  function updateJsonPreview() {
+    var el = document.getElementById('json-preview');
+    if (el) el.textContent = JSON.stringify(_data, null, 2);
+  }
+
+  // ── Save ──
+
+  function save() {
+    setStatus('Saving...', '');
+
+    // Try API save first (works when server supports it)
+    fetch(SAVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(_data)
+    })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function () {
+      setStatus('Saved to server', 'ok');
+    })
+    .catch(function () {
+      // Fallback: prompt download (static hosting / no write API yet)
+      setStatus('Server save unavailable \u2014 use Download button', 'err');
+      download();
+    });
+  }
+
+  function download() {
+    var json = JSON.stringify(_data, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'coin-cards.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Downloaded coin-cards.json', 'ok');
+  }
+
+  // ── Add Card ──
+
+  function addCard() {
+    var newId = 'new-card-' + Date.now();
+    _data.missions.push({
+      id: newId,
+      title: 'New Card',
+      desc: '',
+      suit: '\u2660',
+      suitClass: 'suit-spade',
+      theme: 'silver',
+      classified: '',
+      label: '',
+      route: '/',
+      btnLabel: 'GO',
+      btnDuration: '',
+      btnClass: '',
+      duration: null,
+      defaultGroup: null,
+      minGroup: null,
+      maxGroup: null,
+      videoIndex: 0,
+      tags: []
+    });
+    render();
+  }
+
+  // ── Util ──
+
+  function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function setStatus(msg, cls) {
+    var el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  // ── Bind toolbar ──
+
+  document.getElementById('btn-save').addEventListener('click', save);
+  document.getElementById('btn-reload').addEventListener('click', load);
+  document.getElementById('btn-add').addEventListener('click', addCard);
+  document.getElementById('btn-download').addEventListener('click', download);
+  document.getElementById('btn-preview-json').addEventListener('click', function () {
+    var sec = document.getElementById('json-section');
+    sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+    updateJsonPreview();
+  });
+  document.getElementById('btn-add-video').addEventListener('click', function () {
+    if (!_data.videoSources) _data.videoSources = [];
+    _data.videoSources.push({ webm: '', mp4: '' });
+    renderVideos();
+    updateJsonPreview();
+  });
+  document.getElementById('btn-add-sil').addEventListener('click', function () {
+    if (!_data.silhouettePool) _data.silhouettePool = [];
+    _data.silhouettePool.push('');
+    renderSilhouettes();
+    updateJsonPreview();
+  });
+
+  // ── Init ──
+  load();
+
+})();
+</script>
+</body>
+</html>

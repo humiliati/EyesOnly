@@ -41,82 +41,49 @@ var NchOverlay = (function () {
   var ORDER_KEY = 'EYESONLY_NCH_CARD_ORDER_V1';
 
   // ── Mission / Card Data ──────────────────────────────────
-  // Same MISSIONS structure as splash-screen.js so the coin-cards
-  // are identical. When the fan opens, these build real coin-card DOM
-  // reusing splash-screen.css classes.
-  var MISSIONS = [
-    {
-      id: 'scenario-1',
-      title: '1 Day Scenario',
-      desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history',
-      suit: '\u2660',            // ♠
-      suitClass: 'suit-spade',
-      classified: 'EYES ONLY',
-      label: 'MISSION DOSSIER',
-      route: '/booking.html#scenario-1',
-      btnLabel: 'BOOK',
-      btnDuration: '24 HR',
-      btnClass: '',
-      duration: '24 HR',
-      defaultGroup: 2,
-      minGroup: 2,
-      maxGroup: 60,
-    },
-    {
-      id: 'scenario-2',
-      title: '3 Day Scenario',
-      desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.',
-      suit: '\u2663',            // ♣
-      suitClass: 'suit-club',
-      classified: 'TOP SECRET',
-      label: 'MISSION DOSSIER',
-      route: '/booking.html#scenario-2',
-      btnLabel: 'BOOK',
-      btnDuration: '72 HR',
-      btnClass: '',
-      duration: '72 HR',
-      defaultGroup: 3,
-      minGroup: 3,
-      maxGroup: 30,
-    },
-    {
-      id: 'partner',
-      title: 'Partners',
-      desc: 'For Businesses, Actors, & Hosts',
-      suit: '\u2665',            // ♥
-      suitClass: 'suit-heart',
-      classified: 'UNCLASSIFIED',
-      label: 'RECRUITMENT',
-      route: '/partners.html',
-      btnLabel: 'JOIN',
-      btnDuration: 'NOW',
-      btnClass: 'coin-book-partner',
-      duration: null,
-      tags: ['BUSINESSES', 'ACTORS'],
-    },
-    {
-      id: 'minigames',
-      title: 'Arcade',
-      desc: 'Decryption keys, Puzzles & Toys',
-      suit: '\u2666',            // ♦
-      suitClass: 'suit-diamond',
-      classified: 'FIELD KIT',
-      label: 'RECREATION',
-      route: '/games.html',
-      btnLabel: 'PLAY',
-      btnDuration: 'NOW',
-      btnClass: 'coin-book-diamond',
-      duration: null,
-      tags: ['PUZZLES', 'DECRYPTION'],
-    },
+  // Card data — loaded from /data/coin-cards.json at init, with inline fallback.
+  // Shared source of truth with splash-screen.js so coin-cards are identical.
+  var MISSIONS = [];
+  var THEME_MAP = {};
+  var PRICING_CONFIG = {};
+  var _cardDataLoaded = false;
+
+  var _FALLBACK_MISSIONS = [
+    { id: 'scenario-1', title: '1 Day Scenario', desc: 'Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history', suit: '\u2660', suitClass: 'suit-spade', theme: 'silver', classified: 'EYES ONLY', label: 'MISSION DOSSIER', route: '/booking.html#scenario-1', btnLabel: 'BOOK', btnDuration: '24 HR', btnClass: '', duration: '24 HR', defaultGroup: 2, minGroup: 2, maxGroup: 60, tags: [] },
+    { id: 'scenario-2', title: '3 Day Scenario', desc: 'Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.', suit: '\u2663', suitClass: 'suit-club', theme: 'amber', classified: 'TOP SECRET', label: 'MISSION DOSSIER', route: '/booking.html#scenario-2', btnLabel: 'BOOK', btnDuration: '72 HR', btnClass: '', duration: '72 HR', defaultGroup: 3, minGroup: 3, maxGroup: 30, tags: [] },
+    { id: 'partner', title: 'Partners', desc: 'For Businesses, Actors, & Hosts', suit: '\u2665', suitClass: 'suit-heart', theme: 'phosphor', classified: 'UNCLASSIFIED', label: 'RECRUITMENT', route: '/partners.html', btnLabel: 'JOIN', btnDuration: 'NOW', btnClass: 'coin-book-partner', duration: null, tags: ['BUSINESSES', 'ACTORS'] },
+    { id: 'minigames', title: 'Arcade', desc: 'Decryption keys, Puzzles & Toys', suit: '\u2666', suitClass: 'suit-diamond', theme: 'panther', classified: 'FIELD KIT', label: 'RECREATION', route: '/games.html', btnLabel: 'PLAY', btnDuration: 'NOW', btnClass: 'coin-book-diamond', duration: null, tags: ['PUZZLES', 'DECRYPTION'] },
   ];
 
-  var THEME_MAP = {
-    'scenario-1': 'silver',
-    'scenario-2': 'amber',
-    'partner':    'phosphor',
-    'minigames':  'panther',
-  };
+  function _loadCardData(callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/data/coin-cards.json?v=20260316c', true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          MISSIONS = data.missions || _FALLBACK_MISSIONS;
+          PRICING_CONFIG = data.pricing || {};
+          console.log('[NchOverlay] Loaded ' + MISSIONS.length + ' cards from coin-cards.json');
+        } catch (e) {
+          console.warn('[NchOverlay] Failed to parse coin-cards.json, using fallback:', e);
+          MISSIONS = _FALLBACK_MISSIONS;
+        }
+      } else {
+        console.warn('[NchOverlay] Could not fetch coin-cards.json (status ' + xhr.status + '), using fallback');
+        MISSIONS = _FALLBACK_MISSIONS;
+      }
+      // Build THEME_MAP from missions
+      THEME_MAP = {};
+      MISSIONS.forEach(function (m) {
+        if (m.theme) THEME_MAP[m.id] = m.theme;
+      });
+      _cardDataLoaded = true;
+      if (typeof callback === 'function') callback();
+    };
+    xhr.send();
+  }
 
   // ── SFX (mirrors splash-screen.js sound arrays) ────────
   var HOVER_SOUNDS   = ['card-slide_card_1', 'card-slide_card_2', 'card-slide_card_3'];
@@ -131,20 +98,89 @@ var NchOverlay = (function () {
     }
   }
 
+  // ── Porthole Lens Helpers (Phase 8) ────────────────────────
+  //
+  // Maps card theme → lens CSS class suffix.
+  // Amber card gets blue lens (complementary), phosphor gets amber, etc.
+  var THEME_LENS_MAP = {
+    silver:  'silver',  // clear/neutral
+    amber:   'blue',    // warm gold ↔ cool blue
+    phosphor: 'amber',  // green-phosphor ↔ warm amber
+    panther: 'pink',    // magenta reinforced
+  };
+
+  function _lensClassForTheme(theme) {
+    return THEME_LENS_MAP[theme] || 'silver';
+  }
+
+  /**
+   * Check if a card is the "gold lens" (♣ club / amber theme).
+   * Only this card activates constellation tracing.
+   */
+  function _isGoldLensCard(cardIndex) {
+    var mission = MISSIONS[cardIndex];
+    return mission && mission.suitClass === 'suit-club';
+  }
+
+  /**
+   * Start constellation tracing during card drag (if gold lens).
+   */
+  function _startConstellationTrace(drag) {
+    if (!_isGoldLensCard(drag.index)) return;
+    if (typeof ConstellationTracer === 'undefined') return;
+    ConstellationTracer.beginSession();
+
+    // Activate lens overlay on the ghost card
+    var lensEl = drag.ghostEl && drag.ghostEl.querySelector('.porthole-lens-overlay');
+    if (lensEl) {
+      lensEl.classList.add('lens-active');
+    }
+  }
+
+  /**
+   * Update constellation tracer with porthole center position.
+   */
+  function _updateConstellationTrace(ghost) {
+    if (typeof ConstellationTracer === 'undefined' || !ConstellationTracer.isEnabled()) return;
+
+    // Use the starfield-window canvas center as the "lens" position
+    var portholeCanvas = ghost.querySelector('.starfield-window');
+    var lensEl = portholeCanvas || ghost;
+    var lr = lensEl.getBoundingClientRect();
+    var cx = lr.left + lr.width / 2;
+    var cy = lr.top + lr.height / 2;
+    ConstellationTracer.updateCursor(cx, cy);
+
+    // Add tracing class when actively connecting nodes
+    var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
+    if (lensOverlay) {
+      var state = ConstellationTracer.getState();
+      if (state === 'hasNode' || state === 'tethered') {
+        lensOverlay.classList.add('lens-tracing');
+      } else {
+        lensOverlay.classList.remove('lens-tracing');
+      }
+    }
+  }
+
+  /**
+   * End constellation tracing when card drag ends.
+   */
+  function _endConstellationTrace() {
+    if (typeof ConstellationTracer === 'undefined') return;
+    if (ConstellationTracer.isEnabled()) {
+      ConstellationTracer.endSession();
+    }
+  }
+
   // ── Pricing — Non-linear group scaling (mirrors splash-screen.js) ──
 
   function _calcPrice(scenario, groupSize) {
-    if (scenario === 'scenario-1') {
-      var min = 2, max = 60, pMin = 500, pMax = 1100;
-      var t = Math.min(1, Math.max(0, (groupSize - min) / (max - min)));
-      return Math.round(pMin + (pMax - pMin) * Math.sqrt(t));
-    }
-    if (scenario === 'scenario-2') {
-      var min2 = 3, max2 = 30, pMin2 = 1200, pMax2 = 4200;
-      var t2 = Math.min(1, Math.max(0, (groupSize - min2) / (max2 - min2)));
-      return Math.round(pMin2 + (pMax2 - pMin2) * Math.sqrt(t2));
-    }
-    return 0;
+    var cfg = PRICING_CONFIG[scenario];
+    if (!cfg) return 0;
+    var t = Math.min(1, Math.max(0, (groupSize - cfg.min) / (cfg.max - cfg.min)));
+    var curved = (cfg.curve === 'linear') ? t : Math.sqrt(t);
+    return Math.round(cfg.priceMin + (cfg.priceMax - cfg.priceMin) * curved);
   }
 
   // Per-card wheel state: { groupSize, price }
@@ -225,6 +261,33 @@ var NchOverlay = (function () {
     }
   }
 
+  // ── Puzzle Badge (Phase 7) ─────────────────────────────────
+
+  function _updatePuzzleBadge() {
+    var badge = document.getElementById('nch-puzzle-badge');
+    if (!badge) return;
+
+    if (typeof PuzzleState === 'undefined' || !PuzzleState.getBadgeCount) {
+      badge.style.display = 'none';
+      return;
+    }
+
+    var counts = PuzzleState.getBadgeCount();
+    if (counts.found === 0 && counts.solved === 0) {
+      badge.style.display = 'none';
+      return;
+    }
+
+    badge.style.display = '';
+    if (counts.solved === counts.totalPuzzles && counts.totalPuzzles > 0) {
+      badge.textContent = '\u2713'; // ✓ checkmark — all puzzles solved
+      badge.className = 'nch-puzzle-badge nch-puzzle-badge-complete';
+    } else {
+      badge.textContent = counts.found;
+      badge.className = 'nch-puzzle-badge';
+    }
+  }
+
   // ── Capsule Creation ─────────────────────────────────────
 
   function _createCapsule() {
@@ -236,9 +299,16 @@ var NchOverlay = (function () {
     _capsule.innerHTML =
       '<div class="nch-overlay-inner">' +
         '<div class="nch-overlay-stack" id="nch-overlay-stack"></div>' +
+        '<div class="nch-puzzle-badge" id="nch-puzzle-badge" style="display:none;"></div>' +
       '</div>';
 
     _stackEl = _capsule.querySelector('#nch-overlay-stack');
+
+    // Phase 7: Update puzzle badge when PuzzleState changes
+    _updatePuzzleBadge();
+    if (typeof PuzzleState !== 'undefined' && PuzzleState.onChange) {
+      PuzzleState.onChange(function () { _updatePuzzleBadge(); });
+    }
 
     // ── Drag (pointer events — desktop + mobile) ──────────
     _capsule.addEventListener('pointerdown', function (e) {
@@ -406,6 +476,7 @@ var NchOverlay = (function () {
           '</div>' +
           '<div class="coin-artwork" data-card-index="' + index + '">' +
             '<canvas class="starfield-window" width="200" height="200"></canvas>' +
+            '<div class="porthole-lens-overlay lens-' + _lensClassForTheme(mission.theme) + '"></div>' +
             '<div class="coin-rings"></div>' +
             '<div class="coin-suit-large ' + mission.suitClass + '">' + mission.suit + '</div>' +
           '</div>' +
@@ -936,6 +1007,9 @@ var NchOverlay = (function () {
       });
     }
 
+    // Phase 8: Begin constellation tracing if this is the gold lens (♣ club) card
+    _startConstellationTrace(drag);
+
     // ── Placeholder (mirrors splash-screen's _createDragPlaceholder) ──
     var cs = window.getComputedStyle(cardEl);
     var placeholder = document.createElement('div');
@@ -999,6 +1073,9 @@ var NchOverlay = (function () {
       // Render zone content inside card's porthole area
       _updateCardRevealContent(ghost);
     }
+
+    // Phase 8: Update constellation tracer with porthole position
+    _updateConstellationTrace(ghost);
   }
 
   function _updateDropGap(clientX, clientY) {
@@ -1080,6 +1157,9 @@ var NchOverlay = (function () {
       RevealGrid.endLensSession();
     }
     _clearCardRevealContent();
+
+    // Phase 8: End constellation tracing
+    _endConstellationTrace();
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;
@@ -1482,22 +1562,30 @@ var NchOverlay = (function () {
 
     if (opts.visible === false) _visible = false;
 
-    _initCardState();
-    _restoreCardOrder();
-    _createCapsule();
-    _renderPortholeStack();
+    // Load card data from external JSON, then build capsule
+    _loadCardData(function () {
+      _initCardState();
+      _restoreCardOrder();
+      _createCapsule();
+      _renderPortholeStack();
 
-    if (opts.autoStarfield !== false) {
-      _initStarfield(opts.starfieldOpts || {});
-    }
+      if (opts.autoStarfield !== false) {
+        _initStarfield(opts.starfieldOpts || {});
+      }
 
-    setInterval(_pollMode, 500);
+      // Phase 8: Initialize constellation subsystems
+      if (typeof SuitNodeRenderer !== 'undefined') SuitNodeRenderer.init();
+      if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
+      if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
 
-    window.addEventListener('gone-rogue-started', function () {
-      if (_mode === 'porthole') _enterGameMode();
-    });
-    window.addEventListener('gone-rogue-ended', function () {
-      if (_mode === 'game') _exitGameMode();
+      setInterval(_pollMode, 500);
+
+      window.addEventListener('gone-rogue-started', function () {
+        if (_mode === 'porthole') _enterGameMode();
+      });
+      window.addEventListener('gone-rogue-ended', function () {
+        if (_mode === 'game') _exitGameMode();
+      });
     });
   }
 

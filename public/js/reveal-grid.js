@@ -369,6 +369,17 @@ var RevealGrid = (function () {
     } else {
       _persistFound(zone, state);
     }
+
+    // Notify PuzzleState (Phase 7) of locked zone — cross-page clue tracking
+    if (typeof PuzzleState !== 'undefined' && PuzzleState.onClueFound) {
+      PuzzleState.onClueFound(zone.id, 'reveal');
+    }
+    // Also dispatch DOM event for any other listeners
+    if (typeof CustomEvent !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('revealGrid:locked', {
+        detail: { zoneId: zone.id, action: action }
+      }));
+    }
   }
 
   function _depositToInventory(zone, state) {

@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "description": "Constellation definitions for Phase 8 gold lens tracing puzzles",
+  "constellations": [
+    {
+      "id": "tutorial-triangle",
+      "name": "The Signal",
+      "description": "A beginner triangle — three club nodes at 90° angles. The first constellation every agent traces.",
+      "difficulty": "beginner",
+      "validation": "shape",
+      "rewardPerNode": 10,
+      "nodes": [
+        { "id": "tt-1", "x": 0.42, "y": 0.35, "suit": "club" },
+        { "id": "tt-2", "x": 0.58, "y": 0.35, "suit": "club" },
+        { "id": "tt-3", "x": 0.50, "y": 0.55, "suit": "club" }
+      ]
+    },
+    {
+      "id": "tutorial-diamond-path",
+      "name": "The Intercept",
+      "description": "Four nodes in a diamond shape. Two clubs, two diamonds (need pink lens to transform before gold can connect).",
+      "difficulty": "intermediate",
+      "validation": "shape",
+      "rewardPerNode": 15,
+      "nodes": [
+        { "id": "dp-1", "x": 0.50, "y": 0.20, "suit": "club" },
+        { "id": "dp-2", "x": 0.62, "y": 0.40, "suit": "diamond" },
+        { "id": "dp-3", "x": 0.50, "y": 0.60, "suit": "club" },
+        { "id": "dp-4", "x": 0.38, "y": 0.40, "suit": "diamond" }
+      ]
+    },
+    {
+      "id": "tutorial-spade-chain",
+      "name": "The Dead Drop",
+      "description": "Five-node zigzag chain. Three clubs, two spades. Spades need silver lens amplification before gold can connect.",
+      "difficulty": "intermediate",
+      "validation": "exact",
+      "rewardPerNode": 20,
+      "nodes": [
+        { "id": "sc-1", "x": 0.30, "y": 0.30, "suit": "club" },
+        { "id": "sc-2", "x": 0.40, "y": 0.50, "suit": "spade" },
+        { "id": "sc-3", "x": 0.50, "y": 0.30, "suit": "club" },
+        { "id": "sc-4", "x": 0.60, "y": 0.50, "suit": "spade" },
+        { "id": "sc-5", "x": 0.70, "y": 0.30, "suit": "club" }
+      ]
+    }
+  ]
+}

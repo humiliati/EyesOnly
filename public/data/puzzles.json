@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "puzzles": [
+    {
+      "id": "night-flight-cipher",
+      "name": "The Night Flight Cipher",
+      "description": "Scattered fragments of a classified itinerary, hidden across the site.",
+      "clues": [
+        "cypher-note-2",
+        "qr-arcade-secret",
+        "briefing-rogue"
+      ],
+      "reward": {
+        "coins": 25,
+        "route": "/itinerary/night-flight",
+        "revealZones": []
+      },
+      "hint": "The field kit holds three secrets. One hides near the magnifier, one near the arcade, one near the rogue.",
+      "difficulty": "beginner",
+      "category": "cross-page"
+    },
+    {
+      "id": "celestial-passport",
+      "name": "The Celestial Passport",
+      "description": "Star coordinates hidden across pages form a flight route when combined.",
+      "clues": [
+        "constellation:triangle",
+        "constellation:arrow",
+        "constellation:key"
+      ],
+      "reward": {
+        "coins": 50,
+        "route": "/itinerary/star-chart",
+        "revealZones": ["grand-constellation-hint"]
+      },
+      "hint": "Golden glass charts the sky. Three shapes must be drawn before the passport stamps.",
+      "difficulty": "advanced",
+      "category": "constellation"
+    },
+    {
+      "id": "grand-key",
+      "name": "The Grand Key",
+      "description": "The skeleton key constellation — the final challenge.",
+      "clues": [
+        "constellation:compass",
+        "constellation:grand-key"
+      ],
+      "reward": {
+        "coins": 100,
+        "route": "/itinerary/night-flight",
+        "revealZones": []
+      },
+      "hint": "The sky speaks in many frequencies. Master all four lenses to chart the final route.",
+      "difficulty": "expert",
+      "category": "constellation"
+    }
+  ]
+}

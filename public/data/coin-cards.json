@@ -1,0 +1,103 @@
+{
+  "version": 2,
+  "description": "Coin-card definitions — shared by splash-screen.js and nch-overlay.js. Edit here or via /portal/coin-card-editor.html.",
+  "missions": [
+    {
+      "id": "scenario-1",
+      "title": "1 Day Scenario",
+      "desc": "Live field exercise across Sandpoint, Idaho learn spycraft & treasure hunt to discover new secrets of our local history",
+      "suit": "\u2660",
+      "suitClass": "suit-spade",
+      "theme": "silver",
+      "classified": "EYES ONLY",
+      "label": "MISSION DOSSIER",
+      "route": "/booking.html#scenario-1",
+      "btnLabel": "BOOK",
+      "btnDuration": "24 HR",
+      "btnClass": "",
+      "duration": "24 HR",
+      "defaultGroup": 2,
+      "minGroup": 2,
+      "maxGroup": 60,
+      "videoIndex": 0,
+      "tags": []
+    },
+    {
+      "id": "scenario-2",
+      "title": "3 Day Scenario",
+      "desc": "Seasonal operation across North Idaho\u2019s destinations. Experience the mystery of the Kaniksu forest.",
+      "suit": "\u2663",
+      "suitClass": "suit-club",
+      "theme": "amber",
+      "classified": "TOP SECRET",
+      "label": "MISSION DOSSIER",
+      "route": "/booking.html#scenario-2",
+      "btnLabel": "BOOK",
+      "btnDuration": "72 HR",
+      "btnClass": "",
+      "duration": "72 HR",
+      "defaultGroup": 3,
+      "minGroup": 3,
+      "maxGroup": 30,
+      "videoIndex": 1,
+      "tags": []
+    },
+    {
+      "id": "partner",
+      "title": "Partners",
+      "desc": "For Businesses, Actors, & Hosts",
+      "suit": "\u2665",
+      "suitClass": "suit-heart",
+      "theme": "phosphor",
+      "classified": "UNCLASSIFIED",
+      "label": "RECRUITMENT",
+      "route": "/partners.html",
+      "btnLabel": "JOIN",
+      "btnDuration": "NOW",
+      "btnClass": "coin-book-partner",
+      "duration": null,
+      "defaultGroup": null,
+      "minGroup": null,
+      "maxGroup": null,
+      "videoIndex": 2,
+      "tags": ["BUSINESSES", "ACTORS"]
+    },
+    {
+      "id": "minigames",
+      "title": "Arcade",
+      "desc": "Decryption keys, Puzzles & Toys",
+      "suit": "\u2666",
+      "suitClass": "suit-diamond",
+      "theme": "panther",
+      "classified": "FIELD KIT",
+      "label": "RECREATION",
+      "route": "/games.html",
+      "btnLabel": "PLAY",
+      "btnDuration": "NOW",
+      "btnClass": "coin-book-diamond",
+      "duration": null,
+      "defaultGroup": null,
+      "minGroup": null,
+      "maxGroup": null,
+      "videoIndex": 3,
+      "tags": ["PUZZLES", "DECRYPTION"]
+    }
+  ],
+  "videoSources": [
+    { "webm": "/video/Sandpoint2_LakePendOreille.webm", "mp4": "/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4" },
+    { "webm": "/video/Sandpoint3_LakePendOreille.webm", "mp4": "/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4" },
+    { "webm": "/video/Sandpoint_LakePendOreille.webm",  "mp4": "/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4" },
+    { "webm": "/video/Sandpoint1_SchweitzerMountain.webm", "mp4": "/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4" }
+  ],
+  "silhouettePool": [
+    "/assets/Images/Splash/spy_classic_splash.png",
+    "/assets/Images/Splash/spy_female_splash.png",
+    "/assets/Images/Splash/spy_female_classic_splash.png",
+    "/assets/Images/Splash/spy_male2_splash.png",
+    "/assets/Images/Splash/spy_male_splash.png"
+  ],
+  "pricing": {
+    "scenario-1": { "min": 2, "max": 60, "priceMin": 500, "priceMax": 1100, "curve": "sqrt" },
+    "scenario-2": { "min": 3, "max": 30, "priceMin": 1200, "priceMax": 4200, "curve": "sqrt" }
+  }
+}

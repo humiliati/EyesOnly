@@ -163,6 +163,7 @@
     selector:       '.starfield-window',
     ownsCanvas:     false, // did we create the master canvas?
     palette:        PALETTES.night, // active palette
+    postRenderHooks: [],   // Phase 8: functions called after master render, before blit
   };
 
   /* ---- Generate star data ---- */
@@ -510,6 +511,19 @@
     _state.time++;
 
     _renderMaster();
+
+    // Phase 8: Post-render hooks paint onto master canvas before blit.
+    // Used by constellation system to render nodes + tether lines.
+    var m = _state.master;
+    if (m && _state.postRenderHooks.length > 0) {
+      var hookCtx = { canvas: m.canvas, ctx: m.ctx, time: _state.time, W: m.canvas.width, H: m.canvas.height };
+      for (var i = 0; i < _state.postRenderHooks.length; i++) {
+        try { _state.postRenderHooks[i](hookCtx); } catch (e) {
+          console.warn('[Starfield] postRenderHook error:', e);
+        }
+      }
+    }
+
     _blitPortholes();
   }
 
@@ -668,6 +682,23 @@
     return 'custom';
   }
 
+  /**
+   * Register a post-render hook. Called each frame after stars render,
+   * before blit into portholes. Hook receives { canvas, ctx, time, W, H }.
+   * Returns an unregister function.
+   */
+  function addPostRenderHook(fn) {
+    if (typeof fn !== 'function') return function () {};
+    _state.postRenderHooks.push(fn);
+    return function () {
+      var idx = _state.postRenderHooks.indexOf(fn);
+      if (idx !== -1) _state.postRenderHooks.splice(idx, 1);
+    };
+  }
+
+  /** Get the current frame time counter. */
+  function getTime() { return _state.time; }
+
   // Expose as global
   root.EyesOnlyStarfield = {
     init:    init,
@@ -676,6 +707,8 @@
     isRunning: isRunning,
     setPalette: setPalette,
     getPalette: getPalette,
+    addPostRenderHook: addPostRenderHook,
+    getTime: getTime,
     PALETTES: PALETTES,
   };
 

@@ -368,31 +368,13 @@
 /* Card fan container — inherits flex layout from splash-screen.css.
    Re-enable pointer-events on the cards themselves.
    Override splash-screen.css's initial opacity:0 + delayed animation
-   so the fan is visible immediately when the panel appears. */
+   so the fan is visible immediately when the panel appears.
+   ALL card dimensions, transforms, nth-child spreads, hover scales,
+   and grid layouts are inherited from splash-screen.css (canon). */
 .nch-porthole-fan .splash-card-fan {
   pointer-events: auto;
   opacity: 1;
   animation: none;
-}
-
-/* ── 4b. CARD ZOOM (hover & picked-up) ──────────────────────
-   Hovered or selected card zooms ~5% desktop, ~20% mobile.
-   Overrides splash-screen.css scale(1.08)/scale(1.03).
-   Ghost drag also gets the bigger zoom so the porthole
-   enlarges without over-zooming viewport contents.           */
-
-/* Desktop: subtle 5% zoom on hover */
-.nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
-  transform: perspective(800px) rotateX(4deg) rotateY(0deg)
-             translateY(-30px) scale(1.05) !important;
-  z-index: 10 !important;
-}
-
-/* Desktop: selected card gets the same 5% zoom */
-.nch-porthole-fan .splash-dossier.coin-card.splash-selected {
-  transform: perspective(800px) rotateX(2deg)
-             translateY(-20px) scale(1.05) !important;
-  z-index: 10 !important;
 }
 
 /* ── 5. RESPONSIVE ──────────────────────────────────────────
@@ -408,10 +390,12 @@
     bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
-  /* Zoom out ~3% on the entire card fan to reduce overlap clipping */
+  /* Match splash-screen fan layout properties that the NCH fan
+     container needs (splash-screen.css applies these to .splash-card-fan
+     which the NCH fan inherits, but perspective + preserve-3d need
+     to be on the container for the stacked card transforms to work) */
   .nch-porthole-fan .splash-card-fan {
-    transform: scale(0.97);
-    transform-origin: bottom center;
+    padding-top: 38px;
   }
 
   .nch-fan-close-btn {
@@ -419,36 +403,127 @@
     right: -4px;
   }
 
-  /* Increase vertical gaps between stacked cards in the NCH fan
-     so borders don't clip/overlap at the intersection points */
-  .nch-porthole-fan .splash-dossier.coin-card:nth-child(1) {
-    transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px) !important;
-    z-index: 4 !important;
-  }
-  .nch-porthole-fan .splash-dossier.coin-card:nth-child(2) {
-    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-14px) translateX(6px) !important;
-    z-index: 3 !important;
-  }
-  .nch-porthole-fan .splash-dossier.coin-card:nth-child(3) {
-    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-28px) translateX(10px) !important;
-    z-index: 2 !important;
-  }
-  .nch-porthole-fan .splash-dossier.coin-card:nth-child(4) {
-    transform: perspective(800px) rotateY(-6deg) rotateX(3deg) translateY(-42px) translateX(14px) !important;
-    z-index: 1 !important;
-  }
+  /* ALL card dimensions, nth-child stacking transforms, hover scales,
+     selected scales, and grid layouts are inherited directly from
+     splash-screen.css — no NCH-specific overrides. This keeps
+     both fans visually identical. */
+}
 
-  /* Mobile: 17% zoom on hovered/picked-up card (reduced from 20%
-     to prevent top-card clipping and border overlap issues) */
-  .nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
-    transform: perspective(800px) rotateX(2deg) rotateY(0deg)
-               translateY(-16px) translateX(0px) scale(1.17) !important;
-    z-index: 10 !important;
-  }
+/* ── 8. PUZZLE BADGE (Phase 7) ─────────────────────────────
+   Clue count badge on joker stack capsule.
+   Shows number of found clues; checkmark when all solved.     */
 
-  .nch-porthole-fan .splash-dossier.coin-card.splash-selected {
-    transform: perspective(800px) rotateX(1deg)
-               translateY(-12px) scale(1.17) !important;
-    z-index: 10 !important;
-  }
+.nch-puzzle-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--eo-primary, #33ff33);
+  color: #000;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1810;
+  box-shadow: 0 0 6px rgba(51, 255, 51, 0.5);
+  animation: nch-badge-pop 0.3s ease-out;
+}
+
+.nch-puzzle-badge-complete {
+  background: #ffb000;
+  color: #000;
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.6);
+}
+
+@keyframes nch-badge-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+
+/* ============================================================
+   Phase 8 — Porthole Lens Gradient Overlays
+   ============================================================
+   Each card's starfield porthole gets a complementary color
+   tint during constellation tracing (gold lens mode).
+   These overlays sit on top of the .starfield-window canvas
+   but below the .coin-rings frame.
+
+   Card → Theme → Lens color (complementary contrast):
+     scenario-1 / silver / ♠  → clear (no tint, silver is neutral)
+     scenario-2 / amber  / ♣  → blue  (warm gold + cool blue)
+     partner    / phosphor/ ♥  → amber (green-phosphor + warm amber)
+     minigames  / panther / ♦  → pink  (neon magenta reinforced)
+   ============================================================ */
+
+.porthole-lens-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  z-index: 0;            /* below .coin-rings (z:1) but over .starfield-window (z:0) */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  mix-blend-mode: screen;
+}
+
+/* Active during constellation tracing */
+.porthole-lens-overlay.lens-active {
+  opacity: 1;
+}
+
+/* ---- Silver lens (clear / neutral) ---- */
+.porthole-lens-overlay.lens-silver {
+  background: radial-gradient(circle at center,
+    rgba(176, 196, 222, 0.06) 0%,
+    rgba(136, 152, 168, 0.03) 50%,
+    transparent 75%
+  );
+}
+
+/* ---- Blue lens (for amber/gold card — complementary contrast) ---- */
+.porthole-lens-overlay.lens-blue {
+  background: radial-gradient(circle at center,
+    rgba(60, 120, 220, 0.14) 0%,
+    rgba(40, 80, 180, 0.08) 40%,
+    rgba(20, 40, 120, 0.04) 65%,
+    transparent 80%
+  );
+}
+
+/* ---- Amber lens (for phosphor card — warm complement) ---- */
+.porthole-lens-overlay.lens-amber {
+  background: radial-gradient(circle at center,
+    rgba(255, 176, 0, 0.12) 0%,
+    rgba(200, 120, 0, 0.07) 40%,
+    rgba(140, 80, 0, 0.03) 65%,
+    transparent 80%
+  );
+}
+
+/* ---- Pink lens (for panther card — reinforced neon) ---- */
+.porthole-lens-overlay.lens-pink {
+  background: radial-gradient(circle at center,
+    rgba(255, 105, 180, 0.14) 0%,
+    rgba(255, 48, 144, 0.08) 40%,
+    rgba(180, 30, 100, 0.04) 65%,
+    transparent 80%
+  );
+}
+
+/* Pulse animation during active tracing */
+.porthole-lens-overlay.lens-active.lens-tracing {
+  animation: lens-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes lens-pulse {
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1.0; }
+  100% { opacity: 0.7; }
 }

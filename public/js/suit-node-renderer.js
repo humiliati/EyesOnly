@@ -1,0 +1,377 @@
+/* ============================================================
+   Suit-Node Renderer — Phase 8
+   ============================================================
+   Renders suit-symbol constellation nodes onto the starfield
+   master canvas via EyesOnlyStarfield.addPostRenderHook().
+
+   Nodes are positioned in normalized [0,1] coordinates (same as
+   starfield stars) and rendered as tiny suit glyphs at screen
+   resolution. Each node has a suit type that determines its
+   visual rendering and which lens can interact with it.
+
+   The renderer maintains the node registry and exposes it to
+   constellation-tracer.js for hit-testing and path validation.
+   ============================================================ */
+
+;(function (root) {
+  'use strict';
+
+  // ── Node Types ──────────────────────────────────────────────
+  var SUIT_TYPES = {
+    club:    { symbol: '\u2663', color: '#d4a843', glowColor: 'rgba(212,168,67,0.4)',  dimColor: 'rgba(212,168,67,0.15)', lens: 'gold',   connectable: true  },
+    diamond: { symbol: '\u2666', color: '#ff69b4', glowColor: 'rgba(255,105,180,0.4)', dimColor: 'rgba(255,105,180,0.15)', lens: 'pink',   connectable: false },
+    spade:   { symbol: '\u2660', color: '#8898a8', glowColor: 'rgba(136,152,168,0.3)', dimColor: 'rgba(136,152,168,0.08)', lens: 'silver', connectable: false },
+    heart:   { symbol: '\u2665', color: '#ff6030', glowColor: 'rgba(255,96,48,0.4)',   dimColor: 'rgba(255,96,48,0.12)',   lens: 'amber',  connectable: false },
+  };
+
+  // ── State ───────────────────────────────────────────────────
+  var _nodes = [];          // { id, x, y, suit, state, constellation }
+  var _constellations = []; // { id, nodeIds, validation, difficulty, solved }
+  var _unhookFn = null;     // starfield hook unregister
+  var _foreverPixels = [];  // { x, y } — permanent marks from solved constellations
+  var FOREVER_KEY = 'eyesonly_forever_sky';
+
+  // ── Node Creation ───────────────────────────────────────────
+
+  /**
+   * Register a constellation — a group of nodes that form a puzzle.
+   * @param {Object} def
+   * @param {string} def.id            Unique constellation ID
+   * @param {Array}  def.nodes         Array of { id, x, y, suit }
+   * @param {string} def.validation    'exact' | 'shape' | 'rule' | 'euler'
+   * @param {string} def.difficulty    'beginner' | 'intermediate' | 'advanced' | 'expert'
+   * @param {number} [def.rewardPerNode=10]  Coins per node on solve
+   */
+  function registerConstellation(def) {
+    if (!def || !def.id || !def.nodes) return;
+
+    var constellation = {
+      id: def.id,
+      nodeIds: [],
+      validation: def.validation || 'shape',
+      difficulty: def.difficulty || 'beginner',
+      rewardPerNode: def.rewardPerNode || 10,
+      solved: false,
+    };
+
+    def.nodes.forEach(function (nd) {
+      var node = {
+        id: nd.id || def.id + '-' + _nodes.length,
+        x: nd.x,       // normalized 0..1
+        y: nd.y,       // normalized 0..1
+        suit: nd.suit || 'club',
+        state: 'idle',  // idle | highlighted | visited | transformed | forever
+        constellation: def.id,
+        brightness: 1.0,
+        pulsePhase: Math.random() * Math.PI * 2,
+        transformedTo: null, // set to 'club' after lens transformation
+      };
+      _nodes.push(node);
+      constellation.nodeIds.push(node.id);
+    });
+
+    _constellations.push(constellation);
+    return constellation;
+  }
+
+  /**
+   * Remove all nodes and constellations, or a specific constellation.
+   */
+  function clearConstellations(constellationId) {
+    if (constellationId) {
+      _constellations = _constellations.filter(function (c) { return c.id !== constellationId; });
+      _nodes = _nodes.filter(function (n) { return n.constellation !== constellationId; });
+    } else {
+      _constellations = [];
+      _nodes = [];
+    }
+  }
+
+  // ── Node Queries ────────────────────────────────────────────
+
+  function getNodes() { return _nodes; }
+  function getConstellations() { return _constellations; }
+
+  function getNodeById(id) {
+    for (var i = 0; i < _nodes.length; i++) {
+      if (_nodes[i].id === id) return _nodes[i];
+    }
+    return null;
+  }
+
+  /**
+   * Find the closest node to a screen position within a tolerance radius.
+   * @param {number} screenX  Pixel X
+   * @param {number} screenY  Pixel Y
+   * @param {number} radius   Hit radius in pixels
+   * @param {string} [suitFilter] Only match nodes of this effective suit
+   * @returns {Object|null} Node or null
+   */
+  function hitTest(screenX, screenY, radius, suitFilter) {
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+    var best = null;
+    var bestDist = radius * radius;
+
+    for (var i = 0; i < _nodes.length; i++) {
+      var n = _nodes[i];
+      if (n.state === 'forever') continue; // already burned in
+      var effectiveSuit = n.transformedTo || n.suit;
+      if (suitFilter && effectiveSuit !== suitFilter) continue;
+
+      var nx = n.x * W;
+      var ny = n.y * H;
+      var dx = screenX - nx;
+      var dy = screenY - ny;
+      var d2 = dx * dx + dy * dy;
+      if (d2 < bestDist) {
+        bestDist = d2;
+        best = n;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Get the effective suit of a node (considers transformation).
+   */
+  function getEffectiveSuit(node) {
+    return node.transformedTo || node.suit;
+  }
+
+  /**
+   * Check if a node is connectable by the gold lens.
+   */
+  function isConnectable(node) {
+    var suit = getEffectiveSuit(node);
+    return suit === 'club';
+  }
+
+  // ── Node State Changes ──────────────────────────────────────
+
+  function highlightNode(nodeId) {
+    var n = getNodeById(nodeId);
+    if (n && n.state === 'idle') n.state = 'highlighted';
+  }
+
+  function visitNode(nodeId) {
+    var n = getNodeById(nodeId);
+    if (n) n.state = 'visited';
+  }
+
+  function resetNode(nodeId) {
+    var n = getNodeById(nodeId);
+    if (n && n.state !== 'forever') n.state = 'idle';
+  }
+
+  function resetConstellation(constellationId) {
+    _nodes.forEach(function (n) {
+      if (n.constellation === constellationId && n.state !== 'forever') {
+        n.state = 'idle';
+      }
+    });
+  }
+
+  /**
+   * Transform a non-club node into a club (lens transformation).
+   */
+  function transformNode(nodeId) {
+    var n = getNodeById(nodeId);
+    if (!n || n.suit === 'club') return false;
+    n.transformedTo = 'club';
+    n.state = 'transformed';
+    return true;
+  }
+
+  /**
+   * Burn solved nodes into forever pixels.
+   */
+  function burnForever(nodeIds) {
+    nodeIds.forEach(function (id) {
+      var n = getNodeById(id);
+      if (!n) return;
+      n.state = 'forever';
+      _foreverPixels.push({ x: n.x, y: n.y });
+    });
+    _saveForeverPixels();
+  }
+
+  function markConstellationSolved(constellationId) {
+    for (var i = 0; i < _constellations.length; i++) {
+      if (_constellations[i].id === constellationId) {
+        _constellations[i].solved = true;
+        break;
+      }
+    }
+  }
+
+  // ── Forever Sky Persistence ─────────────────────────────────
+
+  function _loadForeverPixels() {
+    try {
+      var raw = localStorage.getItem(FOREVER_KEY);
+      if (raw) _foreverPixels = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  function _saveForeverPixels() {
+    try {
+      localStorage.setItem(FOREVER_KEY, JSON.stringify(_foreverPixels));
+    } catch (e) {}
+  }
+
+  function getForeverPixels() { return _foreverPixels; }
+
+  // ── Render Hook ─────────────────────────────────────────────
+  //
+  // Paints suit-symbol nodes and forever pixels onto the starfield
+  // master canvas each frame (before blit into portholes).
+
+  function _renderHook(hookCtx) {
+    var ctx = hookCtx.ctx;
+    var W = hookCtx.W;
+    var H = hookCtx.H;
+    var t = hookCtx.time;
+
+    // 1. Forever pixels — permanent #ffffff 1px marks
+    ctx.fillStyle = '#ffffff';
+    for (var fi = 0; fi < _foreverPixels.length; fi++) {
+      var fp = _foreverPixels[fi];
+      ctx.fillRect(Math.round(fp.x * W), Math.round(fp.y * H), 1, 1);
+    }
+
+    // 2. Active constellation nodes
+    for (var i = 0; i < _nodes.length; i++) {
+      var node = _nodes[i];
+      if (node.state === 'forever') continue; // rendered as forever pixel above
+
+      var effectiveSuit = node.transformedTo || node.suit;
+      var suitDef = SUIT_TYPES[effectiveSuit] || SUIT_TYPES.club;
+
+      var nx = node.x * W;
+      var ny = node.y * H;
+
+      // Pulse animation
+      var pulse = 0.6 + 0.4 * Math.sin(t * 0.04 + node.pulsePhase);
+
+      // State-dependent rendering
+      var alpha, glowSize, fontSize;
+
+      switch (node.state) {
+        case 'highlighted':
+          alpha = 0.9 + 0.1 * pulse;
+          glowSize = 12;
+          fontSize = 10;
+          break;
+        case 'visited':
+          alpha = 1.0;
+          glowSize = 8;
+          fontSize = 9;
+          break;
+        case 'transformed':
+          alpha = 0.85;
+          glowSize = 10;
+          fontSize = 9;
+          break;
+        default: // idle
+          if (node.suit === 'heart') {
+            // Hearts are invisible until revealed by amber lens
+            alpha = 0;
+            glowSize = 0;
+            fontSize = 0;
+          } else if (node.suit === 'spade') {
+            // Spades are dim and flickering
+            var flicker = Math.random() > 0.85 ? 0.1 : 0.3;
+            alpha = flicker * pulse;
+            glowSize = 3;
+            fontSize = 7;
+          } else if (node.suit === 'diamond') {
+            // Diamonds are visible, pink-tinted
+            alpha = 0.5 + 0.2 * pulse;
+            glowSize = 6;
+            fontSize = 8;
+          } else {
+            // Clubs: visible, bright, gold-tinted
+            alpha = 0.5 + 0.3 * pulse;
+            glowSize = 6;
+            fontSize = 8;
+          }
+      }
+
+      if (alpha <= 0) continue;
+
+      // Glow halo
+      if (glowSize > 0) {
+        var grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowSize);
+        var gc = suitDef.glowColor;
+        grad.addColorStop(0, gc.replace(/[\d.]+\)$/, (alpha * 0.5) + ')'));
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(nx - glowSize, ny - glowSize, glowSize * 2, glowSize * 2);
+      }
+
+      // Suit symbol (text rendering)
+      if (fontSize > 0) {
+        ctx.save();
+        ctx.font = fontSize + 'px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = suitDef.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillText(suitDef.symbol, nx, ny);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── Init / Destroy ──────────────────────────────────────────
+
+  function init() {
+    _loadForeverPixels();
+
+    // Register render hook with starfield
+    if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.addPostRenderHook) {
+      _unhookFn = EyesOnlyStarfield.addPostRenderHook(_renderHook);
+    } else {
+      console.warn('[SuitNodeRenderer] EyesOnlyStarfield not available, will retry...');
+      // Retry after starfield might have initialized
+      setTimeout(function () {
+        if (!_unhookFn && typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.addPostRenderHook) {
+          _unhookFn = EyesOnlyStarfield.addPostRenderHook(_renderHook);
+        }
+      }, 1000);
+    }
+  }
+
+  function destroy() {
+    if (_unhookFn) { _unhookFn(); _unhookFn = null; }
+    _nodes = [];
+    _constellations = [];
+  }
+
+  // ── Public API ──────────────────────────────────────────────
+
+  root.SuitNodeRenderer = {
+    init:                  init,
+    destroy:               destroy,
+    registerConstellation: registerConstellation,
+    clearConstellations:   clearConstellations,
+    getNodes:              getNodes,
+    getConstellations:     getConstellations,
+    getNodeById:           getNodeById,
+    hitTest:               hitTest,
+    getEffectiveSuit:      getEffectiveSuit,
+    isConnectable:         isConnectable,
+    highlightNode:         highlightNode,
+    visitNode:             visitNode,
+    resetNode:             resetNode,
+    resetConstellation:    resetConstellation,
+    transformNode:         transformNode,
+    burnForever:           burnForever,
+    markConstellationSolved: markConstellationSolved,
+    getForeverPixels:      getForeverPixels,
+    SUIT_TYPES:            SUIT_TYPES,
+  };
+
+})(typeof window !== 'undefined' ? window : this);

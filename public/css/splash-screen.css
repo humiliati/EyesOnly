@@ -181,15 +181,15 @@
    ============================================================== */
 .splash-sil-css {
   position: absolute;
-  bottom: -110%;
-  width: 30vw;
-  height: 80vh;
+  bottom: -105%;
+  width: 38vw;
+  height: 110vh;
   z-index: 100;
   pointer-events: none;
   opacity: 0;            /* start invisible — revealed only if PNGs fail */
-  transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s,
-              opacity 0.3s ease;
+  transition: bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s,
+              opacity 0.15s ease;
 }
 
 /* CSS fallbacks activated (PNGs didn't load in time) */
@@ -211,7 +211,7 @@
     44% 20%, 44% 15%, 42% 12%, 42% 10%, 40% 8%,
     38% 8%, 36% 6%, 36% 4%, 38% 2%, 40% 2%
   );
-  transition-delay: 0s, 0.35s;
+  transition-delay: 0s, 0.25s;
 }
 
 /* Spy silhouette shape 2 — trench coat profile */
@@ -227,7 +227,7 @@
     36% 30%, 38% 24%, 42% 20%, 45% 18%, 44% 15%,
     43% 12%, 42% 8%, 43% 3%
   );
-  transition-delay: 0.08s, 0.4s;
+  transition-delay: 0.06s, 0.3s;
 }
 
 /* Spy silhouette shape 3 — gun drawn pose */
@@ -243,18 +243,18 @@
     40% 35%, 38% 28%, 42% 22%, 45% 20%, 44% 18%,
     42% 14%, 42% 10%, 42% 4%
   );
-  transition-delay: 0.15s, 0.45s;
+  transition-delay: 0.1s, 0.35s;
 }
 
 /* Active: CSS silhouettes rise + zoom (mirrors PNG animation) */
 .splash-silhouettes.splash-sil-active .splash-sil-css {
-  bottom: -10%;
-  transform: scale(2.2);
+  bottom: 0%;
+  transform: scale(4.5);
 }
 
 .splash-silhouettes.splash-sil-active .splash-sil-css-b {
-  bottom: -10%;
-  transform: translateX(-50%) scale(2.2);
+  bottom: 0%;
+  transform: translateX(-50%) scale(4.5);
 }
 
 /* Hide CSS shapes once real PNG images have loaded */
@@ -1356,6 +1356,7 @@
   z-index: 100;
   pointer-events: none;
   opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 .splash-silhouettes.splash-sil-active {
@@ -1369,47 +1370,48 @@
 .splash-sil-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: bottom center;
+  object-fit: cover;
+  object-position: top center;
+  filter: brightness(0);           /* BLVCK silhouette overlay */
 }
 
 .splash-sil-bottom {
-  bottom: -110%;
-  width: 35vw;
-  height: 90vh;
+  bottom: -105%;
+  width: 38vw;
+  height: 110vh;
   transform: scale(1);
   z-index: 101;
-  transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 1.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s;
+  transition: bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s;
 }
 
 .splash-sil-slot-a {
   left: 5%;
-  transition-delay: 0s, 0.35s;
+  transition-delay: 0s, 0.25s;
 }
 
 .splash-sil-slot-b {
   left: 50%;
   transform: translateX(-50%) scale(1);
-  transition-delay: 0.08s, 0.4s;
+  transition-delay: 0.06s, 0.3s;
 }
 
 .splash-sil-slot-c {
   right: 5%;
-  transition-delay: 0.15s, 0.45s;
+  transition-delay: 0.1s, 0.35s;
 }
 
 .splash-silhouettes.splash-sil-active .splash-sil-bottom {
-  bottom: -10%;
-  transform: scale(2.2);
+  bottom: 0%;
+  transform: scale(4.5);
 }
 
 .splash-silhouettes.splash-sil-active .splash-sil-slot-b {
-  bottom: -10%;
-  transform: translateX(-50%) scale(2.2);
+  bottom: 0%;
+  transform: translateX(-50%) scale(4.5);
 }
 
-/* Fade-to-black overlay */
+/* Fade-to-black overlay — composites over silhouettes */
 .splash-fade-overlay {
   position: fixed;
   inset: 0;
@@ -1417,7 +1419,7 @@
   background: #000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 1.0s ease 0.4s;
+  transition: opacity 0.8s ease 0.15s;
 }
 
 .splash-fade-overlay.splash-fade-active {
@@ -1614,11 +1616,15 @@
   .coin-suit-large  { font-size: clamp(44px, 12vw, 56px); animation: suit-bob 5s ease-in-out infinite; }
   .starfield-window { width: 90%; }
 
-  /* Silhouettes */
-  .splash-sil-bottom { width: 50vw; height: 75vh; }
-  .splash-sil-slot-a { left: 0; }
-  .splash-sil-slot-b { left: 50%; }
-  .splash-sil-slot-c { right: 0; }
+  /* Silhouettes — larger on mobile for full-screen takeover */
+  .splash-sil-bottom,
+  .splash-sil-css { width: 65vw; height: 100vh; }
+  .splash-sil-slot-a,
+  .splash-sil-css-a { left: -5%; }
+  .splash-sil-slot-b,
+  .splash-sil-css-b { left: 50%; }
+  .splash-sil-slot-c,
+  .splash-sil-css-c { right: -5%; }
 
   /* Close button */
   .splash-close-btn  { top: 10px; right: 10px; width: 40px; height: 40px; }

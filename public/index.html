@@ -38,13 +38,13 @@
   <link rel="stylesheet" href="css/passive-items.css">
   <link rel="stylesheet" href="css/environmental-synergy.css?v=20260305g">
   <link rel="stylesheet" href="css/tooltip-system.css">
-  <link rel="stylesheet" href="css/nch-overlay.css?v=20260315a">
+  <link rel="stylesheet" href="css/nch-overlay.css?v=20260316b">
   <link rel="stylesheet" href="css/non-combat-hud.css?v=20260307g">
   <link rel="stylesheet" href="css/enemy-hand-display.css">
   <link rel="stylesheet" href="css/rogue-sidebar.css">
   <link rel="stylesheet" href="css/inventory-ui.css">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
-  <link rel="stylesheet" href="css/splash-screen.css?v=20260314c">
+  <link rel="stylesheet" href="css/splash-screen.css?v=20260316a">
 
   <!-- Prevent text selection for immersion -->
   <style>
@@ -437,8 +437,15 @@
   <!-- Shared starfield module — full-page master canvas + porthole blit pipeline -->
   <script src="js/starfield.js"></script>
 
+  <!-- Cross-page puzzle state (Phase 7) -->
+  <script src="js/puzzle-state.js?v=20260316b"></script>
+
+  <!-- Phase 8: Constellation tracing subsystems (loaded before NCH overlay) -->
+  <script src="js/suit-node-renderer.js?v=20260316d"></script>
+  <script src="js/constellation-tracer.js?v=20260316d"></script>
+  <script src="js/constellation-loader.js?v=20260316d"></script>
   <!-- NCH Overlay — portable capsule widget (porthole mode on all pages) -->
-  <script src="js/nch-overlay.js?v=20260315a"></script>
+  <script src="js/nch-overlay.js?v=20260316d"></script>
   <script>
     // Init the overlay in porthole mode. On this page (home/terminal),
     // it will auto-transition to game mode when GoneRogue launches.
@@ -446,11 +453,14 @@
     // starfield master canvas init.
     document.addEventListener('DOMContentLoaded', function() {
       NchOverlay.init({ autoStarfield: false });
+      if (typeof PuzzleState !== 'undefined') {
+        PuzzleState.init();
+      }
     });
   </script>
 
   <!-- Phase 1: Splash screen critical path (sync, blocks render) -->
-  <script src="js/splash-screen.js?v=20260314c"></script>
+  <script src="js/splash-screen.js?v=20260316a"></script>
   <!-- WebGL 3D renderer disabled — card depth via CSS preserve-3d now -->
   <!-- <script src="js/card-coin-3d.js"></script> -->
   <script src="js/terminal.js?v=20260313b"></script>
