@@ -354,7 +354,7 @@
             glowSize = 6;
             fontSize = 8;
           } else {
-            // Clubs: visible, bright, gold-tinted
+            // Clubs: visible, bright, gold-tinted, twinkling
             alpha = 0.5 + 0.3 * pulse;
             glowSize = 6;
             fontSize = 8;
@@ -363,11 +363,31 @@
 
       if (alpha <= 0) continue;
 
+      // ── Club twinkle: glow cycles between strong and near-zero ──
+      // Uses a slow second wave so the glow periodically dips,
+      // revealing the crisp ♣ symbol underneath like a twinkling star.
+      var glowAlpha = alpha * 0.5;  // default glow strength
+      var symbolAlpha = alpha;       // default symbol strength
+
+      if (node.suit === 'club' && node.state === 'idle') {
+        // Slow twinkle wave — each node offset by its pulsePhase
+        // Period ~3.5s, sharp dip (power curve makes bright phase longer, dim phase brief)
+        var twinkle = Math.sin(t * 0.018 + node.pulsePhase * 2.7);
+        // Remap: mostly bright (glow on), brief dip (glow off, symbol shines)
+        var twinkleT = Math.max(0, twinkle); // 0 at dip, 1 at peak
+        twinkleT = twinkleT * twinkleT;      // square it — spends more time bright
+
+        glowAlpha = alpha * 0.55 * twinkleT;     // glow fades to 0 at dip
+        glowSize = 6 + 3 * twinkleT;             // glow shrinks at dip
+        symbolAlpha = alpha * (0.6 + 0.4 * (1 - twinkleT)); // symbol brightens at dip
+        fontSize = 8 + Math.round(2 * (1 - twinkleT));      // symbol grows slightly at dip
+      }
+
       // Glow halo
-      if (glowSize > 0) {
+      if (glowSize > 0 && glowAlpha > 0.01) {
         var grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, glowSize);
         var gc = suitDef.glowColor;
-        grad.addColorStop(0, gc.replace(/[\d.]+\)$/, (alpha * 0.5) + ')'));
+        grad.addColorStop(0, gc.replace(/[\d.]+\)$/, glowAlpha + ')'));
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.fillRect(nx - glowSize, ny - glowSize, glowSize * 2, glowSize * 2);
@@ -380,7 +400,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = suitDef.color;
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = symbolAlpha;
         ctx.fillText(suitDef.symbol, nx, ny);
         ctx.globalAlpha = 1;
         ctx.restore();
