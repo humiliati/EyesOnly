@@ -1,0 +1,124 @@
+{
+  "$schema": "#/definitions/RevealZonesFile",
+  "version": 1,
+  "page": "/games.html",
+  "description": "Reveal zone definitions for games.html — designer-editable via /portal/zone-editor.html",
+
+  "definitions": {
+    "RevealZonesFile": {
+      "type": "object",
+      "required": ["version", "page", "zones"],
+      "properties": {
+        "version":     { "type": "integer" },
+        "page":        { "type": "string", "description": "Route this zone file applies to" },
+        "description": { "type": "string" },
+        "zones":       { "type": "array", "items": { "$ref": "#/definitions/Zone" } }
+      }
+    },
+    "Zone": {
+      "type": "object",
+      "required": ["id", "type", "anchor", "size", "content", "reveal"],
+      "properties": {
+        "id":       { "type": "string", "description": "Unique zone identifier" },
+        "type":     { "enum": ["item", "qr", "video", "image"], "description": "Renderer type" },
+        "anchor":   { "$ref": "#/definitions/Anchor" },
+        "size":     { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2, "description": "[width, height] in px" },
+        "content":  { "type": "object", "description": "Type-specific payload (emoji, qrData, src, etc.)" },
+        "reveal":   { "$ref": "#/definitions/RevealConfig" },
+        "tier":     { "enum": ["VISIBLE", "SEMI_HIDDEN", "CONCEALED", "HIDDEN"], "default": "SEMI_HIDDEN" },
+        "oneShot":  { "type": "boolean", "default": false, "description": "If true, zone disappears after first successful reveal" },
+        "palette":  { "type": "string", "description": "Theme palette for rendering (phosphor, amber, silver, panther)" }
+      }
+    },
+    "Anchor": {
+      "type": "object",
+      "required": ["selector"],
+      "properties": {
+        "selector": { "type": "string", "description": "CSS selector for anchor element" },
+        "offset":   { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2, "default": [0, 0] }
+      }
+    },
+    "RevealConfig": {
+      "type": "object",
+      "properties": {
+        "enter":         { "enum": ["slide", "fade", "scale"], "default": "slide", "description": "How content enters the porthole viewport" },
+        "lockThreshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.75, "description": "Overlap ratio (0..1) required to lock" },
+        "lockAnimation": { "enum": ["pulse-glow", "scan-line", "border-glow", "flash"], "default": "pulse-glow" },
+        "onRelease":     { "enum": ["deposit-to-inventory", "persist-found", "pause-and-persist", "none"], "default": "none" }
+      }
+    }
+  },
+
+  "zones": [
+    {
+      "id": "cypher-note-2",
+      "type": "item",
+      "anchor": { "selector": "[data-slot=\"2\"]", "offset": [0, 0] },
+      "size": [120, 120],
+      "content": {
+        "emoji": "\uD83D\uDCDC",
+        "itemId": "ITM-201",
+        "itemKey": "cypher-note-2",
+        "label": "CYPHER NOTE",
+        "meta": {
+          "name": "Cypher Note",
+          "emoji": "\uD83D\uDCDC",
+          "type": "equipment",
+          "subtype": "investigation",
+          "rarity": "uncommon",
+          "platformItem": true,
+          "noteIndex": 2
+        }
+      },
+      "reveal": {
+        "enter": "slide",
+        "lockThreshold": 0.75,
+        "lockAnimation": "pulse-glow",
+        "onRelease": "deposit-to-inventory"
+      },
+      "tier": "SEMI_HIDDEN",
+      "oneShot": true,
+      "palette": "phosphor"
+    },
+    {
+      "id": "qr-arcade-secret",
+      "type": "qr",
+      "anchor": { "selector": "#row-arcade", "offset": [200, 50] },
+      "size": [100, 100],
+      "content": {
+        "qrData": "https://eyesonly.game/secret/arcade-01",
+        "fgColor": "#33ff33",
+        "bgColor": "transparent"
+      },
+      "reveal": {
+        "enter": "fade",
+        "lockThreshold": 0.6,
+        "lockAnimation": "scan-line",
+        "onRelease": "persist-found"
+      },
+      "tier": "CONCEALED",
+      "oneShot": false,
+      "palette": "phosphor"
+    },
+    {
+      "id": "briefing-rogue",
+      "type": "video",
+      "anchor": { "selector": "#row-gone-rogue", "offset": [-30, 80] },
+      "size": [200, 150],
+      "content": {
+        "src": "/media/secret-briefing.webm",
+        "autoplay": true,
+        "loop": false
+      },
+      "reveal": {
+        "enter": "slide",
+        "lockThreshold": 0.8,
+        "lockAnimation": "border-glow",
+        "onRelease": "pause-and-persist"
+      },
+      "tier": "HIDDEN",
+      "oneShot": false,
+      "palette": "panther"
+    }
+  ]
+}

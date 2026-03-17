@@ -17,12 +17,61 @@
   'use strict';
 
   // ── Node Types ──────────────────────────────────────────────
+  //
+  // Base colors for each suit (used on `night` palette and as default).
+  // Per-palette overrides ensure nodes stay visible against themed starfields.
   var SUIT_TYPES = {
     club:    { symbol: '\u2663', color: '#d4a843', glowColor: 'rgba(212,168,67,0.4)',  dimColor: 'rgba(212,168,67,0.15)', lens: 'gold',   connectable: true  },
     diamond: { symbol: '\u2666', color: '#ff69b4', glowColor: 'rgba(255,105,180,0.4)', dimColor: 'rgba(255,105,180,0.15)', lens: 'pink',   connectable: false },
     spade:   { symbol: '\u2660', color: '#8898a8', glowColor: 'rgba(136,152,168,0.3)', dimColor: 'rgba(136,152,168,0.08)', lens: 'silver', connectable: false },
     heart:   { symbol: '\u2665', color: '#ff6030', glowColor: 'rgba(255,96,48,0.4)',   dimColor: 'rgba(255,96,48,0.12)',   lens: 'amber',  connectable: false },
   };
+
+  // Per-palette overrides: only the colors that conflict with that palette's
+  // dominant tint. Null = use base color (no conflict).
+  //
+  //   amber starfield (gold stars):  ♣ gold → cyan-white,  ♥ orange → bright magenta
+  //   silver starfield (blue stars): ♠ grey-blue → warm cream
+  //   panther starfield (magenta):   ♦ pink → bright cyan
+  //   phosphor starfield (green):    (no conflicts — all suits contrast fine)
+  //
+  var PALETTE_OVERRIDES = {
+    amber: {
+      club:  { color: '#88ddff', glowColor: 'rgba(136,221,255,0.45)', dimColor: 'rgba(136,221,255,0.15)' },
+      heart: { color: '#ff40c0', glowColor: 'rgba(255,64,192,0.4)',   dimColor: 'rgba(255,64,192,0.12)' },
+    },
+    silver: {
+      spade: { color: '#e8d8a0', glowColor: 'rgba(232,216,160,0.35)', dimColor: 'rgba(232,216,160,0.10)' },
+    },
+    panther: {
+      diamond: { color: '#00e5cc', glowColor: 'rgba(0,229,204,0.45)', dimColor: 'rgba(0,229,204,0.15)' },
+    },
+  };
+
+  /**
+   * Get the effective suit rendering definition for the current palette.
+   */
+  function _getSuitDef(suit) {
+    var base = SUIT_TYPES[suit] || SUIT_TYPES.club;
+    var palette = 'night';
+    if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.getPalette) {
+      palette = EyesOnlyStarfield.getPalette();
+    }
+    var overrides = PALETTE_OVERRIDES[palette];
+    if (overrides && overrides[suit]) {
+      // Merge override onto base (only color fields, keep symbol/lens/connectable)
+      var o = overrides[suit];
+      return {
+        symbol:      base.symbol,
+        color:       o.color || base.color,
+        glowColor:   o.glowColor || base.glowColor,
+        dimColor:    o.dimColor || base.dimColor,
+        lens:        base.lens,
+        connectable: base.connectable,
+      };
+    }
+    return base;
+  }
 
   // ── State ───────────────────────────────────────────────────
   var _nodes = [];          // { id, x, y, suit, state, constellation }
@@ -247,7 +296,7 @@
       if (node.state === 'forever') continue; // rendered as forever pixel above
 
       var effectiveSuit = node.transformedTo || node.suit;
-      var suitDef = SUIT_TYPES[effectiveSuit] || SUIT_TYPES.club;
+      var suitDef = _getSuitDef(effectiveSuit);
 
       var nx = node.x * W;
       var ny = node.y * H;

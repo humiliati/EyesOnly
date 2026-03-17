@@ -102,8 +102,8 @@ The old `/games.html` had a hardcoded reveal mechanic: `magnifying-glass-drag.js
 - ✅ NCH overlay wired on `/games.html` (and all other pages via Phase 2 rollout)
 - ✅ Dead `data-mag-reveal` attribute removed from games.html
 - ✅ PuzzleState integration: `reveal-grid.js` calls `PuzzleState.onClueFound()` on lock-in + dispatches `revealGrid:locked` CustomEvent
-- ⬜ No JSON schema validation for zone definitions (nice-to-have)
-- ⬜ Zone definitions still inline JS, not yet externalized to `/data/reveal-zones-games.json` (nice-to-have)
+- ✅ JSON schema embedded in `/data/reveal-zones-games.json` (`definitions` block with Zone, Anchor, RevealConfig types)
+- ✅ Zone definitions externalized to `/data/reveal-zones-games.json` — games.html loads via XHR with inline fallback
 
 ### Reveal grid architecture
 

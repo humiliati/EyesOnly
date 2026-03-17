@@ -771,90 +771,41 @@
         });
       }
 
-      // Zone definitions for /games.html
-      var GAMES_ZONES = [
-        {
-          id: 'cypher-note-2',
-          type: 'item',
-          anchor: { selector: '[data-slot="2"]', offset: [0, 0] },
-          size: [120, 120],
-          content: {
-            emoji: '\uD83D\uDCDC',
-            itemId: 'ITM-201',
-            itemKey: 'cypher-note-2',
-            label: 'CYPHER NOTE',
-            meta: {
-              name: 'Cypher Note',
-              emoji: '\uD83D\uDCDC',
-              type: 'equipment',
-              subtype: 'investigation',
-              rarity: 'uncommon',
-              platformItem: true,
-              noteIndex: 2
-            }
-          },
-          reveal: {
-            enter: 'slide',
-            lockThreshold: 0.75,
-            lockAnimation: 'pulse-glow',
-            onRelease: 'deposit-to-inventory'
-          },
-          tier: 'SEMI_HIDDEN',
-          oneShot: true,
-          palette: 'phosphor'
-        },
-        {
-          id: 'qr-arcade-secret',
-          type: 'qr',
-          anchor: { selector: '#row-arcade', offset: [200, 50] },
-          size: [100, 100],
-          content: {
-            qrData: 'https://eyesonly.game/secret/arcade-01',
-            fgColor: '#33ff33',
-            bgColor: 'transparent'
-          },
-          reveal: {
-            enter: 'fade',
-            lockThreshold: 0.6,
-            lockAnimation: 'scan-line',
-            onRelease: 'persist-found'
-          },
-          tier: 'CONCEALED',
-          oneShot: false,
-          palette: 'phosphor'
-        },
-        {
-          id: 'briefing-rogue',
-          type: 'video',
-          anchor: { selector: '#row-gone-rogue', offset: [-30, 80] },
-          size: [200, 150],
-          content: {
-            src: '/media/secret-briefing.webm',
-            autoplay: true,
-            loop: false
-          },
-          reveal: {
-            enter: 'slide',
-            lockThreshold: 0.8,
-            lockAnimation: 'border-glow',
-            onRelease: 'pause-and-persist'
-          },
-          tier: 'HIDDEN',
-          oneShot: false,
-          palette: 'panther'
-        }
+      // Zone definitions loaded from /data/reveal-zones-games.json
+      // (externalized for designer editing via portal; inline fallback below)
+      var _FALLBACK_ZONES = [
+        { id: 'cypher-note-2', type: 'item', anchor: { selector: '[data-slot="2"]', offset: [0,0] }, size: [120,120], content: { emoji: '\uD83D\uDCDC', itemId: 'ITM-201', itemKey: 'cypher-note-2', label: 'CYPHER NOTE', meta: { name: 'Cypher Note', emoji: '\uD83D\uDCDC', type: 'equipment', subtype: 'investigation', rarity: 'uncommon', platformItem: true, noteIndex: 2 } }, reveal: { enter: 'slide', lockThreshold: 0.75, lockAnimation: 'pulse-glow', onRelease: 'deposit-to-inventory' }, tier: 'SEMI_HIDDEN', oneShot: true, palette: 'phosphor' },
+        { id: 'qr-arcade-secret', type: 'qr', anchor: { selector: '#row-arcade', offset: [200,50] }, size: [100,100], content: { qrData: 'https://eyesonly.game/secret/arcade-01', fgColor: '#33ff33', bgColor: 'transparent' }, reveal: { enter: 'fade', lockThreshold: 0.6, lockAnimation: 'scan-line', onRelease: 'persist-found' }, tier: 'CONCEALED', oneShot: false, palette: 'phosphor' },
+        { id: 'briefing-rogue', type: 'video', anchor: { selector: '#row-gone-rogue', offset: [-30,80] }, size: [200,150], content: { src: '/media/secret-briefing.webm', autoplay: true, loop: false }, reveal: { enter: 'slide', lockThreshold: 0.8, lockAnimation: 'border-glow', onRelease: 'pause-and-persist' }, tier: 'HIDDEN', oneShot: false, palette: 'panther' }
       ];
 
-      // Initialize the reveal grid with zone definitions
-      RevealGrid.init({
-        zones: GAMES_ZONES,
-        onDeposit: function (zone) {
-          depositToSlot(zone);
-        }
-      });
+      function _initRevealGrid(zones) {
+        RevealGrid.init({
+          zones: zones,
+          onDeposit: function (zone) { depositToSlot(zone); }
+        });
+        restoreRevealed(zones);
+      }
 
-      // Restore previously deposited items
-      restoreRevealed(GAMES_ZONES);
+      // Try loading from external JSON; fall back to inline array
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/data/reveal-zones-games.json?v=20260317a', true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            var zones = data.zones || _FALLBACK_ZONES;
+            console.log('[games.html] Loaded ' + zones.length + ' zones from reveal-zones-games.json');
+            _initRevealGrid(zones);
+            return;
+          } catch (e) {
+            console.warn('[games.html] Failed to parse zones JSON, using fallback:', e);
+          }
+        }
+        _initRevealGrid(_FALLBACK_ZONES);
+      };
+      xhr.send();
 
       // Initialize cross-page puzzle state (Phase 7)
       if (typeof PuzzleState !== 'undefined') {

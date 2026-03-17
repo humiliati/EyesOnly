@@ -36,10 +36,21 @@
   var SNAP_RADIUS = 32;    // px — how close porthole center must be to snap
   var HIT_RADIUS  = 48;    // px — hit-test radius for node detection
   var HIGHLIGHT_DWELL = 8; // frames cursor must overlap a node before pickup
-  var TETHER_COLOR = 'rgba(212, 168, 67, 0.85)';
-  var TETHER_GLOW  = 'rgba(212, 168, 67, 0.25)';
-  var SNAP_COLOR   = 'rgba(255, 220, 100, 1.0)';
+  // Base tether colors (gold — for night/phosphor/silver/panther palettes)
+  var _BASE_TETHER  = { color: 'rgba(212,168,67,0.85)', glow: 'rgba(212,168,67,0.25)', snap: 'rgba(255,220,100,1.0)' };
+  // Per-palette overrides where gold tether would vanish
+  var _TETHER_PALETTES = {
+    amber: { color: 'rgba(100,180,255,0.85)', glow: 'rgba(100,180,255,0.25)', snap: 'rgba(160,220,255,1.0)' },
+  };
   var INVALID_COLOR = 'rgba(255, 80, 60, 0.5)';
+
+  function _getTetherColors() {
+    var palette = 'night';
+    if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.getPalette) {
+      palette = EyesOnlyStarfield.getPalette();
+    }
+    return _TETHER_PALETTES[palette] || _BASE_TETHER;
+  }
 
   // ── State ────────────────────────────────────────────────
   var _state = 'idle';        // idle | highlighting | hasNode | tethered | resolve
@@ -448,16 +459,18 @@
 
     if (typeof SuitNodeRenderer === 'undefined') return;
 
+    // Resolve palette-aware tether colors once per frame
+    var tc = _getTetherColors();
+
     // ── Highlight ring (before pickup) ──
     if (_state === 'highlighting' && _highlightTarget) {
       var hp = _getNodeScreenPos(_highlightTarget);
       var hPulse = 0.6 + 0.4 * Math.sin(_animTime * 0.15);
       var hRadius = HIT_RADIUS * 0.4 * hPulse;
-      // Progress ring showing dwell
       var progress = Math.min(1, _highlightFrames / HIGHLIGHT_DWELL);
 
       ctx.save();
-      ctx.strokeStyle = SNAP_COLOR;
+      ctx.strokeStyle = tc.snap;
       ctx.lineWidth = 2;
       ctx.globalAlpha = 0.5 + 0.5 * progress;
       ctx.beginPath();
@@ -475,7 +488,7 @@
 
     if (_path.length >= 2) {
       // Glow layer
-      ctx.strokeStyle = TETHER_GLOW;
+      ctx.strokeStyle = tc.glow;
       ctx.lineWidth = 6;
       ctx.beginPath();
       for (var i = 0; i < _path.length; i++) {
@@ -488,8 +501,8 @@
       }
       ctx.stroke();
 
-      // Solid gold line
-      ctx.strokeStyle = TETHER_COLOR;
+      // Solid line
+      ctx.strokeStyle = tc.color;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       for (var j = 0; j < _path.length; j++) {
@@ -510,20 +523,16 @@
         var lx = lastNode.x * W;
         var ly = lastNode.y * H;
 
-        // Tether color: gold normally, bright gold near a snap candidate
-        // Only show red/invalid when angle constraints are active and failing
-        var tetherStyle = TETHER_COLOR;
+        var tetherStyle = tc.color;
         if (_snapCandidate) {
-          tetherStyle = SNAP_COLOR;
+          tetherStyle = tc.snap;
         } else if (_angleConstraintsActive()) {
-          // Show rejection color only when constraints exist
           var rawAngle = _angleBetween(lx, ly, _cursorScreen.x, _cursorScreen.y);
           if (!_isAngleAllowed(rawAngle)) {
             tetherStyle = INVALID_COLOR;
           }
         }
 
-        // Animated dash
         var dashPhase = (_animTime * 0.5) % 20;
         ctx.strokeStyle = tetherStyle;
         ctx.lineWidth = 1.5;
@@ -543,7 +552,7 @@
       var ringPulse = 0.7 + 0.3 * Math.sin(_animTime * 0.1);
       var ringRadius = SNAP_RADIUS * 0.5 * ringPulse;
 
-      ctx.strokeStyle = SNAP_COLOR;
+      ctx.strokeStyle = tc.snap;
       ctx.lineWidth = 1.5;
       ctx.globalAlpha = 0.6 + 0.4 * ringPulse;
       ctx.beginPath();
@@ -566,7 +575,7 @@
         ctx.scale(scale, scale);
         ctx.beginPath();
         ctx.arc(0, 0, 4, 0, Math.PI * 2);
-        ctx.fillStyle = SNAP_COLOR;
+        ctx.fillStyle = tc.snap;
         ctx.globalAlpha = 1 - t * 0.5;
         ctx.fill();
         ctx.restore();
@@ -582,7 +591,7 @@
       if (!pNode || pNode.state === 'forever') continue;
       var pp = { x: pNode.x * W, y: pNode.y * H };
       var dotPulse = 0.5 + 0.5 * Math.sin(_animTime * 0.08 + pi * 1.2);
-      ctx.fillStyle = TETHER_COLOR;
+      ctx.fillStyle = tc.color;
       ctx.globalAlpha = 0.6 + 0.4 * dotPulse;
       ctx.beginPath();
       ctx.arc(pp.x, pp.y, 3, 0, Math.PI * 2);
