@@ -1657,6 +1657,7 @@ var NchOverlay = (function () {
 
       // Phase 8: Initialize constellation subsystems
       if (typeof SuitNodeRenderer !== 'undefined') SuitNodeRenderer.init();
+      if (typeof ConstellationGamestate !== 'undefined') ConstellationGamestate.init();
       if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
       if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
       if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();

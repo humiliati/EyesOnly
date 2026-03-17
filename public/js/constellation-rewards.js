@@ -300,38 +300,19 @@
   // ══════════════════════════════════════════════════════════
   //  5.  AUDIO STACK
   // ══════════════════════════════════════════════════════════
-
-  var _SFX_BASE = '/audio/coin_sfx/'; // relative path on deployed site
-  var _R2_BASE  = null;                // set if R2 CDN configured
-
-  // Check if game has a global audio manager
-  // SFX path map — some sounds live in different encoded folders
-  var _SFX_PATHS = {
-    'coin_rain':          '/encoded_for_r2/coin_sfx/coin_rain',
-    'coin_flip':          '/encoded_for_r2/coin_sfx/coin_flip',
-    'coin_pouch_1':       '/encoded_for_r2/coin_sfx/coin_pouch_1',
-    'clickandrelease-1':  '/encoded_for_r2/new_sfx/clickandrelease-1',
-  };
+  //
+  //  Delegates to AudioSystem (audio-system.js) which resolves
+  //  logical names through /audio/audio-manifest.json and serves
+  //  files from /audio/sfx/ (or R2 CDN in production).
+  //
+  //  Manifest names use hyphens: coin-rain, coin-flip, etc.
 
   function _playSound(name, volume, delay) {
     setTimeout(function () {
       try {
-        var basePath = _SFX_PATHS[name] || ('/encoded_for_r2/coin_sfx/' + name);
-
-        // If a global audio manager exists, prefer it
-        if (typeof EyesOnlyAudio !== 'undefined' && EyesOnlyAudio.play) {
-          EyesOnlyAudio.play(name, volume);
-          return;
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play(name, { volume: volume || 0.5 });
         }
-
-        // Try webm first, fallback mp3
-        var audio = new Audio(basePath + '.webm');
-        audio.volume = Math.min(1, Math.max(0, volume || 0.5));
-        audio.play().catch(function () {
-          var mp3 = new Audio(basePath + '.mp3');
-          mp3.volume = audio.volume;
-          mp3.play().catch(function () {});
-        });
       } catch (e) {
         console.warn('[ConstellationRewards] Audio error:', name, e);
       }
@@ -342,15 +323,16 @@
    * Play the layered audio stack for a resolution event.
    */
   function _playRewardAudio(coinYield, nodeCount) {
+    // Manifest names use hyphens (audio-manifest.json convention)
     //  0 ms — (tether lock is visual-only, no dedicated SFX)
     // 500 ms — coin rain
-    _playSound('coin_rain', 0.45, 500);
+    _playSound('coin-rain', 0.45, 500);
     // 600+ ms — coin flip per star, staggered
     for (var i = 0; i < Math.min(nodeCount, 6); i++) {
-      _playSound('coin_flip', 0.3, 600 + i * 80);
+      _playSound('coin-flip', 0.3, 600 + i * 80);
     }
     // 1200 ms — coin pouch finisher
-    _playSound('coin_pouch_1', 0.55, 1200);
+    _playSound('coin-pouch-1', 0.55, 1200);
     // 1000+ ms — click-release counter ticks
     var ticks = Math.min(Math.ceil(coinYield / 3), 12);
     for (var j = 0; j < ticks; j++) {

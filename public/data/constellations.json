@@ -1,50 +1,98 @@
 {
-  "version": 2,
-  "description": "Constellation definitions for Phase 8 gold lens tracing puzzles. angleConstraints: false (default) = free-form connections. angleConstraints: true = restricted to 12/90/168 degree axes.",
+  "version": 3,
+  "description": "Constellation definitions for Phase 8 gold lens tracing. Levels 1-6 are all-club (amber lens only). Levels are ordered — the gamestate tracks which are solved and serves the next unsolved level.",
   "constellations": [
     {
-      "id": "tutorial-triangle",
+      "id": "level-1-signal",
+      "level": 1,
       "name": "The Signal",
-      "description": "A beginner triangle — three club nodes. The first constellation every agent traces. No angle constraints.",
+      "description": "A beginner triangle — three club nodes. The first constellation every agent traces.",
       "difficulty": "beginner",
       "validation": "shape",
       "angleConstraints": false,
-      "rewardPerNode": 10,
       "nodes": [
-        { "id": "tt-1", "x": 0.44, "y": 0.32, "suit": "club" },
-        { "id": "tt-2", "x": 0.56, "y": 0.32, "suit": "club" },
-        { "id": "tt-3", "x": 0.50, "y": 0.50, "suit": "club" }
+        { "id": "l1-1", "x": 0.44, "y": 0.32, "suit": "club" },
+        { "id": "l1-2", "x": 0.56, "y": 0.32, "suit": "club" },
+        { "id": "l1-3", "x": 0.50, "y": 0.48, "suit": "club" }
       ]
     },
     {
-      "id": "tutorial-diamond-path",
-      "name": "The Intercept",
-      "description": "Four nodes in a diamond shape. Two clubs, two diamonds (need pink lens to transform before gold can connect).",
-      "difficulty": "intermediate",
+      "id": "level-2-chevron",
+      "level": 2,
+      "name": "The Chevron",
+      "description": "A V-shape pointing down — four nodes, trace the path end to end.",
+      "difficulty": "beginner",
+      "validation": "exact",
+      "angleConstraints": false,
+      "nodes": [
+        { "id": "l2-1", "x": 0.32, "y": 0.25, "suit": "club" },
+        { "id": "l2-2", "x": 0.44, "y": 0.45, "suit": "club" },
+        { "id": "l2-3", "x": 0.56, "y": 0.45, "suit": "club" },
+        { "id": "l2-4", "x": 0.68, "y": 0.25, "suit": "club" }
+      ]
+    },
+    {
+      "id": "level-3-diamond",
+      "level": 3,
+      "name": "The Dead Drop",
+      "description": "A diamond shape — four nodes, close the loop to complete.",
+      "difficulty": "beginner",
       "validation": "shape",
       "angleConstraints": false,
-      "rewardPerNode": 15,
       "nodes": [
-        { "id": "dp-1", "x": 0.50, "y": 0.20, "suit": "club" },
-        { "id": "dp-2", "x": 0.62, "y": 0.40, "suit": "diamond" },
-        { "id": "dp-3", "x": 0.50, "y": 0.60, "suit": "club" },
-        { "id": "dp-4", "x": 0.38, "y": 0.40, "suit": "diamond" }
+        { "id": "l3-1", "x": 0.50, "y": 0.22, "suit": "club" },
+        { "id": "l3-2", "x": 0.62, "y": 0.40, "suit": "club" },
+        { "id": "l3-3", "x": 0.50, "y": 0.58, "suit": "club" },
+        { "id": "l3-4", "x": 0.38, "y": 0.40, "suit": "club" }
       ]
     },
     {
-      "id": "tutorial-spade-chain",
-      "name": "The Dead Drop",
-      "description": "Five-node zigzag chain. Three clubs, two spades. Spades need silver lens amplification.",
+      "id": "level-4-arrow",
+      "level": 4,
+      "name": "The Directive",
+      "description": "An arrow pointing right — five nodes. Trace the full path.",
       "difficulty": "intermediate",
       "validation": "exact",
       "angleConstraints": false,
-      "rewardPerNode": 20,
       "nodes": [
-        { "id": "sc-1", "x": 0.30, "y": 0.30, "suit": "club" },
-        { "id": "sc-2", "x": 0.40, "y": 0.50, "suit": "spade" },
-        { "id": "sc-3", "x": 0.50, "y": 0.30, "suit": "club" },
-        { "id": "sc-4", "x": 0.60, "y": 0.50, "suit": "spade" },
-        { "id": "sc-5", "x": 0.70, "y": 0.30, "suit": "club" }
+        { "id": "l4-1", "x": 0.28, "y": 0.40, "suit": "club" },
+        { "id": "l4-2", "x": 0.44, "y": 0.40, "suit": "club" },
+        { "id": "l4-3", "x": 0.60, "y": 0.26, "suit": "club" },
+        { "id": "l4-4", "x": 0.60, "y": 0.54, "suit": "club" },
+        { "id": "l4-5", "x": 0.44, "y": 0.40, "suit": "club" }
+      ]
+    },
+    {
+      "id": "level-5-pentagon",
+      "level": 5,
+      "name": "The Network",
+      "description": "A pentagon — five nodes, close the loop.",
+      "difficulty": "intermediate",
+      "validation": "shape",
+      "angleConstraints": false,
+      "nodes": [
+        { "id": "l5-1", "x": 0.50, "y": 0.20, "suit": "club" },
+        { "id": "l5-2", "x": 0.65, "y": 0.35, "suit": "club" },
+        { "id": "l5-3", "x": 0.59, "y": 0.55, "suit": "club" },
+        { "id": "l5-4", "x": 0.41, "y": 0.55, "suit": "club" },
+        { "id": "l5-5", "x": 0.35, "y": 0.35, "suit": "club" }
+      ]
+    },
+    {
+      "id": "level-6-hexagon",
+      "level": 6,
+      "name": "The Cipher Ring",
+      "description": "A hexagon — six nodes, close the loop. The final all-club constellation.",
+      "difficulty": "intermediate",
+      "validation": "shape",
+      "angleConstraints": false,
+      "nodes": [
+        { "id": "l6-1", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "l6-2", "x": 0.64, "y": 0.28, "suit": "club" },
+        { "id": "l6-3", "x": 0.64, "y": 0.48, "suit": "club" },
+        { "id": "l6-4", "x": 0.50, "y": 0.58, "suit": "club" },
+        { "id": "l6-5", "x": 0.36, "y": 0.48, "suit": "club" },
+        { "id": "l6-6", "x": 0.36, "y": 0.28, "suit": "club" }
       ]
     }
   ]

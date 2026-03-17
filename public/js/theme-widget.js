@@ -42,10 +42,13 @@ const ThemeWidget = (() => {
     document.body.setAttribute('data-theme', themeId);
     try { localStorage.setItem(STORAGE_KEY, themeId); } catch (_) {}
 
-    // Swap starfield palette when white theme activates
+    // Sync starfield palette to theme (skip 'white' — multi-viewport sky swap
+    // is deferred until single-viewport rendering conflicts are resolved)
     if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.isRunning && EyesOnlyStarfield.isRunning()) {
-      const starfieldPalette = (themeId === 'white') ? 'white' : (EyesOnlyStarfield.PALETTES[themeId] ? themeId : 'night');
-      EyesOnlyStarfield.setPalette(starfieldPalette);
+      if (themeId !== 'white') {
+        const starfieldPalette = EyesOnlyStarfield.PALETTES[themeId] ? themeId : 'night';
+        EyesOnlyStarfield.setPalette(starfieldPalette);
+      }
     }
 
     return true;

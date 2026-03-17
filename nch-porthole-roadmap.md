@@ -833,12 +833,13 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 5 — Porthole Reveal Grid | ✅ Shipped (3 zone types, PuzzleState integration, dead attrs cleaned) | Phase 1 + 4 |
 | 6 — Magnifying Glass Repurpose | ⬜ Not started | Phase 5 |
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
-| 8 — Gold Lens Constellation Tracing | 🔧 Core engine shipped (renderer, tracer, loader, lens overlays, card drag wiring) | Phase 5 + 6 |
+| 8 — Gold Lens Constellation Tracing | ✅ Shipped (renderer, tracer, loader, rewards, gamestate, 6 levels, cross-page persistence) | Phase 5 + 6 |
 | 9 — Multi-Lens Suit Transformation | ⬜ Transformation matrix designed (♦→♣, ♠→♣, ♥→♣) | Phase 8 |
 | 10 — Procedural Generation, Cascades & Forever Sky | ⬜ Not started | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
+| 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
 
-**Next up:** Phase 6 (magnifying glass zoom repurpose) → Phase 8 (gold lens constellation tracing with suit-symbol nodes and lens gradients) → Phase 9 (multi-lens suit transformation).
+**Next up:** Phase 12 (trick glasses compound porthole system) → Phase 9 (multi-lens suit transformation).
 
 
 
@@ -913,6 +914,207 @@ Clamped: min 6, max 60.
 - [ ] Ultra-polish: slight constellation plane tilt toward viewer (scaleY 1.05)
 - [ ] Counter UI widget (visual coin counter with pulse animation on settle)
 - [ ] Phase 11: revealed-star bonus wired to multi-suit lens prep system
+
+---
+
+## Phase 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect)
+
+**Status:** ⬜ Spec drafted (2026-03-17)
+**Depends on:** Phase 8 (constellation tracing + gamestate), drag-to-reorder parity
+
+### Concept
+
+Benjamin Franklin invented bifocal glasses by cutting two lenses and combining them. Our "trick glasses" mechanic works the same way: each of the 4 card portholes shows a different slice of the starfield, and when two portholes overlap (drag one card over another's resting position), their combined views reveal something hidden that neither shows alone.
+
+The starfield already does this naturally — each `.starfield-window` canvas blits its screen-space rectangle from the shared master canvas via `getBoundingClientRect()`. Cards at different horizontal positions already see different regions of the sky. The trick is to paint hidden content into the master canvas that is **split across a spatial band** so that it only becomes visible when the right pair of portholes align.
+
+### Core Mechanic: The Reveal Band
+
+A **reveal band** is a horizontal strip (desktop) or vertical strip (mobile) embedded in the starfield master canvas. It contains a hidden image/pattern/message that is intentionally distributed so that:
+
+- No single porthole can see the complete image (it's wider than one porthole)
+- Two specific portholes at the right positions (card order slots) see complementary halves
+- The 4 card slots map to 4 equally-spaced sample points along the band
+- Reordering cards changes which porthole sees which slice
+
+```
+Desktop band (horizontal, ~center Y of viewport):
+
+  slot 0          slot 1          slot 2          slot 3
+  [panther]       [silver]        [amber]         [phosphor]
+     ●───────────────●───────────────●───────────────●
+     │   slice A     │   slice B     │   slice C     │   slice D
+     └───────────────┴───────────────┴───────────────┘
+                    THE REVEAL BAND
+
+Mobile band (vertical, ~center X):
+  Same idea rotated 90°, cards stacked top-to-bottom
+```
+
+### How Overlap Reveals the Hidden Image
+
+When a player drags the amber card (slot 2) and hovers its porthole over the panther card's resting position (slot 0):
+
+1. The **resting** panther porthole shows slice A (its screen position)
+2. The **dragged** amber porthole is now AT slot 0's screen position — it also shows slice A
+3. But amber has a **lens filter** (blue complementary tint via the glowing ring)
+4. The hidden content is painted with a **dual-channel encoding**: half the detail in a color that panther's pink lens reveals, half in a color that amber's blue lens reveals
+5. When both portholes show the same slice with different filters → the image completes
+
+This is a CSS `mix-blend-mode` trick: each porthole canvas gets composited through its lens filter. The hidden image is painted with colors that are invisible under one filter but visible under another.
+
+### Dual-Channel Encoding
+
+Hidden content in the reveal band is painted in two spectral channels:
+
+| Channel    | Visible through | Invisible through | Color             |
+|-----------|----------------|------------------|-------------------|
+| Channel A | Pink lens (panther) | Blue lens (amber) | Cyan-shifted      |
+| Channel B | Blue lens (amber) | Pink lens (panther) | Red-shifted       |
+| Channel C | Amber lens (phosphor) | Silver lens (silver) | Blue-shifted |
+| Channel D | Silver lens (silver) | Amber lens (phosphor) | Warm-shifted |
+
+Half the hidden glyph is painted in Channel A, half in Channel B. Looking through only one lens shows noise/fragments. Both lenses at the same position → complete image.
+
+### Implementation Architecture
+
+#### 1. Reveal Band Renderer (`reveal-band.js`)
+
+New module that paints hidden content into the starfield master canvas via `addPostRenderHook`. Content is loaded from `/data/reveal-bands.json` which defines:
+
+```json
+{
+  "bands": [
+    {
+      "id": "band-1-cipher",
+      "axis": "auto",
+      "y": 0.45,
+      "height": 0.12,
+      "content": {
+        "type": "glyph-pair",
+        "channelA": { "glyphs": "♣▲◆", "color": "rgba(0,200,200,0.08)" },
+        "channelB": { "glyphs": "♠★●", "color": "rgba(200,50,50,0.08)" }
+      },
+      "requiredLenses": ["panther", "amber"],
+      "reward": "cipher-key-1"
+    }
+  ]
+}
+```
+
+The renderer paints glyphs / patterns at very low opacity into the master canvas at the band's Y position, distributed horizontally across the viewport width. Without a lens filter, they're invisible (8% opacity blends into star noise). With the right CSS filter on the porthole, they emerge.
+
+#### 2. Porthole Lens Filters (CSS layer on `.starfield-window`)
+
+Each card's porthole already has a theme-associated lens (via `.porthole-lens-overlay`). For trick glasses, we add a CSS `filter` to the `.starfield-window` canvas itself (not the overlay ring) that shifts the color response:
+
+```css
+/* Applied via JS when card is in "lens mode" (during drag or inspection) */
+.starfield-window.lens-filter-blue   { filter: hue-rotate(180deg) saturate(2); }
+.starfield-window.lens-filter-pink   { filter: hue-rotate(300deg) saturate(2); }
+.starfield-window.lens-filter-amber  { filter: hue-rotate(40deg) saturate(1.5); }
+.starfield-window.lens-filter-silver { filter: contrast(1.3) brightness(1.1); }
+```
+
+These filters amplify one channel while suppressing another, making the dual-encoded hidden content selectively visible.
+
+#### 3. Overlap Detection (`porthole-overlap.js`)
+
+When a dragged card's porthole overlaps a resting card's porthole:
+
+```
+overlap = intersection_area(dragged_porthole_rect, resting_porthole_rect)
+                / min(dragged_area, resting_area)
+```
+
+If overlap > 60%:
+- Fire `porthole-overlap` event with `{ draggedLens, restingLens, overlapPct }`
+- Apply compound filter to the resting card's `.starfield-window`
+- Trigger visual feedback: both glowing rings pulse in sync, brightness surge
+
+If both lenses match a band's `requiredLenses` → the hidden content is fully revealed. Fire `trick-reveal` event → reward.
+
+#### 4. Drag-to-Reorder Standardization
+
+**CRITICAL PREREQUISITE**: The splash-screen drag system must support card reordering (not just drag-to-edge-select). Parity with nch-overlay's `_updateDropGap` system:
+
+- Splash-screen `_updateCardDrag` calls `_updateDropGap(ev.clientX, ev.clientY)`
+- `_updateDropGap` moves placeholder in DOM based on cursor position vs card midpoints
+- `_endCardDrag` inserts card at placeholder position if not edge-dropped
+- Card order persists to `localStorage` via existing `_saveCardOrder` / `_restoreCardOrder`
+
+This is required because card slot position determines which slice of the reveal band each porthole shows. Reordering changes the puzzle.
+
+### Gameplay Flow
+
+1. **Passive discovery:** Player notices faint shapes in one card's porthole while idly looking at the fan. "Is that... something?"
+
+2. **Experimentation:** Player drags cards around, notices the shapes change based on card order. They reorder to put panther leftmost — the shape almost resolves.
+
+3. **The compound moment:** Player picks up the amber card and slowly drags its porthole over the resting panther porthole. Both rings pulse. The hidden glyph completes — a cipher key, a map fragment, a code word.
+
+4. **Reward:** `trick-reveal` event fires. Cipher key unlocks a terminal command or reveal-zone puzzle. Coins awarded. The discovery is persisted in gamestate.
+
+### Actionable Implementation Steps
+
+```
+□ Step 1: Splash-screen drag-to-reorder parity
+    - Port _updateDropGap logic from nch-overlay.js into splash-screen.js
+    - Add placeholder movement during drag
+    - Insert card at placeholder on drop (if not edge-dropped)
+    - Persist new order to localStorage
+    - Wire _saveCardOrder / _restoreCardOrder
+
+□ Step 2: Build reveal-band.js
+    - Post-render hook that paints dual-channel encoded content
+    - Load band definitions from /data/reveal-bands.json
+    - Paint at low opacity (6-10%) so invisible without filter
+    - Content types: glyphs, dot patterns, line fragments
+
+□ Step 3: Build porthole-overlap.js
+    - Track dragged porthole rect vs all resting porthole rects
+    - Calculate overlap percentage per frame
+    - Fire porthole-overlap / porthole-separate events
+    - Threshold: 60% overlap → compound mode
+
+□ Step 4: CSS lens filters on .starfield-window
+    - Per-theme hue-rotate + saturate filters
+    - Applied via class toggle when card is in compound mode
+    - Compound mode: resting card gets BOTH filters stacked
+
+□ Step 5: Compound visual feedback
+    - Both glowing rings pulse in sync when overlap > 60%
+    - Brightness surge on both portholes
+    - Ring color blends to white at 100% overlap
+    - Subtle audio cue (low hum or chime)
+
+□ Step 6: Trick-reveal resolution
+    - When requiredLenses both active at same band position
+    - Hidden content fully visible → fire trick-reveal event
+    - Reward: cipher key / coins / narrative unlock
+    - Persist to gamestate
+
+□ Step 7: Content authoring
+    - Design 3-4 reveal band puzzles
+    - Each requires a different lens pair
+    - Progressive difficulty: obvious → subtle → requires 3+ cards
+```
+
+### File Plan
+
+| File | Purpose |
+|------|---------|
+| `js/reveal-band.js` | Post-render hook: paints dual-channel hidden content into master canvas |
+| `js/porthole-overlap.js` | Overlap detection + compound mode management |
+| `data/reveal-bands.json` | Band definitions (position, content, required lenses, reward) |
+| `css/trick-glasses.css` | Lens filter classes, compound mode visual effects |
+
+### Design Constraints
+
+- **No extra canvases.** The dual-channel content is painted directly into the existing master starfield canvas via post-render hooks. The existing blit pipeline handles everything.
+- **No performance cost at rest.** The reveal band renderer only paints during the post-render hook (already runs every frame). Hidden content is a few dozen fillText/fillRect calls at near-zero opacity.
+- **Mobile-aware.** On mobile, cards stack vertically, so the band axis flips to vertical. Overlap happens when a dragged card moves over a card above/below it in the stack.
+- **Progressive disclosure.** First trick reveals are obvious (large glyphs, high-ish opacity). Later ones are subtle (dot patterns, very low opacity, require precise alignment).
 
 ---
 

@@ -33,6 +33,7 @@ test-*.html
 # (manifest JSON is committed; WAVs are not)
 public/audio/sfx/
 public/audio/music/
+public/audio/coin_sfx/
 encoded_for_r2/
 __MACOSX/
 *.asd

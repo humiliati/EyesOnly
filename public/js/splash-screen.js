@@ -114,6 +114,9 @@ const SplashScreen = (() => {
   const PICKUP_SOUNDS = ['card-pick_up_card_1', 'card-pick_up_card_2', 'card-pick_up_card_3'];
   const PUTDOWN_SOUNDS = ['card-place_card_1', 'card-place_card_2', 'card-place_card_3'];
 
+  var SPLASH_ORDER_KEY = 'EYESONLY_SPLASH_CARD_ORDER_V1';
+  var REORDER_SOUND = 'card-pick_up_card_2';
+
   let splashEl = null;
   let dismissed = false;
   let audioReady = false;
@@ -191,6 +194,86 @@ const SplashScreen = (() => {
         setTimeout(function () { if (suitEl) suitEl.classList.remove('suit-flicker-in'); }, 220);
       }
     }
+  }
+
+  // ── Drag-to-Reorder (ported from nch-overlay) ──────────────
+
+  function _splashUpdateDropGap(clientX, clientY) {
+    if (!_dragState || !_dragState.placeholderEl) return;
+    var fanEl = document.getElementById('splash-card-fan');
+    if (!fanEl) return;
+
+    var isMobile = window.innerWidth < 769;
+    var cards = fanEl.querySelectorAll('.splash-dossier:not(.coin-card-dragging)');
+    var placeholder = _dragState.placeholderEl;
+
+    var insertBefore = null;
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      if (isMobile) {
+        if (clientY < rect.top + rect.height / 2) { insertBefore = cards[i]; break; }
+      } else {
+        if (clientX < rect.left + rect.width / 2) { insertBefore = cards[i]; break; }
+      }
+    }
+
+    var moved = false;
+    if (insertBefore) {
+      if (placeholder.nextElementSibling !== insertBefore) {
+        fanEl.insertBefore(placeholder, insertBefore);
+        moved = true;
+      }
+    } else {
+      var dragging = fanEl.querySelector('.coin-card-dragging');
+      if (dragging) {
+        if (placeholder.nextElementSibling !== dragging) {
+          fanEl.insertBefore(placeholder, dragging);
+          moved = true;
+        }
+      } else if (placeholder !== fanEl.lastElementChild) {
+        fanEl.appendChild(placeholder);
+        moved = true;
+      }
+    }
+
+    if (moved) {
+      _playAudio(REORDER_SOUND, { volume: 0.3 });
+    }
+  }
+
+  function _splashSaveCardOrder() {
+    try {
+      var ids = MISSIONS.map(function (m) { return m.id; });
+      localStorage.setItem(SPLASH_ORDER_KEY, JSON.stringify(ids));
+    } catch (e) {}
+  }
+
+  function _splashRestoreCardOrder() {
+    try {
+      var raw = localStorage.getItem(SPLASH_ORDER_KEY);
+      if (!raw) return;
+      var ids = JSON.parse(raw);
+      if (!Array.isArray(ids) || ids.length !== MISSIONS.length) return;
+      var byId = {};
+      MISSIONS.forEach(function (m) { byId[m.id] = m; });
+      var reordered = [];
+      for (var i = 0; i < ids.length; i++) {
+        if (!byId[ids[i]]) return;
+        reordered.push(byId[ids[i]]);
+      }
+      for (var j = 0; j < reordered.length; j++) {
+        MISSIONS[j] = reordered[j];
+      }
+    } catch (e) {}
+  }
+
+  function _splashReorderMissions(newIdOrder) {
+    var byId = {};
+    MISSIONS.forEach(function (m) { byId[m.id] = m; });
+    for (var i = 0; i < newIdOrder.length; i++) {
+      if (byId[newIdOrder[i]]) MISSIONS[i] = byId[newIdOrder[i]];
+    }
+    _splashSaveCardOrder();
   }
 
   // Per-card wheel state: { groupSize, price }
@@ -1221,6 +1304,9 @@ const SplashScreen = (() => {
       _updateSplashRevealContent(ghost);
     }
 
+    // Drag-to-reorder: move placeholder to nearest gap
+    _splashUpdateDropGap(ev.clientX, ev.clientY);
+
     // Phase 8: Update constellation tracer cursor + ring glow
     _splashUpdateTrace(_dragState.ghostEl);
   }
@@ -1291,10 +1377,30 @@ const SplashScreen = (() => {
       }
     }
 
-    // Dropped within the fan area (not near edge) → return card to slot
+    // Dropped within the fan area (not near edge) → reorder card to placeholder position
+    var fanEl = document.getElementById('splash-card-fan');
+    var cardEl = _dragState.cardEl;
+    var placeholder = _dragState.placeholderEl;
+
+    if (fanEl && cardEl && placeholder && placeholder.parentNode === fanEl) {
+      // Insert card at placeholder position (this is the reorder)
+      fanEl.insertBefore(cardEl, placeholder);
+
+      // Read new order from DOM
+      var newOrder = [];
+      var domCards = fanEl.querySelectorAll('.splash-dossier');
+      domCards.forEach(function (c) { newOrder.push(c.dataset.mission); });
+      _splashReorderMissions(newOrder);
+
+      // Update data-index attributes
+      domCards.forEach(function (c, i) {
+        c.dataset.index = i;
+      });
+    }
+
     _dragState.phase = 'returning';
     _returnGhostToSlot(function () {
-      // Card returns to its fan position — no navigation
+      // Card is now in its new reordered position
     });
   }
 
@@ -1582,6 +1688,7 @@ const SplashScreen = (() => {
 
     // Load card data from external JSON, then build UI
     _loadCardData(function () {
+      _splashRestoreCardOrder();
       splashEl = buildSplash();
       document.body.prepend(splashEl);
       prepareBottomSilhouettes();

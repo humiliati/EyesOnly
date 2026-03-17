@@ -454,6 +454,8 @@
     burnForever:           burnForever,
     markConstellationSolved: markConstellationSolved,
     getForeverPixels:      getForeverPixels,
+    _setForeverPixels:     function (arr) { _foreverPixels = arr; _saveForeverPixels(); },
+    getNodeRadius:         function () { return 8; }, // default node radius for coin sprite sizing
     SUIT_TYPES:            SUIT_TYPES,
   };
 
