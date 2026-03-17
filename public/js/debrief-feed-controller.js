@@ -1310,13 +1310,10 @@ const DebriefFeedController = (function() {
       return;
     }
 
-    var displayTitle = _videoTitle;
-    if (!displayTitle && _isThemeVideo) {
-      var tid = _getCurrentThemeId();
-      displayTitle = (tid || 'THEME').toUpperCase() + ' — LIVE FEED';
-    }
-    var titleBar = displayTitle
-      ? '<div class="vp-title-bar">\u25B6 ' + displayTitle + '</div>'
+    // Title bar only for externally pushed videos (M-console, etc.)
+    // Theme video info goes to the audio widget's now-playing label instead.
+    var titleBar = (_videoTitle && !_isThemeVideo)
+      ? '<div class="vp-title-bar">\u25B6 ' + _videoTitle + '</div>'
       : '';
 
     var themeId = _getCurrentThemeId();
@@ -1326,10 +1323,10 @@ const DebriefFeedController = (function() {
     var html = '<div class="debrief-video-display">';
     html += '<div class="video-player-container">';
     html += titleBar;
-    html += '<video id="debrief-video-el" autoplay playsinline';
+    html += '<video id="debrief-video-el" autoplay playsinline muted';
     if (_isThemeVideo) html += ' loop';
-    // Note: NOT muted in markup — AudioSystem.connectVideoElement() routes audio
-    // through the BGM gain bus. Falls back to silent if AudioSystem isn't loaded.
+    // Start muted for iOS autoplay compliance. AudioSystem.connectVideoElement()
+    // unmutes after routing through Web Audio BGM gain bus.
     html += ' data-audio-track="' + audioTrack + '"';
     html += ' data-audio-sync="' + (_isThemeVideo ? 'true' : 'false') + '"';
     html += ' data-theme="' + themeId + '"';
@@ -1365,9 +1362,20 @@ const DebriefFeedController = (function() {
       // Route video audio through AudioSystem BGM bus
       // mConsoleOverride = true when video was pushed from M console (narrative at 75%)
       var isMConsolePush = _videoTitle && _videoTitle.indexOf('[M]') === 0;
+      // Build now-playing info for the audio widget's track label
+      var nowPlayingInfo = null;
+      if (_isThemeVideo) {
+        var tid = _getCurrentThemeId();
+        nowPlayingInfo = {
+          title: (tid || 'theme').toUpperCase() + ' — LIVE FEED',
+          artist: 'DEBRIEF'
+        };
+      } else if (_videoTitle) {
+        nowPlayingInfo = { title: _videoTitle, artist: 'VIDEO' };
+      }
       try {
         if (typeof AudioSystem !== 'undefined' && AudioSystem.connectVideoElement) {
-          AudioSystem.connectVideoElement(vid, isMConsolePush);
+          AudioSystem.connectVideoElement(vid, isMConsolePush, nowPlayingInfo);
         }
       } catch (e) {}
 

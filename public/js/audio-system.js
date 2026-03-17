@@ -603,11 +603,17 @@ const AudioSystem = (function () {
   }
 
   function getNowPlaying() {
-    if (!_currentMusic) return null;
-    return {
-      title: _currentMusic.title || '',
-      artist: _currentMusic.artist || ''
-    };
+    // Music takes priority; video shows when no music is playing
+    if (_currentMusic) {
+      return {
+        title: _currentMusic.title || '',
+        artist: _currentMusic.artist || ''
+      };
+    }
+    if (_videoNowPlaying) {
+      return _videoNowPlaying;
+    }
+    return null;
   }
 
   function onStateChange(fn) {
@@ -843,16 +849,25 @@ const AudioSystem = (function () {
   // Optional mConsoleOverride: when true, video plays at 75% regardless of user BGM setting.
   var _videoMediaSource = null;
   var _videoElement = null;
+  var _videoNowPlaying = null; // { title, artist } shown in audio widget when video is active
 
-  function connectVideoElement(videoEl, mConsoleOverride) {
+  function connectVideoElement(videoEl, mConsoleOverride, nowPlayingInfo) {
     disconnectVideoElement(); // Clean up any prior connection
     _ensureCtx();
-    if (!_ctx || !_musicGain || !videoEl) return;
+    if (!_ctx || !_musicGain || !videoEl) {
+      // AudioContext not available (no user gesture yet on iOS) —
+      // set now-playing info but leave video muted; audio will be silent.
+      _videoNowPlaying = nowPlayingInfo || null;
+      _videoElement = videoEl;
+      _notify();
+      return;
+    }
     try {
       _videoElement = videoEl;
-      // Unmute the video element (audio comes through Web Audio graph, not element)
+      // Unmute: audio routes through Web Audio graph, not the element speaker
+      // iOS: only works after AudioContext is resumed (requires prior user gesture)
       videoEl.muted = false;
-      videoEl.volume = 1; // Full volume at element level; gain node controls actual level
+      videoEl.volume = 1;
       _videoMediaSource = _ctx.createMediaElementSource(videoEl);
       if (mConsoleOverride) {
         // M-console narrative push: dedicated gain at 75% → master (bypasses user BGM setting)
@@ -865,6 +880,9 @@ const AudioSystem = (function () {
         // Normal: route through music gain (respects BGM slider)
         _videoMediaSource.connect(_musicGain);
       }
+      // Set now-playing info for the audio widget display
+      _videoNowPlaying = nowPlayingInfo || null;
+      _notify(); // Triggers widget re-render with new track info
     } catch (e) {
       console.warn('[AudioSystem] connectVideoElement failed:', e);
     }
@@ -880,6 +898,8 @@ const AudioSystem = (function () {
         _videoMediaSource = null;
       }
       _videoElement = null;
+      _videoNowPlaying = null;
+      _notify(); // Widget re-renders, clears video track info
     } catch (e) {}
   }
 
