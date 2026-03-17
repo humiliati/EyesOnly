@@ -5,29 +5,26 @@
    trace constellations by connecting suit-symbol nodes in the
    starfield.
 
-   The tracer hooks into the starfield post-render pipeline and
-   responds to porthole position updates from NchOverlay's card-
-   drag system.
-
    State Machine:
-     idle  →  hasNode  →  tethered  →  resolve
-       ↑         |            |
-       └─────────┴────────────┘  (cancel / invalid)
+     idle  →  highlighting  →  hasNode  →  tethered  →  resolve
+       ↑           |              |            |
+       └───────────┴──────────────┴────────────┘  (cancel)
 
-   • idle:     No drag active, tracer dormant.
-   • hasNode:  Drag started, porthole overlaps a ♣ node. First
-               node "picked up" — golden tether extends from it
-               toward cursor.
-   • tethered: One or more nodes connected. Live line follows
-               cursor; snaps when cursor approaches a valid node
-               at an allowed angle.
-   • resolve:  Path completes (returns to first node or meets
-               constellation rule). Triggers validation + reward.
+   • idle:         No node under cursor.
+   • highlighting:  Cursor overlaps a ♣ node — node glows, but no
+                    tether yet. Player must dwell briefly OR move
+                    away and back to confirm pickup.
+   • hasNode:      First node committed. A golden tether extends
+                   from it toward the cursor.
+   • tethered:     Two+ nodes connected. Live tether follows cursor
+                   from the last connected node.
+   • resolve:      Path completes — triggers validation + reward.
 
-   Angular constraints (from design doc):
-     Allowed angles: 12°, 90°, 168° and their 180° mirrors
-     (192°, 270°, 348°). ±5° tolerance window. These angles
-     produce the distinctive glyph shapes when connecting nodes.
+   Angular constraints:
+     Per-constellation opt-in. Tutorial / beginner constellations
+     have NO angle constraints — any connection is valid. Advanced
+     procedural constellations enable the angular rule set (12°,
+     90°, 168° + mirrors, ±5° tolerance).
    ============================================================ */
 
 ;(function (root) {
@@ -37,31 +34,33 @@
   var ALLOWED_ANGLES = [12, 90, 168, 192, 270, 348]; // degrees
   var ANGLE_TOLERANCE = 5; // ±degrees
   var SNAP_RADIUS = 32;    // px — how close porthole center must be to snap
-  var HIT_RADIUS  = 40;    // px — hit-test radius for node detection
+  var HIT_RADIUS  = 48;    // px — hit-test radius for node detection
+  var HIGHLIGHT_DWELL = 8; // frames cursor must overlap a node before pickup
   var TETHER_COLOR = 'rgba(212, 168, 67, 0.85)';
   var TETHER_GLOW  = 'rgba(212, 168, 67, 0.25)';
   var SNAP_COLOR   = 'rgba(255, 220, 100, 1.0)';
   var INVALID_COLOR = 'rgba(255, 80, 60, 0.5)';
 
   // ── State ────────────────────────────────────────────────
-  var _state = 'idle';        // idle | hasNode | tethered | resolve
+  var _state = 'idle';        // idle | highlighting | hasNode | tethered | resolve
   var _path = [];             // Array of node IDs in visit order
   var _activeConstellationId = null;
+  var _activeConstellation = null; // cached constellation object
   var _cursorScreen = null;   // { x, y } — current porthole center in screen px
-  var _snapCandidate = null;  // node we're hovering near (valid angle)
+  var _snapCandidate = null;  // node we're hovering near (valid candidate)
   var _unhookFn = null;       // starfield render hook unregister
   var _enabled = false;       // becomes true when gold lens card is being dragged
   var _animTime = 0;          // local animation counter
 
+  // Highlight / dwell state
+  var _highlightTarget = null;  // node being highlighted before pickup
+  var _highlightFrames = 0;     // frames the cursor has dwelled over the target
+
   // Elastic overshoot animation state
-  var _snapAnim = null;       // { nodeId, startTime, fromX, fromY, toX, toY }
+  var _snapAnim = null;       // { nodeId, startTime, x, y }
 
-  // ── Angular Constraint Validation ────────────────────────
+  // ── Angular Constraint Helpers ───────────────────────────
 
-  /**
-   * Calculate angle in degrees from node A → node B (screen coords).
-   * Returns 0–360 range, 0 = right, 90 = down.
-   */
   function _angleBetween(ax, ay, bx, by) {
     var rad = Math.atan2(by - ay, bx - ax);
     var deg = rad * (180 / Math.PI);
@@ -69,9 +68,6 @@
     return deg;
   }
 
-  /**
-   * Check if an angle (degrees) is within tolerance of any allowed angle.
-   */
   function _isAngleAllowed(angleDeg) {
     for (var i = 0; i < ALLOWED_ANGLES.length; i++) {
       var diff = Math.abs(angleDeg - ALLOWED_ANGLES[i]);
@@ -82,21 +78,14 @@
   }
 
   /**
-   * Find the closest allowed angle to a given angle. Returns null if none
-   * within a generous search window (3× tolerance).
+   * Are angle constraints active for the current constellation?
+   * Tutorial/beginner constellations default to NO constraints.
+   * Constellations opt in via `angleConstraints: true` in their def.
    */
-  function _closestAllowedAngle(angleDeg) {
-    var best = null;
-    var bestDiff = ANGLE_TOLERANCE * 3;
-    for (var i = 0; i < ALLOWED_ANGLES.length; i++) {
-      var diff = Math.abs(angleDeg - ALLOWED_ANGLES[i]);
-      if (diff > 180) diff = 360 - diff;
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        best = ALLOWED_ANGLES[i];
-      }
-    }
-    return best;
+  function _angleConstraintsActive() {
+    if (!_activeConstellation) return false;
+    // Explicit opt-in only
+    return _activeConstellation.angleConstraints === true;
   }
 
   // ── Path Helpers ─────────────────────────────────────────
@@ -119,29 +108,36 @@
     };
   }
 
+  /**
+   * Look up the constellation object from SuitNodeRenderer.
+   */
+  function _findConstellation(id) {
+    if (typeof SuitNodeRenderer === 'undefined') return null;
+    var all = SuitNodeRenderer.getConstellations();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id) return all[i];
+    }
+    return null;
+  }
+
   // ── State Machine Transitions ────────────────────────────
 
-  /**
-   * Begin a constellation trace session.
-   * Called when gold lens card drag starts.
-   */
   function beginSession() {
     _state = 'idle';
     _path = [];
     _activeConstellationId = null;
+    _activeConstellation = null;
     _cursorScreen = null;
     _snapCandidate = null;
     _snapAnim = null;
+    _highlightTarget = null;
+    _highlightFrames = 0;
     _enabled = true;
     _animTime = 0;
     console.log('[ConstellationTracer] Session started');
   }
 
-  /**
-   * End the current session (card dropped, cancelled, etc.).
-   */
   function endSession() {
-    // Reset any visited nodes
     if (_path.length > 0 && typeof SuitNodeRenderer !== 'undefined') {
       var cid = _activeConstellationId;
       if (cid) {
@@ -150,21 +146,25 @@
         _path.forEach(function (id) { SuitNodeRenderer.resetNode(id); });
       }
     }
+    // Also unhighlight any target
+    if (_highlightTarget && typeof SuitNodeRenderer !== 'undefined') {
+      SuitNodeRenderer.resetNode(_highlightTarget.id);
+    }
     _state = 'idle';
     _path = [];
     _activeConstellationId = null;
+    _activeConstellation = null;
     _cursorScreen = null;
     _snapCandidate = null;
     _snapAnim = null;
+    _highlightTarget = null;
+    _highlightFrames = 0;
     _enabled = false;
     console.log('[ConstellationTracer] Session ended');
   }
 
   /**
    * Update the cursor (porthole center) position each frame.
-   * This drives the tethering and snap detection.
-   * @param {number} screenX  Porthole center X in screen pixels
-   * @param {number} screenY  Porthole center Y in screen pixels
    */
   function updateCursor(screenX, screenY) {
     if (!_enabled) return;
@@ -172,11 +172,45 @@
 
     if (typeof SuitNodeRenderer === 'undefined') return;
 
-    // ── Idle: detect if cursor is near a ♣ node to pick it up ──
+    // ── Idle: look for a ♣ node to start highlighting ──
     if (_state === 'idle') {
       var hit = SuitNodeRenderer.hitTest(screenX, screenY, HIT_RADIUS, 'club');
       if (hit) {
-        _pickUpNode(hit);
+        // Start highlighting — don't pick up yet
+        _state = 'highlighting';
+        _highlightTarget = hit;
+        _highlightFrames = 0;
+        SuitNodeRenderer.highlightNode(hit.id);
+        console.log('[ConstellationTracer] Highlighting node:', hit.id);
+      }
+      return;
+    }
+
+    // ── Highlighting: dwell to confirm pickup ──
+    if (_state === 'highlighting') {
+      if (!_highlightTarget) { _state = 'idle'; return; }
+
+      // Check if cursor is still over the same node
+      var pos = _getNodeScreenPos(_highlightTarget);
+      var dx = screenX - pos.x;
+      var dy = screenY - pos.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > HIT_RADIUS * 1.2) {
+        // Cursor moved away — cancel highlight
+        SuitNodeRenderer.resetNode(_highlightTarget.id);
+        _highlightTarget = null;
+        _highlightFrames = 0;
+        _state = 'idle';
+        return;
+      }
+
+      _highlightFrames++;
+      if (_highlightFrames >= HIGHLIGHT_DWELL) {
+        // Dwell confirmed — pick up!
+        _pickUpNode(_highlightTarget);
+        _highlightTarget = null;
+        _highlightFrames = 0;
       }
       return;
     }
@@ -188,20 +222,23 @@
   }
 
   /**
-   * Pick up the first node (idle → hasNode).
+   * Pick up the first node (highlighting → hasNode).
    */
   function _pickUpNode(node) {
     _state = 'hasNode';
     _path = [node.id];
     _activeConstellationId = node.constellation;
+    _activeConstellation = _findConstellation(node.constellation);
     SuitNodeRenderer.visitNode(node.id);
     console.log('[ConstellationTracer] Picked up node:', node.id,
-                'constellation:', node.constellation);
+                'constellation:', node.constellation,
+                'angleConstraints:', _angleConstraintsActive());
   }
 
   /**
-   * Evaluate snap: is cursor near a valid ♣ node at an allowed angle
-   * from the last visited node?
+   * Evaluate snap: is cursor near a valid ♣ node?
+   * If angle constraints are active, also checks angle validity.
+   * If angle constraints are off (tutorial), any reachable node snaps.
    */
   function _evaluateSnap(screenX, screenY) {
     var lastId = _lastNodeId();
@@ -212,47 +249,68 @@
 
     var lastPos = _getNodeScreenPos(lastNode);
 
-    // Find nearest connectable node within snap radius
-    var candidate = SuitNodeRenderer.hitTest(screenX, screenY, SNAP_RADIUS, 'club');
+    // Find nearest connectable node within hit radius
+    var candidate = SuitNodeRenderer.hitTest(screenX, screenY, HIT_RADIUS, 'club');
 
     if (!candidate || candidate.id === lastId) {
-      _snapCandidate = null;
+      // Clear previous candidate highlight if we moved away
+      if (_snapCandidate) {
+        if (!_isNodeInPath(_snapCandidate.id)) {
+          SuitNodeRenderer.resetNode(_snapCandidate.id);
+        }
+        _snapCandidate = null;
+      }
       return;
     }
 
     // Don't revisit already-visited nodes (except closing the loop)
     var isClosing = (candidate.id === _path[0] && _path.length >= 3);
     if (_isNodeInPath(candidate.id) && !isClosing) {
+      if (_snapCandidate && _snapCandidate.id !== candidate.id) {
+        SuitNodeRenderer.resetNode(_snapCandidate.id);
+      }
       _snapCandidate = null;
       return;
     }
 
     // Must be in the same constellation
     if (candidate.constellation !== _activeConstellationId) {
+      if (_snapCandidate) {
+        SuitNodeRenderer.resetNode(_snapCandidate.id);
+      }
       _snapCandidate = null;
       return;
     }
 
-    // Angular constraint check
-    var candidatePos = _getNodeScreenPos(candidate);
-    var angle = _angleBetween(lastPos.x, lastPos.y, candidatePos.x, candidatePos.y);
+    // ── Angle constraint check (only if constellation opts in) ──
+    var angleOk = true;
+    if (_angleConstraintsActive()) {
+      var candidatePos = _getNodeScreenPos(candidate);
+      var angle = _angleBetween(lastPos.x, lastPos.y, candidatePos.x, candidatePos.y);
+      angleOk = _isAngleAllowed(angle);
+    }
 
-    if (_isAngleAllowed(angle)) {
-      // Valid snap!
+    if (angleOk) {
+      // Valid candidate — highlight it
       if (!_snapCandidate || _snapCandidate.id !== candidate.id) {
+        // Clear old candidate
+        if (_snapCandidate && !_isNodeInPath(_snapCandidate.id)) {
+          SuitNodeRenderer.resetNode(_snapCandidate.id);
+        }
         _snapCandidate = candidate;
         SuitNodeRenderer.highlightNode(candidate.id);
       }
 
-      // Auto-snap: if cursor is very close, commit the connection
-      var dx = screenX - candidatePos.x;
-      var dy = screenY - candidatePos.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < SNAP_RADIUS * 0.6) {
+      // Auto-snap: commit when porthole center is close enough
+      var cp = _getNodeScreenPos(candidate);
+      var cdx = screenX - cp.x;
+      var cdy = screenY - cp.y;
+      var cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+      if (cdist < SNAP_RADIUS * 0.7) {
         _commitSnap(candidate, isClosing);
       }
     } else {
-      // Angle not allowed — clear candidate
+      // Angle constraint failed — clear candidate, show rejection
       if (_snapCandidate && _snapCandidate.id === candidate.id) {
         SuitNodeRenderer.resetNode(candidate.id);
       }
@@ -267,14 +325,12 @@
     _snapCandidate = null;
 
     if (isClosing) {
-      // Loop closed — resolve!
       _state = 'resolve';
       console.log('[ConstellationTracer] Loop closed! Path:', _path.join(' → '));
       _resolveConstellation();
       return;
     }
 
-    // Add to path
     _path.push(node.id);
     SuitNodeRenderer.visitNode(node.id);
     _state = 'tethered';
@@ -291,31 +347,22 @@
     console.log('[ConstellationTracer] Connected node:', node.id,
                 'Path length:', _path.length);
 
-    // Check if all nodes in constellation are visited (non-loop solve)
+    // Check if all nodes visited (only auto-resolves for path-based validation).
+    // Shape-based constellations require loop closure (drag back to node 1).
     _checkAllNodesVisited();
   }
 
-  /**
-   * Check if every node in the active constellation has been visited.
-   * If so, resolve without needing to close the loop.
-   */
   function _checkAllNodesVisited() {
-    if (!_activeConstellationId || typeof SuitNodeRenderer === 'undefined') return;
+    if (!_activeConstellation) return;
 
-    var constellations = SuitNodeRenderer.getConstellations();
-    var constellation = null;
-    for (var i = 0; i < constellations.length; i++) {
-      if (constellations[i].id === _activeConstellationId) {
-        constellation = constellations[i];
-        break;
-      }
-    }
-    if (!constellation) return;
+    // Shape and rule validation require loop closure — don't auto-resolve
+    var validation = _activeConstellation.validation;
+    if (validation === 'shape' || validation === 'rule') return;
 
-    // Check if all constellation nodes are in path
+    // Exact and euler validation: resolve when all nodes are in path
     var allVisited = true;
-    for (var j = 0; j < constellation.nodeIds.length; j++) {
-      if (!_isNodeInPath(constellation.nodeIds[j])) {
+    for (var j = 0; j < _activeConstellation.nodeIds.length; j++) {
+      if (!_isNodeInPath(_activeConstellation.nodeIds[j])) {
         allVisited = false;
         break;
       }
@@ -331,17 +378,12 @@
   // ── Resolve / Validation ─────────────────────────────────
 
   function _resolveConstellation() {
-    if (!_activeConstellationId || typeof SuitNodeRenderer === 'undefined') return;
-
-    var constellations = SuitNodeRenderer.getConstellations();
-    var constellation = null;
-    for (var i = 0; i < constellations.length; i++) {
-      if (constellations[i].id === _activeConstellationId) {
-        constellation = constellations[i];
-        break;
-      }
+    if (!_activeConstellation || typeof SuitNodeRenderer === 'undefined') {
+      endSession();
+      return;
     }
-    if (!constellation) { endSession(); return; }
+
+    var constellation = _activeConstellation;
 
     // Mark constellation solved
     SuitNodeRenderer.markConstellationSolved(_activeConstellationId);
@@ -349,10 +391,9 @@
     // Burn nodes into forever pixels
     SuitNodeRenderer.burnForever(constellation.nodeIds);
 
-    // Reward: emit coins per node (if CurrencySpawning is available)
+    // Reward: emit coins per node
     var rewardPerNode = constellation.rewardPerNode || 10;
     if (typeof CurrencySpawning !== 'undefined' && CurrencySpawning.scatterPostCombatNodes) {
-      // Staggered burst — 50ms per node for cascade effect
       constellation.nodeIds.forEach(function (id, idx) {
         var node = SuitNodeRenderer.getNodeById(id);
         if (!node) return;
@@ -360,8 +401,7 @@
         setTimeout(function () {
           try {
             CurrencySpawning.scatterPostCombatNodes(
-              pos.x, pos.y,
-              rewardPerNode,
+              pos.x, pos.y, rewardPerNode,
               { burstRadius: 20, fallDuration: 800 }
             );
           } catch (e) {}
@@ -369,7 +409,7 @@
       });
     }
 
-    // Dispatch custom event for other systems to react to
+    // Dispatch custom event
     try {
       var evt = new CustomEvent('constellation-solved', {
         detail: {
@@ -383,22 +423,20 @@
       document.dispatchEvent(evt);
     } catch (e) {}
 
-    console.log('[ConstellationTracer] Constellation solved!',
+    console.log('[ConstellationTracer] ★ Constellation solved!',
                 _activeConstellationId,
                 '| Reward:', rewardPerNode * constellation.nodeIds.length, 'coins');
 
-    // Reset tracer state (but keep enabled for continued dragging)
+    // Reset tracer state (keep enabled for continued dragging)
     _state = 'idle';
     _path = [];
     _activeConstellationId = null;
+    _activeConstellation = null;
     _snapCandidate = null;
     _snapAnim = null;
   }
 
   // ── Render Hook ──────────────────────────────────────────
-  //
-  // Draws tether lines, snap indicators, and connection paths
-  // onto the starfield master canvas each frame.
 
   function _renderHook(hookCtx) {
     if (!_enabled) return;
@@ -408,17 +446,35 @@
     var H = hookCtx.H;
     _animTime = hookCtx.time;
 
-    if (_path.length === 0) return;
     if (typeof SuitNodeRenderer === 'undefined') return;
+
+    // ── Highlight ring (before pickup) ──
+    if (_state === 'highlighting' && _highlightTarget) {
+      var hp = _getNodeScreenPos(_highlightTarget);
+      var hPulse = 0.6 + 0.4 * Math.sin(_animTime * 0.15);
+      var hRadius = HIT_RADIUS * 0.4 * hPulse;
+      // Progress ring showing dwell
+      var progress = Math.min(1, _highlightFrames / HIGHLIGHT_DWELL);
+
+      ctx.save();
+      ctx.strokeStyle = SNAP_COLOR;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.5 + 0.5 * progress;
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, hRadius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (_path.length === 0) return;
 
     // ── Draw committed path segments ──
     ctx.save();
-    ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Glow layer (thicker, translucent)
     if (_path.length >= 2) {
+      // Glow layer
       ctx.strokeStyle = TETHER_GLOW;
       ctx.lineWidth = 6;
       ctx.beginPath();
@@ -432,7 +488,7 @@
       }
       ctx.stroke();
 
-      // Solid line layer
+      // Solid gold line
       ctx.strokeStyle = TETHER_COLOR;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -447,29 +503,28 @@
       ctx.stroke();
     }
 
-    // ── Draw live tether from last node to cursor ──
+    // ── Live tether from last node to cursor ──
     if ((_state === 'hasNode' || _state === 'tethered') && _cursorScreen) {
       var lastNode = SuitNodeRenderer.getNodeById(_lastNodeId());
       if (lastNode) {
         var lx = lastNode.x * W;
         var ly = lastNode.y * H;
 
-        // Determine tether color based on snap validity
+        // Tether color: gold normally, bright gold near a snap candidate
+        // Only show red/invalid when angle constraints are active and failing
         var tetherStyle = TETHER_COLOR;
         if (_snapCandidate) {
           tetherStyle = SNAP_COLOR;
-        } else if (_cursorScreen) {
-          // Check if current angle would be invalid
+        } else if (_angleConstraintsActive()) {
+          // Show rejection color only when constraints exist
           var rawAngle = _angleBetween(lx, ly, _cursorScreen.x, _cursorScreen.y);
-          var closest = _closestAllowedAngle(rawAngle);
-          if (closest === null) {
+          if (!_isAngleAllowed(rawAngle)) {
             tetherStyle = INVALID_COLOR;
           }
         }
 
-        // Animated dash pattern
+        // Animated dash
         var dashPhase = (_animTime * 0.5) % 20;
-
         ctx.strokeStyle = tetherStyle;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([6, 4]);
@@ -500,9 +555,8 @@
     // ── Snap overshoot animation ──
     if (_snapAnim) {
       var elapsed = _animTime - _snapAnim.startTime;
-      if (elapsed < 20) { // ~20 frames of animation
+      if (elapsed < 20) {
         var t = elapsed / 20;
-        // Elastic easeOut
         var p = 0.3;
         var s = p / 4;
         var scale = 1 + Math.pow(2, -10 * t) * Math.sin((t - s) * (2 * Math.PI) / p) * 0.3;
@@ -522,7 +576,7 @@
       }
     }
 
-    // ── Node connection dots (pulse on path nodes) ──
+    // ── Pulsing dots on committed path nodes ──
     for (var pi = 0; pi < _path.length; pi++) {
       var pNode = SuitNodeRenderer.getNodeById(_path[pi]);
       if (!pNode || pNode.state === 'forever') continue;
@@ -577,7 +631,6 @@
     getPath:          getPath,
     isEnabled:        isEnabled,
     getActiveConstellationId: getActiveConstellationId,
-    // Constants exposed for tuning
     ALLOWED_ANGLES:   ALLOWED_ANGLES,
     ANGLE_TOLERANCE:  ANGLE_TOLERANCE,
     SNAP_RADIUS:      SNAP_RADIUS,

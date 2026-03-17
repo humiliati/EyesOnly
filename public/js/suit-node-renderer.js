@@ -51,6 +51,7 @@
       validation: def.validation || 'shape',
       difficulty: def.difficulty || 'beginner',
       rewardPerNode: def.rewardPerNode || 10,
+      angleConstraints: def.angleConstraints === true, // opt-in only
       solved: false,
     };
 

@@ -1,18 +1,19 @@
 {
-  "version": 1,
-  "description": "Constellation definitions for Phase 8 gold lens tracing puzzles",
+  "version": 2,
+  "description": "Constellation definitions for Phase 8 gold lens tracing puzzles. angleConstraints: false (default) = free-form connections. angleConstraints: true = restricted to 12/90/168 degree axes.",
   "constellations": [
     {
       "id": "tutorial-triangle",
       "name": "The Signal",
-      "description": "A beginner triangle — three club nodes at 90° angles. The first constellation every agent traces.",
+      "description": "A beginner triangle — three club nodes. The first constellation every agent traces. No angle constraints.",
       "difficulty": "beginner",
       "validation": "shape",
+      "angleConstraints": false,
       "rewardPerNode": 10,
       "nodes": [
-        { "id": "tt-1", "x": 0.42, "y": 0.35, "suit": "club" },
-        { "id": "tt-2", "x": 0.58, "y": 0.35, "suit": "club" },
-        { "id": "tt-3", "x": 0.50, "y": 0.55, "suit": "club" }
+        { "id": "tt-1", "x": 0.44, "y": 0.32, "suit": "club" },
+        { "id": "tt-2", "x": 0.56, "y": 0.32, "suit": "club" },
+        { "id": "tt-3", "x": 0.50, "y": 0.50, "suit": "club" }
       ]
     },
     {
@@ -21,6 +22,7 @@
       "description": "Four nodes in a diamond shape. Two clubs, two diamonds (need pink lens to transform before gold can connect).",
       "difficulty": "intermediate",
       "validation": "shape",
+      "angleConstraints": false,
       "rewardPerNode": 15,
       "nodes": [
         { "id": "dp-1", "x": 0.50, "y": 0.20, "suit": "club" },
@@ -32,9 +34,10 @@
     {
       "id": "tutorial-spade-chain",
       "name": "The Dead Drop",
-      "description": "Five-node zigzag chain. Three clubs, two spades. Spades need silver lens amplification before gold can connect.",
+      "description": "Five-node zigzag chain. Three clubs, two spades. Spades need silver lens amplification.",
       "difficulty": "intermediate",
       "validation": "exact",
+      "angleConstraints": false,
       "rewardPerNode": 20,
       "nodes": [
         { "id": "sc-1", "x": 0.30, "y": 0.30, "suit": "club" },
