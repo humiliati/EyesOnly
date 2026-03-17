@@ -847,6 +847,52 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 
 ---
 
+## Per-Theme Porthole Lens Effects — Refined Spec (Phase 8.3)
+
+**Status:** ✅ Shipped (2026-03-17)
+**File:** `public/css/nch-overlay.css` (lines 450–620)
+
+Each card uses a visually distinct lens technology, reinforcing the fiction that each card is a different piece of spy equipment. All lenses share the same `.porthole-lens-overlay` base positioning (82% width, centered, border-radius 50%, z-index 2, pointer-events none, transparent interior). They differ in border, box-shadow, pseudo-elements, and animation.
+
+| Card      | Theme    | Suit | Lens Class   | Technology                              | Inspiration                    |
+|-----------|----------|------|-------------|----------------------------------------|-------------------------------|
+| Scenario 1 | Silver  | ♠    | lens-silver | Fine glass aperture — iris blade lines, mechanical open anim | Camera lens / bifocal glass    |
+| Scenario 2 | Amber   | ♣    | lens-blue   | Warm neon glow ring — multi-layer box-shadow, pulsing size   | tender-dolphin-38 (uiverse.io) |
+| Partners   | Phosphor | ♥    | lens-amber  | Vortex pull — concentric rings collapsing inward             | polite-earwig-72 (uiverse.io)  |
+| Arcade     | Panther  | ♦    | lens-pink   | Spinning gradient halo — conic-gradient rotation + hue cycle | lovely-fox-17 (uiverse.io)     |
+
+### Silver (♠) — Fine Glass Aperture
+- Thin 1px concentric ring lines via box-shadow (no blur, crisp edges)
+- `::before` pseudo: `repeating-conic-gradient` iris blade pattern, masked to outer rim only
+- Iris opens on drag start via `silver-iris-open` keyframe (scale 0.92→1.0, rotate 0→8deg)
+- Breathe: slow 4s cycle, very subtle opacity 0.6–0.85 (mechanical precision)
+
+### Amber (♣) — Warm Neon Glow Ring
+- 5-layer box-shadow (2 inset, 3 outset) in complementary blue
+- Breathe animation pulses box-shadow spread as well as opacity/brightness
+- Tracing mode: faster 1.8s cycle, brightness up to 1.35×
+
+### Phosphor (♥) — Vortex Pull
+- `::before` and `::after` pseudo-elements are concentric ring circles
+- Both animate `vortex-ring-outer/inner`: scale down from 1.15→0.85 while fading, staggered 0.4s
+- Creates the illusion of rings being pulled inward (gravitational / black hole)
+- Green phosphor color (#33ff33) at low opacity
+
+### Panther (♦) — Spinning Gradient Halo
+- `conic-gradient` background cycling through all 4 theme hues (pink→purple→cyan→green→amber→pink)
+- Masked to rim-only via `radial-gradient` mask (transparent 80%, black 88%)
+- `panther-spin`: continuous 2.4s rotation
+- `panther-hue`: 6s hue-rotate cycle (0→60→0 degrees) for color shifting
+- Tracing: spin speeds up to 1.4s, hue range widens to 90deg
+
+### JS Integration
+- `--ring-vel` CSS custom property driven by drag velocity (1.0–1.35)
+- All animations compose brightness via `calc(base * var(--ring-vel))`
+- `.ring-pulse` class fires `ring-flare` animation on node snap events
+- `.lens-tracing` class upgrades to faster/brighter per-theme animation
+
+---
+
 ## Constellation Resolution & Yield Economy — Refined Spec (Phase 8.5)
 
 **Status:** ✅ constellation-rewards.js shipped (2026-03-17)
