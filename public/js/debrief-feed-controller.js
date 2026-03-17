@@ -46,15 +46,12 @@ const DebriefFeedController = (function() {
   };
 
   /**
-   * Get the current theme's default video URL.
+   * Get the current theme's video sources {webm, mp4}.
    * Reads from body[data-theme] or localStorage fallback.
    */
-  function _getThemeVideoUrl() {
-    var theme = document.body.getAttribute('data-theme') || 'phosphor';
-    try { if (!theme || theme === 'null') theme = localStorage.getItem('eyesonly_theme') || 'phosphor'; } catch (_) {}
-    var src = THEME_VIDEO_MAP[theme];
-    if (!src) return null;
-    return src.webm || src.mp4 || null;
+  function _getThemeVideoSources() {
+    var theme = _getCurrentThemeId();
+    return THEME_VIDEO_MAP[theme] || null;
   }
 
   function _getCurrentThemeId() {
@@ -1317,19 +1314,29 @@ const DebriefFeedController = (function() {
       ? '<div class="vp-title-bar">\u25B6 ' + _videoTitle + '</div>'
       : '';
 
+    var themeId = _getCurrentThemeId();
+    var audioTrack = THEME_AUDIO_MAP[themeId] || '';
+    var themeSrc = _isThemeVideo ? _getThemeVideoSources() : null;
+
     var html = '<div class="debrief-video-display">';
     html += '<div class="video-player-container">';
     html += titleBar;
-    var themeId = _getCurrentThemeId();
-    var audioTrack = THEME_AUDIO_MAP[themeId] || '';
     html += '<video id="debrief-video-el" autoplay playsinline';
     if (_isThemeVideo) html += ' muted loop';
-    // Audio-to-video sync tags (belt + suspenders: data-* for DOM, config for JS)
     html += ' data-audio-track="' + audioTrack + '"';
     html += ' data-audio-sync="' + (_isThemeVideo ? 'true' : 'false') + '"';
     html += ' data-theme="' + themeId + '"';
-    html += ' src="' + _videoUrl + '"';
-    html += '></video>';
+    html += '>';
+    // Use <source> tags with type hints — browser picks first playable format
+    // (matches splash-screen pipeline for cross-browser compatibility)
+    if (themeSrc) {
+      if (themeSrc.webm) html += '<source src="' + themeSrc.webm + '" type="video/webm">';
+      if (themeSrc.mp4)  html += '<source src="' + themeSrc.mp4 + '" type="video/mp4">';
+    } else if (_videoUrl) {
+      // Non-theme video (external push) — single src fallback
+      html += '<source src="' + _videoUrl + '">';
+    }
+    html += '</video>';
     html += '</div>';
     html += '</div>';
 
@@ -1465,11 +1472,11 @@ const DebriefFeedController = (function() {
       // Bail if splash is still open
       if (document.getElementById('splash-screen')) return;
 
-      var videoUrl = _getThemeVideoUrl();
-      if (!videoUrl) return;
+      var src = _getThemeVideoSources();
+      if (!src) return;
 
       _isThemeVideo = true;
-      setVideoPlaying(true, videoUrl, null);
+      setVideoPlaying(true, src.webm || src.mp4 || 'theme', null);
     }, 3000);
   }
 
@@ -1487,10 +1494,10 @@ const DebriefFeedController = (function() {
       // Something else is playing — override with theme video
       setVideoPlaying(false);
     }
-    var url = _getThemeVideoUrl();
-    if (!url) return;
+    var src = _getThemeVideoSources();
+    if (!src) return;
     _isThemeVideo = true;
-    setVideoPlaying(true, url, null);
+    setVideoPlaying(true, src.webm || src.mp4 || 'theme', null);
   }
 
   /**
@@ -1567,8 +1574,8 @@ const DebriefFeedController = (function() {
     } else {
       playIcon.textContent = '\u25B6'; // ▶
       if (playBtn) playBtn.title = 'Play theme video';
-      stopIcon.textContent = '\u25B6'; // ▶ (acts as "start default" when stopped)
-      if (stopBtn) stopBtn.title = 'Play default video';
+      stopIcon.textContent = '\u25A0'; // ■ (always stop icon)
+      if (stopBtn) stopBtn.title = 'Stop / return to MOK';
     }
   }
 
@@ -1599,6 +1606,8 @@ const DebriefFeedController = (function() {
       _videoUrl = null;
       _videoTitle = null;
       _isThemeVideo = false;
+      // Restore display to the mode's default so _render picks up MOK/resources
+      _currentDisplay = _currentMode ? _currentMode.defaultDisplay : 'mok';
     }
     // Auto-maximize debrief when video is pushed (any orientation)
     // Theme ambient video does NOT auto-maximize — it plays in normal size
