@@ -2,35 +2,43 @@
    Tooltip System - MOK Interjection with Scrollable History
    ============================================================ */
 
-/* MOK History Toggle Button — stays in footer row always */
+/* MOK History Toggle — console hyperlink style */
 .mok-history-toggle {
-  display: inline-block;
-  float: right;
-  background: var(--theme-primary-glow);
-  border: 1px solid var(--theme-panel-border);
-  color: var(--theme-primary);
-  font-family: var(--theme-font-data, 'Consolas', 'Courier New', monospace);
-  font-size: 10px;
-  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--theme-panel-border, rgba(51,255,51,0.2));
+  border-radius: 2px;
+  box-shadow: none;
+  font-family: var(--theme-font-data, "Courier New", Consolas, monospace);
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: var(--theme-primary, var(--phosphor-dim, #1a9c1a));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--theme-primary, var(--phosphor-dim, #1a9c1a));
+  padding: 1px 6px;
   margin: 0;
   margin-left: 8px;
   cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.2s ease;
+  opacity: 0.85;
+  float: right;
+  transition: opacity 0.15s, color 0.15s;
   line-height: 1.4em;
   position: relative;
-  z-index: 9002; /* above the history panel */
+  z-index: 9002;
 }
 
 .mok-history-toggle:hover {
-  background: var(--theme-primary-glow);
-  border-color: var(--theme-primary);
-  box-shadow: 0 0 8px var(--theme-panel-border);
+  opacity: 1;
+  color: var(--theme-primary-bright, var(--phosphor, #33ff33));
+  background: transparent;
+  box-shadow: none;
 }
 
 .mok-history-toggle:active {
-  background: var(--theme-panel-border);
-  transform: scale(0.98);
+  opacity: 0.7;
+  background: transparent;
+  box-shadow: none;
 }
 
 /* ============================================================

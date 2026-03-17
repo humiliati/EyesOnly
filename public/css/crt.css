@@ -250,10 +250,7 @@ body.gone-rogue-active #scanlines::after {
   border: 1px solid rgba(100, 88, 50, 0.18);
   border-radius: 10px;
   padding: 10px;
-  box-shadow:
-    inset 0 0 12px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(180, 160, 100, 0.04),
-    0 0 14px rgba(0, 255, 90, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.38) 0px 0px 10px 0px inset;
   min-height: 0;
   position: relative;
   z-index: 20;
@@ -551,7 +548,7 @@ body.in-gone-rogue .debrief-window.expanded {
   border: 1px solid var(--panel-border-soft);
   border-radius: 10px;
   padding: 10px;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(0, 0, 0, 0.15);
+  box-shadow: rgba(0, 0, 0, 0.38) 0px 0px 12px 0px inset;
   display: flex;
   flex-direction: column;
 }
@@ -1446,32 +1443,33 @@ body.gone-rogue-active .mok-header-nav {
 
 
 #mok-interjections {
-  background: linear-gradient(135deg, rgba(6, 14, 9, 0.92), rgba(4, 9, 6, 0.96));
-  border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 0 10px rgba(0, 255, 90, 0.06);
+  background: var(--theme-panel-bg, rgba(8, 12, 8, 0.95));
+  background-image: none;
+  border: 1px solid var(--theme-panel-border, rgba(51,255,51,0.15));
+  border-radius: 10px;
+  padding: 3px 10px;
+  min-height: 0;
+  box-shadow: rgba(0, 0, 0, 0.38) 0px 0px 10px 0px inset;
+  overflow: hidden;
 }
 
 .interject-label {
-  font-size: 0.75em;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--phosphor-dim);
-  margin-bottom: 3px;
+  display: none; /* hidden to reduce MOK bar height */
 }
 
 .interject-body {
-  color: var(--phosphor);
-  min-height: 1.4em;
-  text-shadow: 0 0 var(--glow-spread) var(--phosphor-glow);
+  color: var(--theme-primary, var(--phosphor));
+  min-height: 1.2em;
+  text-shadow: 0 0 var(--glow-spread) var(--theme-primary-glow, var(--phosphor-glow));
   display: inline-block;
   max-width: calc(100% - 100px);
+  font-size: 0.82em;
+  line-height: 1.3;
 }
 
 /* MOK Footer Controls - Card Button */
 .mok-footer-controls {
-  margin-top: 8px;
+  margin-top: 1px;
   display: flex;
   justify-content: flex-end;
   gap: 6px;
@@ -4821,3 +4819,225 @@ body.cascade-active {
 
 /* Tighten log-column to mok-interjections footer gap */
 #log-column { gap: 2px; }
+
+
+/* ============================================================
+   EASTER EGG WHITE THEME — Structural Overrides
+   White plastic/rubber shell. Monitor screens stay native.
+   ============================================================ */
+
+/* ── CRT SHELL & BODY → white plastic ── */
+body[data-theme="white"] #crt-screen,
+body[data-theme="white"] #crt-frame,
+body[data-theme="white"] #monitor-shell,
+body[data-theme="white"] #monitor-body {
+  background: #e8eaeb;
+  border-color: #b0b8be;
+  box-shadow: 0 0 0 3px #ccd0d4, 0 8px 40px rgba(0,0,0,0.18);
+}
+
+/* Suppress CRT effects */
+body[data-theme="white"] #phosphor-glow,
+body[data-theme="white"] #scanlines,
+body[data-theme="white"] #vignette {
+  opacity: 0;
+  display: none;
+}
+
+/* Suppress the ::before dark vignette overlay */
+body[data-theme="white"] #crt-screen::before {
+  box-shadow: none;
+  background: none;
+  display: none;
+}
+
+/* ── PAGE BACKGROUND ── */
+body[data-theme="white"] {
+  background: #d4d8dc;
+}
+
+/* ── MONITOR HEADER BAR → white plastic ── */
+body[data-theme="white"] #mok-header.monitor-header,
+body[data-theme="white"] .monitor-header {
+  background: #f5f5f5;
+  border-bottom: 1.5px solid #c8ced4;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  color: #2a2a2a;
+}
+
+/* ── WHITE PLASTIC BUTTON BASE (UIverse fast-puma-20 inspired) ── */
+body[data-theme="white"] .header-chip.header-nav-btn,
+body[data-theme="white"] .header-chip.accountability-indicator,
+body[data-theme="white"] #control-rail button:not(.audio-btn):not(.audio-mute-toggle) {
+  background: #ccd0d4;
+  color: #2a2e33;
+  border: none;
+  border-radius: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: "Courier New", Consolas, monospace;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  box-shadow:
+    inset 0 0 18px 3px rgba(0, 0, 0, 0.14),
+    inset 0 2px 1px 1px rgba(255, 255, 255, 0.92),
+    inset 0 -2px 1px 0 rgba(0, 0, 0, 0.18),
+    0 1px 4px rgba(0,0,0,0.10);
+  transition: all 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Glow orb pseudo-element */
+body[data-theme="white"] .header-chip.header-nav-btn::before,
+body[data-theme="white"] .header-chip.accountability-indicator::before,
+body[data-theme="white"] #control-rail button:not(.audio-btn):not(.audio-mute-toggle)::before {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 5px #fff;
+  opacity: 0.18;
+  width: 60%;
+  height: 60%;
+  left: 50%;
+  top: 50%;
+  margin-left: -30%;
+  margin-top: -30%;
+  pointer-events: none;
+}
+
+/* Hover — lifted white plastic */
+body[data-theme="white"] .header-chip.header-nav-btn:hover,
+body[data-theme="white"] .header-chip.accountability-indicator:hover,
+body[data-theme="white"] #control-rail button:not(.audio-btn):not(.audio-mute-toggle):hover {
+  background: #dce0e4;
+  color: #111;
+  box-shadow:
+    inset 0 0 18px 3px rgba(0, 0, 0, 0.10),
+    inset 0 2px 1px 1px rgba(255, 255, 255, 0.98),
+    inset 0 -2px 1px 0 rgba(0, 0, 0, 0.12),
+    0 2px 10px rgba(0,0,0,0.15),
+    0 0 0 1.5px rgba(255,255,255,0.7);
+  transform: translateY(-1px);
+}
+
+/* Active/pressed — deep push */
+body[data-theme="white"] .header-chip.header-nav-btn:active,
+body[data-theme="white"] .header-chip.accountability-indicator:active,
+body[data-theme="white"] #control-rail button:not(.audio-btn):not(.audio-mute-toggle):active {
+  background: #b8bec4;
+  box-shadow:
+    0 15px 25px -4px rgba(0, 0, 0, 0.3),
+    inset 0 -8px 30px 1px rgba(255, 255, 255, 0.7),
+    0 -6px 10px -1px rgba(255, 255, 255, 0.5),
+    inset 0 8px 25px 0 rgba(0, 0, 0, 0.28),
+    inset 0 0 10px 1px rgba(255, 255, 255, 0.5);
+  transform: translateY(1px);
+}
+
+/* Header nav sizing */
+body[data-theme="white"] .header-chip.header-nav-btn {
+  padding: 5px 12px;
+  font-size: 11px;
+}
+
+/* ── CONTROL RAIL → white plastic sidebar ── */
+body[data-theme="white"] #control-rail {
+  background: #eaecee;
+  border-right: 1.5px solid #c8ced4;
+}
+
+body[data-theme="white"] #control-rail button:not(.audio-btn):not(.audio-mute-toggle) {
+  width: calc(100% - 12px);
+  margin: 3px 6px;
+  padding: 8px 6px;
+  font-size: 12px;
+  display: block;
+}
+
+/* Audio controls — subtle light treatment */
+body[data-theme="white"] #control-rail .audio-btn,
+body[data-theme="white"] #control-rail .audio-mute-toggle {
+  background: #dde0e3;
+  color: #444;
+  border: 1px solid #bcc0c5;
+}
+
+/* Kernel (locked/disabled) */
+body[data-theme="white"] .kernel-btn[disabled],
+body[data-theme="white"] .kernel-btn:disabled {
+  background: #d8dadc;
+  color: #9aa0a6;
+  box-shadow:
+    inset 0 0 10px 2px rgba(0,0,0,0.08),
+    inset 0 1px 1px rgba(255,255,255,0.6);
+  cursor: not-allowed;
+}
+
+/* ── DEBRIEF FRAME → white plastic bezel ── */
+body[data-theme="white"] .debrief-window {
+  background: #e0e3e6;
+  border: 1.5px solid #b8bec4;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 18px 3px rgba(0, 0, 0, 0.10),
+    inset 0 2px 1px 1px rgba(255, 255, 255, 0.92),
+    inset 0 -2px 1px 0 rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0,0,0,0.12);
+}
+
+body[data-theme="white"] .debrief-window .debrief-label {
+  color: #4a5260;
+  letter-spacing: 0.12em;
+}
+
+/* .debrief-screen (inner video monitor) — intentionally NOT overridden */
+
+/* ── LOG-COLUMN FRAME → white plastic bezel ── */
+body[data-theme="white"] #log-column .log-frame {
+  background: #e0e3e6;
+  border: 1.5px solid #b8bec4;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 20px 4px rgba(0, 0, 0, 0.10),
+    inset 0 2px 1px 1px rgba(255, 255, 255, 0.92),
+    inset 0 -2px 1px 0 rgba(0, 0, 0, 0.14),
+    0 2px 10px rgba(0,0,0,0.12);
+}
+
+body[data-theme="white"] #log-column {
+  background: transparent;
+  border: none;
+}
+
+/* #terminal (inner monitor) — intentionally NOT overridden */
+
+/* ── MOK INTERJECTIONS → white plastic panel ── */
+body[data-theme="white"] #mok-interjections {
+  background: #e0e3e6;
+  background-image: none;
+  border: 1.5px solid #b8bec4;
+  box-shadow:
+    inset 0 0 18px 3px rgba(0, 0, 0, 0.10),
+    inset 0 -2px 1px 0 rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0,0,0,0.08);
+}
+
+body[data-theme="white"] .mok-history-toggle {
+  color: #3a4a5a;
+  border-color: #9aa6b2;
+  text-decoration-color: #3a4a5a;
+}
+
+body[data-theme="white"] .interject-body {
+  color: #2a3a4a;
+  text-shadow: none;
+}
+
+/* ── HISTORY BUTTON → white console hyperlink ── */
+body[data-theme="white"] .mok-history-toggle {
+  padding: 3px 10px;
+  font-size: 10px;
+  border-radius: 4px;
+}

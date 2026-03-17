@@ -1307,11 +1307,28 @@ var NchOverlay = (function () {
     }
     if (!mission) return;
 
-    // Apply theme
+    // Easter egg: if amber (scenario-2) is in the last card position
+    // and partner card is selected, activate white theme
     var selectedTheme = THEME_MAP[missionId] || 'phosphor';
-    document.body.setAttribute('data-theme', selectedTheme);
-    document.documentElement.setAttribute('data-theme', selectedTheme);
-    try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (e) {}
+    var lastMission = MISSIONS.length > 0 ? MISSIONS[MISSIONS.length - 1] : null;
+    if (missionId === 'partner' && lastMission && lastMission.id === 'scenario-2') {
+      selectedTheme = 'white';
+    }
+
+    // Apply theme (use ThemeWidget if available for starfield palette sync)
+    if (typeof ThemeWidget !== 'undefined' && ThemeWidget.apply) {
+      ThemeWidget.apply(selectedTheme);
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+    } else {
+      document.body.setAttribute('data-theme', selectedTheme);
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+      try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (e) {}
+      // Sync starfield palette manually if ThemeWidget not loaded
+      if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.isRunning && EyesOnlyStarfield.isRunning()) {
+        var sfPalette = (selectedTheme === 'white') ? 'white' : (EyesOnlyStarfield.PALETTES[selectedTheme] ? selectedTheme : 'night');
+        EyesOnlyStarfield.setPalette(sfPalette);
+      }
+    }
 
     // Persist wheel state for booking page pre-fill
     if (_cardState[missionId]) {

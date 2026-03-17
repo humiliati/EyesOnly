@@ -322,3 +322,90 @@ body[data-theme="panther"],
   --theme-glow-spread:      5px;
   --theme-vignette-color:   rgba(10, 6, 10, 0.45);
 }
+
+
+/* ============================================================
+   THEME 4 — WHITE (Easter Egg)
+   Hidden theme: waterproof submarine terminal designed by Apple.
+   White plastic/rubber shell with matte inset shadows.
+   Monitor screens (log-column, debrief, MOK) stay native phosphor.
+   Unlocked via easter egg: drag amber coin to bottom → Join Now.
+   ============================================================ */
+body[data-theme="white"],
+.splash-dossier[data-card-theme="white"] {
+  --theme-primary:          #4a5a6a;
+  --theme-primary-dim:      #6a7a8a;
+  --theme-primary-bright:   #2a3a4a;
+  --theme-primary-glow:     rgba(74, 90, 106, 0.08);
+  --theme-secondary:        #7a8a9a;
+  --theme-secondary-dim:    #5a6a7a;
+  --theme-bg:               #d4d8dc;
+  --theme-bg-screen:        #e0e3e6;
+  --theme-panel-bg:         #e8eaeb;
+  --theme-panel-border:     rgba(176, 184, 190, 0.6);
+  --theme-suit-color:       rgba(74, 90, 106, 0.65);
+
+  /* Coin rims — brushed aluminum */
+  --theme-border-outer:     linear-gradient(160deg, #c8ccd0 0%, #dce0e4 15%, #b0b8be 30%, #c8ccd0 50%, #dce0e4 70%, #b0b8be 85%, #a0a8ae 100%);
+  --theme-border-outer-hover: linear-gradient(140deg, #d8dce0 0%, #ccd0d4 12%, #b8bcc0 35%, #c4c8cc 55%, #a8b0b6 80%, #98a0a6 100%);
+  --theme-border-inner:     linear-gradient(175deg, #e0e3e6 0%, #d8dce0 25%, #e0e3e6 50%, #dce0e4 75%, #d4d8dc 100%);
+  --theme-border-inner-hover: linear-gradient(175deg, #e8eaed 0%, #e0e4e8 25%, #e8eaed 50%, #e4e8ec 75%, #dce0e4 100%);
+
+  /* Card face — matte white plastic */
+  --theme-face-gradient:    linear-gradient(175deg, #e8eaeb 0%, #dce0e4 20%, #e0e3e6 40%, #d8dce0 70%, #d4d8dc 100%);
+  --theme-face-back:        linear-gradient(175deg, #d4d8dc 0%, #dce0e4 35%, #d0d4d8 65%, #c8ccd0 100%);
+
+  /* Text hierarchy — dark ink on white */
+  --theme-text-classified:  rgba(42, 46, 51, 0.55);
+  --theme-text-label:       rgba(58, 74, 90, 0.75);
+  --theme-text-title:       rgba(42, 46, 51, 0.90);
+  --theme-text-desc:        rgba(58, 74, 90, 0.70);
+  --theme-text-book-label:  rgba(42, 46, 51, 0.90);
+  --theme-text-book-dot:    rgba(100, 112, 124, 0.40);
+  --theme-text-book-dur:    rgba(58, 74, 90, 0.75);
+  --theme-text-wheel-val:   rgba(42, 46, 51, 0.90);
+  --theme-text-wheel-ctx:   rgba(74, 90, 106, 0.70);
+  --theme-text-tag:         rgba(58, 74, 90, 0.70);
+
+  /* Button — white plastic */
+  --theme-btn-border:       rgba(176, 184, 190, 0.35);
+  --theme-btn-bg:           linear-gradient(175deg, rgba(204, 208, 212, 0.95) 0%, rgba(220, 224, 228, 0.98) 50%, rgba(204, 208, 212, 0.95) 100%);
+  --theme-btn-bg-hover:     linear-gradient(175deg, rgba(220, 224, 228, 0.98) 0%, rgba(232, 234, 236, 1) 50%, rgba(220, 224, 228, 0.98) 100%);
+
+  /* Hover — subtle cool shadows */
+  --theme-hover-highlight:  rgba(42, 46, 51, 0.10);
+  --theme-hover-accent:     rgba(74, 90, 106, 0.06);
+  --theme-hover-glow:       rgba(74, 90, 106, 0.03);
+  --theme-hover-ring:       rgba(120, 130, 140, 0.12);
+
+  --theme-ring-tint:        rgba(74, 90, 106, 0.008);
+
+  /* Typography — clean sans-influenced mono */
+  --theme-font-display:     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+  --theme-font-body:        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  --theme-font-data:        'SF Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
+
+  /* Metal frame — brushed aluminum */
+  --metal-frame-bg:         linear-gradient(180deg, #e0e3e6 0%, #d4d8dc 40%, #ccd0d4 100%);
+  --metal-frame-border:     linear-gradient(160deg, #b0b8be, #c8ccd0 30%, #a0a8ae 60%, #b8bcc0);
+  --metal-frame-border-b:   #a0a8ae;
+  --metal-frame-highlight:  rgba(255, 255, 255, 0.25);
+  --metal-frame-text:       rgba(42, 46, 51, 0.75);
+  --metal-frame-text-dim:   rgba(74, 90, 106, 0.55);
+  --metal-frame-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+
+  /* Form fields — light recessed */
+  --field-bg:               rgba(255, 255, 255, 0.7);
+  --field-border:           rgba(176, 184, 190, 0.5);
+  --field-border-focus:     rgba(74, 90, 106, 0.6);
+  --field-glow-focus:       rgba(74, 90, 106, 0.08);
+  --field-text:             rgba(42, 46, 51, 0.9);
+  --field-placeholder:      rgba(120, 130, 140, 0.4);
+  --field-label:            rgba(58, 74, 90, 0.7);
+  --field-inset:            inset 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+
+  /* Atmosphere — suppressed for clean white */
+  --theme-scanline-opacity: 0;
+  --theme-glow-spread:      0px;
+  --theme-vignette-color:   rgba(0, 0, 0, 0);
+}

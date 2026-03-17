@@ -118,6 +118,9 @@ const SplashScreen = (() => {
   let dismissed = false;
   let audioReady = false;
 
+  // Easter egg: armed when amber coin is dropped near the bottom (last) card position
+  var _easterEggArmed = false;
+
   // Per-card wheel state: { groupSize, price }
   const cardState = {};
 
@@ -1186,6 +1189,27 @@ const SplashScreen = (() => {
       return;
     }
 
+    // ── Easter egg detection: amber coin dropped near bottom card slot ──
+    var draggedMission = _dragState.cardEl ? _dragState.cardEl.dataset.mission : '';
+    if (draggedMission === 'scenario-2') {
+      // Find the bottom (last) card in the fan
+      var fanCards = splashEl.querySelectorAll('.splash-dossier');
+      var lastCard = fanCards[fanCards.length - 1];
+      if (lastCard && lastCard.dataset.mission !== 'scenario-2') {
+        var lastRect = lastCard.getBoundingClientRect();
+        // Check if ghost was dropped near the last card's center
+        var centerX = lastRect.left + lastRect.width / 2;
+        var centerY = lastRect.top + lastRect.height / 2;
+        var dx = x - centerX;
+        var dy = y - centerY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var threshold = Math.max(lastRect.width, lastRect.height) * 0.7;
+        if (dist < threshold) {
+          _easterEggArmed = true;
+        }
+      }
+    }
+
     // Dropped within the fan area (not near edge) → return card to slot
     _dragState.phase = 'returning';
     _returnGhostToSlot(function () {
@@ -1336,10 +1360,20 @@ const SplashScreen = (() => {
     playSelectSound(cardIndex);
     cardEl.classList.add('splash-selected');
 
+    // Easter egg: amber coin dropped at bottom position + partner Join Now → white theme
+    var selectedTheme = THEME_MAP[missionId] || 'phosphor';
+    if (_easterEggArmed && missionId === 'partner') {
+      selectedTheme = 'white';
+      _easterEggArmed = false;
+    }
+
     // Propagate theme to body for terminal/HUD downstream
-    const selectedTheme = THEME_MAP[missionId] || 'phosphor';
-    document.body.setAttribute('data-theme', selectedTheme);
-    try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (_) {}
+    if (typeof ThemeWidget !== 'undefined' && ThemeWidget.apply) {
+      ThemeWidget.apply(selectedTheme);
+    } else {
+      document.body.setAttribute('data-theme', selectedTheme);
+      try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (_) {}
+    }
 
     // Stash theme's default video for debrief feed to pick up after init
     _stashThemeVideo(selectedTheme);

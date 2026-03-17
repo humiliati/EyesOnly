@@ -9,13 +9,15 @@ const ThemeWidget = (() => {
 
   const STORAGE_KEY = 'eyesonly_theme';
   const THEMES = ['phosphor', 'silver', 'amber', 'panther'];
+  const ALL_THEMES = ['phosphor', 'silver', 'amber', 'panther', 'white']; // includes hidden
   const DEFAULT = 'phosphor';
 
   const THEME_META = {
-    phosphor: { label: 'PHOSPHOR', desc: 'Green CRT terminal (default)', color: '#33ff33' },
-    silver:   { label: 'SILVER',   desc: 'Steel blue intelligence dossier', color: '#b0c4de' },
-    amber:    { label: 'AMBER',    desc: 'Gold-on-black war room',          color: '#ffb000' },
-    panther:  { label: 'PANTHER',  desc: 'Magenta neon cyberpunk',          color: '#ff3090' },
+    phosphor: { label: 'PHOSPHOR', desc: 'Green CRT terminal (default)', color: '#33ff33', hidden: false },
+    silver:   { label: 'SILVER',   desc: 'Steel blue intelligence dossier', color: '#b0c4de', hidden: false },
+    amber:    { label: 'AMBER',    desc: 'Gold-on-black war room',          color: '#ffb000', hidden: false },
+    panther:  { label: 'PANTHER',  desc: 'Magenta neon cyberpunk',          color: '#ff3090', hidden: false },
+    white:    { label: 'WHITE',    desc: 'Waterproof submarine terminal',   color: '#e8eaeb', hidden: true },
   };
 
   /**
@@ -25,7 +27,7 @@ const ThemeWidget = (() => {
   function get() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && THEMES.includes(saved)) return saved;
+      if (saved && ALL_THEMES.includes(saved)) return saved;
     } catch (_) {}
     return DEFAULT;
   }
@@ -36,9 +38,16 @@ const ThemeWidget = (() => {
    * @returns {boolean} true if applied
    */
   function apply(themeId) {
-    if (!THEMES.includes(themeId)) return false;
+    if (!ALL_THEMES.includes(themeId)) return false;
     document.body.setAttribute('data-theme', themeId);
     try { localStorage.setItem(STORAGE_KEY, themeId); } catch (_) {}
+
+    // Swap starfield palette when white theme activates
+    if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.isRunning && EyesOnlyStarfield.isRunning()) {
+      const starfieldPalette = (themeId === 'white') ? 'white' : (EyesOnlyStarfield.PALETTES[themeId] ? themeId : 'night');
+      EyesOnlyStarfield.setPalette(starfieldPalette);
+    }
+
     return true;
   }
 
@@ -93,12 +102,12 @@ const ThemeWidget = (() => {
       return { lines, prompt: '> ', stayActive: true };
     }
 
-    // Accept by name or index
+    // Accept by name or index (hidden themes work by name only)
     let targetId = null;
     const asNum = parseInt(arg, 10);
     if (!isNaN(asNum) && asNum >= 0 && asNum < THEMES.length) {
       targetId = THEMES[asNum];
-    } else if (THEMES.includes(arg)) {
+    } else if (ALL_THEMES.includes(arg)) {
       targetId = arg;
     }
 
@@ -128,6 +137,7 @@ const ThemeWidget = (() => {
     isThemeCommand,
     process,
     THEMES,
+    ALL_THEMES,
     THEME_META,
     DEFAULT,
   };

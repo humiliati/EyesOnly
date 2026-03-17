@@ -149,6 +149,18 @@
       starColorBias: 'cool',
       atmosphere:   [135, 180, 230, 0.12],
     },
+    // White Easter Egg: inverted Panther — white void, dark spots
+    // "Daytime" starfield for the Apple submarine terminal theme
+    white: {
+      void:         '#e8eaeb',
+      starTint:     [0.15, 0.18, 0.22],
+      milkyWayGlow: [180, 185, 190],
+      milkyWayStar: [40, 45, 55],
+      clusterGlow:  [160, 168, 180],
+      clusterStar:  [35, 40, 50],
+      starColorBias: 'neutral',
+      atmosphere:   [220, 224, 228, 0.06],
+    },
   };
 
   /* ---- State ---- */
