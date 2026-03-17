@@ -837,6 +837,57 @@ const AudioSystem = (function () {
     tickFootsteps(true, running, biomeName, depth, 1.0, { isPlayer: true });
   }
 
+  // ── Video element routing (through music/BGM bus) ─────────
+  // Routes a <video> element's audio through the Web Audio music gain node
+  // so it respects the BGM slider and master mute.
+  // Optional mConsoleOverride: when true, video plays at 75% regardless of user BGM setting.
+  var _videoMediaSource = null;
+  var _videoElement = null;
+
+  function connectVideoElement(videoEl, mConsoleOverride) {
+    disconnectVideoElement(); // Clean up any prior connection
+    _ensureCtx();
+    if (!_ctx || !_musicGain || !videoEl) return;
+    try {
+      _videoElement = videoEl;
+      // Unmute the video element (audio comes through Web Audio graph, not element)
+      videoEl.muted = false;
+      videoEl.volume = 1; // Full volume at element level; gain node controls actual level
+      _videoMediaSource = _ctx.createMediaElementSource(videoEl);
+      if (mConsoleOverride) {
+        // M-console narrative push: dedicated gain at 75% → master (bypasses user BGM setting)
+        var overrideGain = _ctx.createGain();
+        overrideGain.gain.value = 0.75;
+        _videoMediaSource.connect(overrideGain);
+        overrideGain.connect(_masterGain);
+        _videoMediaSource._overrideGain = overrideGain; // Stash ref for cleanup
+      } else {
+        // Normal: route through music gain (respects BGM slider)
+        _videoMediaSource.connect(_musicGain);
+      }
+    } catch (e) {
+      console.warn('[AudioSystem] connectVideoElement failed:', e);
+    }
+  }
+
+  function disconnectVideoElement() {
+    try {
+      if (_videoMediaSource) {
+        _videoMediaSource.disconnect();
+        if (_videoMediaSource._overrideGain) {
+          _videoMediaSource._overrideGain.disconnect();
+        }
+        _videoMediaSource = null;
+      }
+      _videoElement = null;
+    } catch (e) {}
+  }
+
+  // Alias for external callers who might expect playSFX
+  function playSFX(name, opts) {
+    return play(name, opts || {});
+  }
+
   // ── Return public interface ────────────────────────────────
   return {
     init: init,
@@ -861,6 +912,9 @@ const AudioSystem = (function () {
     setOnboardingMusic: setOnboardingMusic,
     isOnboardingMusic: isOnboardingMusic,
     setMusicDim: setMusicDim,
-    setFootstepBoost: setFootstepBoost
+    setFootstepBoost: setFootstepBoost,
+    connectVideoElement: connectVideoElement,
+    disconnectVideoElement: disconnectVideoElement,
+    playSFX: playSFX
   };
 })();

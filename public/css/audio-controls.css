@@ -178,15 +178,19 @@
 /* ── Volume sliders ────────────────────────────────────────── */
 .audio-slider-wrap {
   flex: 1;
+  min-width: 0;    /* Allow flex shrink below content minimum */
   display: flex;
   align-items: center;
   gap: 4px;
+  overflow: hidden;
 }
 
 .audio-slider {
   -webkit-appearance: none;
   appearance: none;
   flex: 1;
+  min-width: 0;    /* Override browser default ~130px minimum for range inputs */
+  width: 0;        /* Let flex: 1 control actual width, not content intrinsic */
   height: 2px;
   background: rgba(51, 255, 51, 0.12);
   border-radius: 1px;

@@ -1310,8 +1310,13 @@ const DebriefFeedController = (function() {
       return;
     }
 
-    var titleBar = _videoTitle
-      ? '<div class="vp-title-bar">\u25B6 ' + _videoTitle + '</div>'
+    var displayTitle = _videoTitle;
+    if (!displayTitle && _isThemeVideo) {
+      var tid = _getCurrentThemeId();
+      displayTitle = (tid || 'THEME').toUpperCase() + ' — LIVE FEED';
+    }
+    var titleBar = displayTitle
+      ? '<div class="vp-title-bar">\u25B6 ' + displayTitle + '</div>'
       : '';
 
     var themeId = _getCurrentThemeId();
@@ -1322,7 +1327,9 @@ const DebriefFeedController = (function() {
     html += '<div class="video-player-container">';
     html += titleBar;
     html += '<video id="debrief-video-el" autoplay playsinline';
-    if (_isThemeVideo) html += ' muted loop';
+    if (_isThemeVideo) html += ' loop';
+    // Note: NOT muted in markup — AudioSystem.connectVideoElement() routes audio
+    // through the BGM gain bus. Falls back to silent if AudioSystem isn't loaded.
     html += ' data-audio-track="' + audioTrack + '"';
     html += ' data-audio-sync="' + (_isThemeVideo ? 'true' : 'false') + '"';
     html += ' data-theme="' + themeId + '"';
@@ -1347,19 +1354,29 @@ const DebriefFeedController = (function() {
 
     _debriefScreen.innerHTML = html;
 
-    // Wire up end / error handlers
+    // Wire up end / error handlers and audio routing
     var vid = document.getElementById('debrief-video-el');
     if (vid) {
       // Theme video loops as ambient feed; other videos play once
       if (_isThemeVideo) {
         vid.loop = true;
-        vid.muted = true;
       }
+
+      // Route video audio through AudioSystem BGM bus
+      // mConsoleOverride = true when video was pushed from M console (narrative at 75%)
+      var isMConsolePush = _videoTitle && _videoTitle.indexOf('[M]') === 0;
+      try {
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.connectVideoElement) {
+          AudioSystem.connectVideoElement(vid, isMConsolePush);
+        }
+      } catch (e) {}
+
       vid.addEventListener('ended', function() {
         if (!vid.loop) setVideoPlaying(false);
       });
       vid.addEventListener('error', function() {
-        // On error, show message briefly then restore
+        // Auto-fallback to MOK after 3s
+        try { if (typeof AudioSystem !== 'undefined') AudioSystem.disconnectVideoElement(); } catch (_) {}
         var container = vid.parentElement;
         if (container) {
           container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:rgba(255,51,51,0.7);font-size:11px;font-family:monospace;">SIGNAL LOST</div>';
@@ -1606,6 +1623,8 @@ const DebriefFeedController = (function() {
       _videoUrl = null;
       _videoTitle = null;
       _isThemeVideo = false;
+      // Disconnect video from audio graph
+      try { if (typeof AudioSystem !== 'undefined') AudioSystem.disconnectVideoElement(); } catch (_) {}
       // Restore display to the mode's default so _render picks up MOK/resources
       _currentDisplay = _currentMode ? _currentMode.defaultDisplay : 'mok';
     }
