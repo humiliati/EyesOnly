@@ -130,15 +130,38 @@ var NchOverlay = (function () {
     if (typeof ConstellationTracer === 'undefined') return;
     ConstellationTracer.beginSession();
 
-    // Activate lens overlay on the ghost card
-    var lensEl = drag.ghostEl && drag.ghostEl.querySelector('.porthole-lens-overlay');
+    var ghost = drag.ghostEl;
+    if (!ghost) return;
+
+    // Activate lens glow ring on the ghost card
+    var lensEl = ghost.querySelector('.porthole-lens-overlay');
     if (lensEl) {
       lensEl.classList.add('lens-active');
     }
+
+    // Flicker the suit symbol off so the porthole sky is unobstructed
+    var suitEl = ghost.querySelector('.coin-suit-large');
+    if (suitEl) {
+      suitEl.classList.remove('suit-flicker-in', 'suit-dimmed');
+      suitEl.classList.add('suit-flicker-off');
+      // After flicker animation, hold at near-invisible
+      setTimeout(function () {
+        if (suitEl) {
+          suitEl.classList.remove('suit-flicker-off');
+          suitEl.classList.add('suit-dimmed');
+        }
+      }, 260);
+    }
   }
+
+  // Track previous cursor for drag velocity calculation
+  var _prevCursorX = 0;
+  var _prevCursorY = 0;
+  var _prevTracerState = 'idle';
 
   /**
    * Update constellation tracer with porthole center position.
+   * Also drives ring glow pulse from node interactions + drag velocity.
    */
   function _updateConstellationTrace(ghost) {
     if (typeof ConstellationTracer === 'undefined' || !ConstellationTracer.isEnabled()) return;
@@ -151,16 +174,44 @@ var NchOverlay = (function () {
     var cy = lr.top + lr.height / 2;
     ConstellationTracer.updateCursor(cx, cy);
 
-    // Add tracing class when actively connecting nodes
     var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
+    var state = ConstellationTracer.getState();
+
     if (lensOverlay) {
-      var state = ConstellationTracer.getState();
+      // Add tracing class when actively connecting nodes
       if (state === 'hasNode' || state === 'tethered') {
         lensOverlay.classList.add('lens-tracing');
       } else {
         lensOverlay.classList.remove('lens-tracing');
       }
+
+      // ── Ring pulse on state transitions (node pickup / snap) ──
+      if (state !== _prevTracerState) {
+        if (state === 'hasNode' || state === 'tethered') {
+          // Node interaction — fire a pulse
+          lensOverlay.classList.remove('ring-pulse');
+          // Force reflow to restart animation
+          void lensOverlay.offsetWidth;
+          lensOverlay.classList.add('ring-pulse');
+          setTimeout(function () {
+            if (lensOverlay) lensOverlay.classList.remove('ring-pulse');
+          }, 420);
+        }
+      }
+
+      // ── Drag velocity → ring brightness modulation ──
+      // Uses CSS custom property --ring-vel so it composes with animation filter values
+      var dx = cx - _prevCursorX;
+      var dy = cy - _prevCursorY;
+      var speed = Math.sqrt(dx * dx + dy * dy);
+      // Map speed 0–30px/frame → multiplier 1.0–1.35
+      var speedBrightness = 1.0 + Math.min(0.35, speed / 85);
+      lensOverlay.style.setProperty('--ring-vel', speedBrightness.toFixed(2));
     }
+
+    _prevCursorX = cx;
+    _prevCursorY = cy;
+    _prevTracerState = state;
   }
 
   /**
@@ -170,6 +221,20 @@ var NchOverlay = (function () {
     if (typeof ConstellationTracer === 'undefined') return;
     if (ConstellationTracer.isEnabled()) {
       ConstellationTracer.endSession();
+    }
+
+    // Flicker the suit symbol back in on the source card (not the ghost, it's being removed)
+    // Find the source card's suit element and flicker it back
+    if (_cardDrag && _cardDrag.cardEl) {
+      var suitEl = _cardDrag.cardEl.querySelector('.coin-suit-large');
+      if (suitEl) {
+        suitEl.classList.remove('suit-flicker-off', 'suit-dimmed');
+        suitEl.classList.add('suit-flicker-in');
+        // Clean up class after animation completes
+        setTimeout(function () {
+          if (suitEl) suitEl.classList.remove('suit-flicker-in');
+        }, 220);
+      }
     }
   }
 
@@ -1575,6 +1640,7 @@ var NchOverlay = (function () {
 
       // Phase 8: Initialize constellation subsystems
       if (typeof SuitNodeRenderer !== 'undefined') SuitNodeRenderer.init();
+      if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
       if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
       if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
 

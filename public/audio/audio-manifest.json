@@ -511,6 +511,41 @@
     "src": "/audio/sfx/Coin 2.webm",
     "category": "collectible"
   },
+  "coin-3": {
+    "src": "/audio/sfx/coin.webm",
+    "fallback": "/audio/sfx/coin.mp3",
+    "category": "collectible"
+  },
+  "coin-flip": {
+    "src": "/audio/sfx/coin_flip.webm",
+    "fallback": "/audio/sfx/coin_flip.mp3",
+    "category": "collectible"
+  },
+  "coin-pouch-1": {
+    "src": "/audio/sfx/coin_pouch_1.webm",
+    "fallback": "/audio/sfx/coin_pouch_1.mp3",
+    "category": "collectible"
+  },
+  "coin-pouch-2": {
+    "src": "/audio/sfx/coin_pouch_2.webm",
+    "fallback": "/audio/sfx/coin_pouch_2.mp3",
+    "category": "collectible"
+  },
+  "coin-rain": {
+    "src": "/audio/sfx/coin_rain.webm",
+    "fallback": "/audio/sfx/coin_rain.mp3",
+    "category": "collectible"
+  },
+  "coin-rattle": {
+    "src": "/audio/sfx/coin_rattle.webm",
+    "fallback": "/audio/sfx/coin_rattle.mp3",
+    "category": "collectible"
+  },
+  "old-coin": {
+    "src": "/audio/sfx/old_coin.webm",
+    "fallback": "/audio/sfx/old_coin.mp3",
+    "category": "collectible"
+  },
   "grab-item-1": {
     "src": "/audio/sfx/grab_item_01.webm",
     "category": "collectible"

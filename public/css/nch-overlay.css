@@ -448,82 +448,175 @@
 
 
 /* ============================================================
-   Phase 8 — Porthole Lens Gradient Overlays
+   Phase 8 — Porthole Lens Glow Ring
    ============================================================
-   Each card's starfield porthole gets a complementary color
-   tint during constellation tracing (gold lens mode).
-   These overlays sit on top of the .starfield-window canvas
-   but below the .coin-rings frame.
+   Instead of a filled radial-gradient overlay that obscures the
+   sky, we use a glowing ring at the porthole rim. The ring sits
+   on the .porthole-lens-overlay div (positioned to match the
+   starfield-window circle) and uses box-shadow layers for the
+   neon glow. Sky interior stays completely clear.
 
-   Card → Theme → Lens color (complementary contrast):
-     scenario-1 / silver / ♠  → clear (no tint, silver is neutral)
-     scenario-2 / amber  / ♣  → blue  (warm gold + cool blue)
-     partner    / phosphor/ ♥  → amber (green-phosphor + warm amber)
-     minigames  / panther / ♦  → pink  (neon magenta reinforced)
+   Inspired by tender-dolphin-38 (uiverse.io): animated neon
+   ring with inset + outset box-shadow layers.
+
+   Card → Theme → Ring glow color:
+     silver  / ♠  → cool steel blue
+     amber   / ♣  → warm complementary blue
+     phosphor/ ♥  → warm amber
+     panther / ♦  → hot pink / neon magenta
    ============================================================ */
 
 .porthole-lens-overlay {
   position: absolute;
-  inset: 0;
+  /* Size + position to match the starfield-window circle (82% of artwork, centered) */
+  width: 82%;
+  aspect-ratio: 1;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  z-index: 0;            /* below .coin-rings (z:1) but over .starfield-window (z:0) */
+  z-index: 2;            /* above .coin-rings (z:1) to glow over the rim */
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.4s ease-out;
-  mix-blend-mode: screen;
+  transition: opacity 0.35s ease-out;
+
+  /* No fill — completely transparent interior */
+  background: transparent;
+
+  /* Thin border as the ring base */
+  border: 1.5px solid transparent;
 }
 
-/* Active during constellation tracing */
+/* ---- Active: ring lights up during drag ---- */
 .porthole-lens-overlay.lens-active {
   opacity: 1;
 }
 
-/* ---- Silver lens (clear / neutral) ---- */
+/* ---- Silver ring (cool steel) ---- */
 .porthole-lens-overlay.lens-silver {
-  background: radial-gradient(circle at center,
-    rgba(176, 196, 222, 0.06) 0%,
-    rgba(136, 152, 168, 0.03) 50%,
-    transparent 75%
-  );
+  border-color: rgba(176, 196, 222, 0.35);
+  box-shadow:
+    /* Inner glow — illuminates the rim inward */
+    inset 0 0 8px  rgba(176, 196, 222, 0.20),
+    inset 0 0 20px rgba(136, 160, 200, 0.10),
+    /* Outer glow — bleeds onto the rings */
+    0 0 6px  rgba(176, 196, 222, 0.25),
+    0 0 16px rgba(176, 196, 222, 0.12),
+    0 0 36px rgba(136, 160, 200, 0.06);
 }
 
-/* ---- Blue lens (for amber/gold card — complementary contrast) ---- */
+/* ---- Blue ring (for amber/gold card — complementary) ---- */
 .porthole-lens-overlay.lens-blue {
-  background: radial-gradient(circle at center,
-    rgba(60, 120, 220, 0.14) 0%,
-    rgba(40, 80, 180, 0.08) 40%,
-    rgba(20, 40, 120, 0.04) 65%,
-    transparent 80%
-  );
+  border-color: rgba(80, 140, 255, 0.4);
+  box-shadow:
+    inset 0 0 10px rgba(80, 140, 255, 0.25),
+    inset 0 0 24px rgba(60, 120, 220, 0.12),
+    0 0 8px  rgba(80, 140, 255, 0.30),
+    0 0 20px rgba(60, 120, 220, 0.15),
+    0 0 44px rgba(40, 80, 180, 0.08);
 }
 
-/* ---- Amber lens (for phosphor card — warm complement) ---- */
+/* ---- Amber ring (for phosphor card — warm complement) ---- */
 .porthole-lens-overlay.lens-amber {
-  background: radial-gradient(circle at center,
-    rgba(255, 176, 0, 0.12) 0%,
-    rgba(200, 120, 0, 0.07) 40%,
-    rgba(140, 80, 0, 0.03) 65%,
-    transparent 80%
-  );
+  border-color: rgba(255, 180, 40, 0.4);
+  box-shadow:
+    inset 0 0 10px rgba(255, 180, 40, 0.22),
+    inset 0 0 24px rgba(220, 140, 0, 0.10),
+    0 0 8px  rgba(255, 180, 40, 0.28),
+    0 0 20px rgba(220, 140, 0, 0.14),
+    0 0 44px rgba(180, 100, 0, 0.07);
 }
 
-/* ---- Pink lens (for panther card — reinforced neon) ---- */
+/* ---- Pink ring (for panther card — neon magenta) ---- */
 .porthole-lens-overlay.lens-pink {
-  background: radial-gradient(circle at center,
-    rgba(255, 105, 180, 0.14) 0%,
-    rgba(255, 48, 144, 0.08) 40%,
-    rgba(180, 30, 100, 0.04) 65%,
-    transparent 80%
-  );
+  border-color: rgba(255, 80, 160, 0.4);
+  box-shadow:
+    inset 0 0 10px rgba(255, 80, 160, 0.25),
+    inset 0 0 24px rgba(255, 48, 144, 0.12),
+    0 0 8px  rgba(255, 80, 160, 0.30),
+    0 0 20px rgba(255, 48, 144, 0.15),
+    0 0 44px rgba(200, 30, 100, 0.08);
 }
 
-/* Pulse animation during active tracing */
+/* ---- Idle breathing (very subtle, always-on when lens-active) ---- */
+/* Velocity brightness from JS is composed via --ring-vel variable */
+.porthole-lens-overlay {
+  --ring-vel: 1;
+}
+
+.porthole-lens-overlay.lens-active {
+  animation: ring-breathe 3s ease-in-out infinite;
+}
+
+@keyframes ring-breathe {
+  0%   { opacity: 0.7;  filter: brightness(calc(0.9 * var(--ring-vel))); }
+  50%  { opacity: 1.0;  filter: brightness(calc(1.1 * var(--ring-vel))); }
+  100% { opacity: 0.7;  filter: brightness(calc(0.9 * var(--ring-vel))); }
+}
+
+/* ---- Interaction pulse (driven by JS adding/removing .ring-pulse) ---- */
+.porthole-lens-overlay.ring-pulse {
+  animation: ring-flare 0.4s ease-out forwards;
+}
+
+@keyframes ring-flare {
+  0%   { filter: brightness(calc(1.5 * var(--ring-vel))); transform: translate(-50%, -50%) scale(1.03); }
+  100% { filter: brightness(calc(1.0 * var(--ring-vel))); transform: translate(-50%, -50%) scale(1.00); }
+}
+
+/* ---- Tracing active: faster pulse, slightly brighter ---- */
 .porthole-lens-overlay.lens-active.lens-tracing {
-  animation: lens-pulse 2.5s ease-in-out infinite;
+  animation: ring-trace-pulse 1.8s ease-in-out infinite;
 }
 
-@keyframes lens-pulse {
-  0%   { opacity: 0.7; }
-  50%  { opacity: 1.0; }
-  100% { opacity: 0.7; }
+@keyframes ring-trace-pulse {
+  0%   { opacity: 0.75; filter: brightness(calc(1.0 * var(--ring-vel))); }
+  50%  { opacity: 1.0;  filter: brightness(calc(1.3 * var(--ring-vel))); }
+  100% { opacity: 0.75; filter: brightness(calc(1.0 * var(--ring-vel))); }
+}
+
+
+/* ============================================================
+   Phase 8 — Suit Symbol Flicker-Off During Drag
+   ============================================================
+   When a card is being dragged (constellation tracing active),
+   the large suit symbol flickers then goes nearly invisible so
+   the porthole sky is unobstructed. On drag end, it flickers
+   back in. */
+
+/* Flicker-out: rapid opacity stutter → settle at near-invisible */
+.coin-suit-large.suit-flicker-off {
+  animation: suit-flicker-out 0.25s steps(6) forwards;
+  pointer-events: none;
+}
+
+@keyframes suit-flicker-out {
+  0%   { opacity: 1;    }
+  15%  { opacity: 0.1;  }
+  30%  { opacity: 0.6;  }
+  45%  { opacity: 0.05; }
+  60%  { opacity: 0.35; }
+  75%  { opacity: 0.02; }
+  100% { opacity: 0.04; }
+}
+
+/* Hold state: nearly invisible while dragging */
+.coin-suit-large.suit-dimmed {
+  opacity: 0.04 !important;
+  animation: none;
+  transition: opacity 0.1s;
+}
+
+/* Flicker-in: reverse on drag end */
+.coin-suit-large.suit-flicker-in {
+  animation: suit-flicker-in 0.2s steps(5) forwards;
+}
+
+@keyframes suit-flicker-in {
+  0%   { opacity: 0.04; }
+  20%  { opacity: 0.5;  }
+  40%  { opacity: 0.1;  }
+  60%  { opacity: 0.7;  }
+  80%  { opacity: 0.3;  }
+  100% { opacity: 1;    }
 }

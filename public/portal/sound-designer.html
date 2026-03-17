@@ -258,6 +258,30 @@
         </div>
         <div class="category-section">
           <div class="category-header">
+            <span>🪙 COINS &amp; CURRENCY</span>
+            <span class="count">15</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="coin-1" data-src="/audio/sfx/Coin 1.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin 1</button>
+            <button class="sound-item" data-sound-id="coin-2" data-src="/audio/sfx/Coin 2.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin 2</button>
+            <button class="sound-item" data-sound-id="coin-3" data-src="/audio/sfx/coin.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin 3</button>
+            <button class="sound-item" data-sound-id="coin-flip" data-src="/audio/sfx/coin_flip.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin Flip</button>
+            <button class="sound-item" data-sound-id="coin-pouch-1" data-src="/audio/sfx/coin_pouch_1.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin Pouch 1</button>
+            <button class="sound-item" data-sound-id="coin-pouch-2" data-src="/audio/sfx/coin_pouch_2.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin Pouch 2</button>
+            <button class="sound-item" data-sound-id="coin-rain" data-src="/audio/sfx/coin_rain.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin Rain</button>
+            <button class="sound-item" data-sound-id="coin-rattle" data-src="/audio/sfx/coin_rattle.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Coin Rattle</button>
+            <button class="sound-item" data-sound-id="old-coin" data-src="/audio/sfx/old_coin.webm" data-category="collectible" data-loop="false"><span class="mini-play">♪</span> Old Coin</button>
+            <button class="sound-item" data-sound-id="sq-sq-coin1" data-src="/audio/sfx/sq-sq-coin1.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Coin1</button>
+            <button class="sound-item" data-sound-id="sq-sq-coin2" data-src="/audio/sfx/sq-sq-coin2.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Coin2</button>
+            <button class="sound-item" data-sound-id="sq-sq-coin3" data-src="/audio/sfx/sq-sq-coin3.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Coin3</button>
+            <button class="sound-item" data-sound-id="sq-sq-coin4" data-src="/audio/sfx/sq-sq-coin4.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Coin4</button>
+            <button class="sound-item" data-sound-id="sq-sq-pickup" data-src="/audio/sfx/sq-sq-pickup.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Pickup</button>
+            <button class="sound-item" data-sound-id="sq-sq-pickup-quick" data-src="/audio/sfx/sq-sq-pickup-quick.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> SQ Pickup Quick</button>
+          </div>
+        </div>
+        <div class="category-section">
+          <div class="category-header">
             <span>🐾 CREATURE</span>
             <span class="count">5</span>
             <span class="chevron">▾</span>
@@ -268,6 +292,19 @@
             <button class="sound-item" data-sound-id="kitty-3" data-src="/audio/sfx/kitty_03.webm" data-category="creature" data-loop="false"><span class="mini-play">♪</span> Kitty 3</button>
             <button class="sound-item" data-sound-id="toad" data-src="/audio/sfx/toad.webm" data-category="creature" data-loop="false"><span class="mini-play">♪</span> Toad</button>
             <button class="sound-item" data-sound-id="voice" data-src="/audio/sfx/voice.webm" data-category="creature" data-loop="false"><span class="mini-play">♪</span> Voice</button>
+          </div>
+        </div>
+        <div class="category-section">
+          <div class="category-header">
+            <span>🍔 FOOD PICKUP</span>
+            <span class="count">4</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="category-items">
+            <button class="sound-item" data-sound-id="sq-sq-pickup-success2" data-src="/audio/sfx/sq-sq-pickup-success2.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> HP Pickup (Success2)</button>
+            <button class="sound-item" data-sound-id="sq-sq-pickup-success1" data-src="/audio/sfx/sq-sq-pickup-success1.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> Focus Pickup (Success1)</button>
+            <button class="sound-item" data-sound-id="sq-sq-pickup" data-src="/audio/sfx/sq-sq-pickup.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> Energy Pickup</button>
+            <button class="sound-item" data-sound-id="sq-sq-pickup-quick" data-src="/audio/sfx/sq-sq-pickup-quick.webm" data-category="sfx" data-loop="false"><span class="mini-play">♪</span> Fatigue Pickup (Quick)</button>
           </div>
         </div>
         <!-- ---- NEW SFX CATEGORIES (from R2 batch encode) ---- -->
@@ -1114,8 +1151,24 @@
                 <option value="music">Music (audio/music/)</option>
                 <option value="video">Video (video/)</option>
               </select>
+              <select class="upload-dest-select" id="upload-category-select">
+                <option value="">Category: Auto-detect</option>
+                <option value="ui">🖥 UI</option>
+                <option value="movement">🏃 Movement</option>
+                <option value="combat">⚔️ Combat</option>
+                <option value="magic">✨ Magic</option>
+                <option value="environment">🌿 Environment</option>
+                <option value="collectible">💎 Collectible</option>
+                <option value="creature">🐾 Creature</option>
+                <option value="sfx">🎮 SFX (Chiptune etc)</option>
+                <option value="music-songs">🎵 Music — Songs</option>
+                <option value="music-cyberleaf">🎮 Music — Cyberleaf</option>
+                <option value="music-aila">🎹 Music — Aila Scott</option>
+                <option value="card">🃏 Card Sounds</option>
+              </select>
               <button class="btn-primary btn-small" id="upload-start-btn" disabled>Upload All</button>
             </div>
+            <p style="color:#888; font-size:11px; margin:6px 0 0;">After uploading, click <strong>Refresh</strong> to see new entries appear in the library. Category assignment will be saved to the manifest.</p>
             <div class="upload-queue" id="upload-queue"></div>
           </div>
 
@@ -1136,7 +1189,7 @@
             <h3 style="color:#33ff33; margin-top:0;">Media Designer Portal — Quick Reference</h3>
 
             <h4 style="color:#33ff33;">Media Library (Left Sidebar)</h4>
-            <p>Uploaded Videos (fetched from R2) appear first, followed by 524 sounds organized into 30 categories: UI, Movement (incl. 8 stereo footsteps), Combat, Magic, Environment, Collectible, Creature, 20 SFX sub-categories (alarms, animal, atmosphere, brass, chiptune, clang, clicks, crunches, death, dialog, doors, electronic, explosions, misc, ocean, parry, scratches, steam, success, text scroll), Card Sounds, Music — Songs, Music — Cyberleaf, Music — Aila Scott, plus Pet/Enemy placeholder stubs.</p>
+            <p>Uploaded Videos (fetched from R2) appear first, followed by 536+ sounds organized into 32 categories: UI, Movement (incl. 8 stereo footsteps), Combat, Magic, Environment, Collectible, <strong>Coins &amp; Currency</strong> (coin-1/2 + SQ coin variants + pickup sounds), Creature, <strong>Food Pickup</strong> (HP/Focus/Energy/Fatigue pickup sounds), 20 SFX sub-categories (alarms, animal, atmosphere, brass, chiptune, clang, clicks, crunches, death, dialog, doors, electronic, explosions, misc, ocean, parry, scratches, steam, success, text scroll), Card Sounds, Music — Songs, Music — Cyberleaf, Music — Aila Scott, plus Pet/Enemy placeholder stubs.</p>
             <p>The library is baked as static HTML — it works offline without fetching the manifest. When the manifest loads, it enriches metadata. Use the <strong>sort dropdown</strong> above the search bar to reorder (Default, Name A-Z, Category, Date Newest). Category headers collapse/expand on click.</p>
 
             <h4 style="color:#33ff33;">Preview (This Panel)</h4>
@@ -1146,7 +1199,8 @@
             <p>Wire sounds to game entities. Select a sound in the library, switch to the <strong>Assign</strong> tab, pick a context (Asset, Map, Interior), choose an entity, then click the assign button on any event slot. Assignments persist in localStorage and can be exported as JSON.</p>
 
             <h4 style="color:#33ff33;">Upload</h4>
-            <p>Drag audio/video files into the dropzone (max 50MB each). Choose a destination folder (sfx, music, video) and click <strong>Upload All</strong>. Files go to the <code>eyesonly-assets</code> R2 bucket. Supported formats: .wav .mp3 .ogg .webm .m4a .mp4 .opus</p>
+            <p>Drag audio/video files into the dropzone (max 50MB each). Choose a <strong>destination folder</strong> (SFX, Music, Video) and optionally a <strong>category</strong> from the dropdown (e.g. Music &mdash; Songs for artist-uploaded tracks). Click <strong>Upload All</strong>. Files go to the <code>eyesonly-assets</code> R2 bucket. After uploading, click <strong>Refresh</strong> to see new entries in the library. Supported formats: .wav .mp3 .ogg .webm .m4a .mp4 .opus</p>
+            <p style="color:#ff9933;">For music contributions: select destination <strong>Music (audio/music/)</strong> and category <strong>🎵 Music &mdash; Songs</strong>. The manifest ID is auto-derived from the filename.</p>
 
             <h4 style="color:#33ff33;">Inspector (Right Panel)</h4>
             <p>Shows metadata for the selected sound: key, source path, category, loop flag, display name, tags. Edit fields to override properties. The "Assignments" section shows everywhere this sound is currently wired.</p>
@@ -1175,7 +1229,7 @@
             <h4 style="color:#33ff33;">Manifest Diff Workflow</h4>
             <p>The portal exports a manifest diff (renames/deletes/aliases). That diff is merged into the repo, validated by <code>scripts/manifest-gap-check.sh</code>, then deployed. R2 remains immutable storage with no live manifest authority. During transitions, the alias layer in the diff maps old IDs → new files for one release cycle, then prunes.</p>
 
-            <h4 style="color:#33ff33;">Categories (524 entries, 519 in manifest)</h4>
+            <h4 style="color:#33ff33;">Categories (536+ entries, 519 in manifest)</h4>
             <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🖥 UI</td><td style="text-align:right;">9</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🏃 Movement (incl. 8 footsteps)</td><td style="text-align:right;">28</td></tr>
@@ -1183,7 +1237,9 @@
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">✨ Magic</td><td style="text-align:right;">22</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🌿 Environment</td><td style="text-align:right;">29</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">💎 Collectible</td><td style="text-align:right;">24</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🪙 Coins &amp; Currency</td><td style="text-align:right;">8</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Creature</td><td style="text-align:right;">5</td></tr>
+              <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🍔 Food Pickup</td><td style="text-align:right;">4</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px; color:#ff9933;">SFX (20 sub-categories)</td><td style="text-align:right;">204</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">🐾 Pet Sounds</td><td style="text-align:right;color:#ff6600;">0 / 5</td></tr>
               <tr style="border-bottom:1px solid #333;"><td style="padding:4px;">👹 Enemy Footsteps</td><td style="text-align:right;color:#ff6600;">0 / 24</td></tr>
@@ -1223,6 +1279,18 @@
               <tr style="border-bottom:1px solid #222;"><td style="padding:3px; color:#888;">Shallow interior (N.N)</td><td style="padding:3px;">1.05</td><td style="padding:3px;">1.20</td></tr>
               <tr><td style="padding:3px; color:#888;">Deep interior (N.N.N)</td><td style="padding:3px;">1.20</td><td style="padding:3px;">1.35</td></tr>
             </table>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Collectible Sounds Canon (Phase 4.5)</h4>
+            <p>All collectible types have canonical pickup sounds. <strong>Ammo/Gem</strong> &rarr; <code>coin-1</code>. <strong>Currency/Low-tier Key</strong> &rarr; <code>coin-2</code>. <strong>Quest Key</strong> &rarr; <code>grab-item-2</code>. <strong>Items</strong> &rarr; <code>grab-item-1</code>. Cards use a 3-phase sequence: <code>pick_up_card</code> &rarr; <code>place_card</code> (+180ms) &rarr; <code>rumble-1</code> (+400ms, on backup overflow). Food uses resourceType: HP &rarr; <code>sq-sq-pickup-success2</code>, Focus &rarr; <code>sq-sq-pickup-success1</code>, Energy &rarr; <code>sq-sq-pickup</code>, Fatigue &rarr; <code>sq-sq-pickup-quick</code>. See <code>docs/AUDIO_WIRING_ROADMAP.md</code> Phase 4.5.</p>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Door Contract Audio (Phase 10)</h4>
+            <p>Floor transitions produce sound sequences derived from the layer distance between source and target floors. Three token types &mdash; <strong>DoorOpen</strong>, <strong>Ascend/Descend</strong>, <strong>DoorClose</strong> &mdash; combine to form a sonic navigation language. Uses 12 active manifest keys from the 🚪 DOORS and 🪜 TRANSITIONS categories. Timing: DoorOpen at 0ms, vertical at +250ms (~30% overlap), DoorClose at +600ms. Pre-fade delay of 350ms lets the player hear the door creak before the screen fades. See <code>docs/BUILDING_INTERIOR_SYSTEM.md</code> and <code>docs/AUDIO_WIRING_ROADMAP.md</code> Phase 10.</p>
+
+            <h4 style="color:#ff6600; margin-top:16px;">Planned: Breakable Audio (Phase 11)</h4>
+            <p>Breakable HP rebalanced to 3.0&ndash;5.5 (3&ndash;5 kicks at 1.1 damage). Progressive kick audio: <code>attack-5</code> &rarr; <code>attack-4</code> &rarr; <code>attack-3</code> as damage ratio drops. Break event layers: <code>attack-3</code> + material_break (+20ms) + <code>whoosh-2</code> (+40ms) + debris echo (2&ndash;4 sounds at 80&ndash;180ms). 5 material types (wood, glass, metal, organic, plastic). Needs 15&ndash;16 new sound assets. See <code>docs/BREAKABLE_AUDIO_SYSTEM.md</code>.</p>
+
+            <h4 style="color:#33ff33; margin-top:16px;">Mobile Usage</h4>
+            <p>On portrait mobile (&lt;768px), the layout stacks vertically. Tap the <strong>Media Library</strong> header to collapse/expand the sidebar. The center panel and inspector scroll independently. On landscape / tablets (768&ndash;1024px) the sidebar widths are reduced to fit.</p>
 
             <h4 style="color:#ff6600; margin-top:16px;">Planned: Pet Footsteps</h4>
             <p>Per-pet-type movement sounds: <strong>RUMBA</strong> gets a one-shot lullaby hum on initial movement only. <strong>HUMANOID</strong> gets high-humanization L/R steps. <strong>MEGA</strong> gets low-humanization heavy thuds with wider pan. 5 assets needed.</p>

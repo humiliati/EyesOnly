@@ -813,3 +813,87 @@ body {
 ::-webkit-scrollbar-track { background: #0a0a0a; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ── Mobile: Portrait (< 768px) ── */
+@media (max-width: 767px) {
+  .portal-header h1 { font-size: 14px; }
+  .header-actions { flex-wrap: wrap; gap: 4px; }
+  .header-actions button { font-size: 11px; padding: 4px 8px; }
+
+  .portal-main {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sound-library {
+    width: 100% !important;
+    max-width: 100%;
+    flex-shrink: 1;
+    max-height: 45vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-right: none;
+    border-bottom: 1px solid #333;
+  }
+
+  .sound-library.collapsed {
+    max-height: 44px;
+    overflow: hidden;
+  }
+
+  .sound-library.collapsed .library-sort,
+  .sound-library.collapsed .library-search,
+  .sound-library.collapsed #library-categories {
+    display: none;
+  }
+
+  .sound-library h2 {
+    cursor: pointer;
+    position: relative;
+    padding-right: 30px;
+  }
+
+  .sound-library h2::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: #888;
+    transition: transform 0.2s;
+  }
+
+  .sound-library.collapsed h2::after {
+    transform: translateY(-50%) rotate(-90deg);
+  }
+
+  .center-panel {
+    min-height: 40vh;
+    flex: 1;
+  }
+
+  .inspector-panel {
+    width: 100% !important;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid #333;
+    max-height: 50vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-items { max-height: 200px; overflow-y: auto; }
+
+  /* Upload dropzone touch-friendly */
+  .upload-dropzone { padding: 20px 12px; }
+  .drop-hint { font-size: 10px; }
+}
+
+/* ── Mobile: Landscape & small tablets (768-1024px) ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .sound-library { width: 200px; }
+  .inspector-panel { width: 220px; }
+}

@@ -395,39 +395,68 @@
     }
 
     var constellation = _activeConstellation;
+    var resolvedPath = _path.slice();
+    var resolvedConstellationId = _activeConstellationId;
 
     // Mark constellation solved
-    SuitNodeRenderer.markConstellationSolved(_activeConstellationId);
+    SuitNodeRenderer.markConstellationSolved(resolvedConstellationId);
 
     // Burn nodes into forever pixels
     SuitNodeRenderer.burnForever(constellation.nodeIds);
 
-    // Reward: emit coins per node
-    var rewardPerNode = constellation.rewardPerNode || 10;
-    if (typeof CurrencySpawning !== 'undefined' && CurrencySpawning.scatterPostCombatNodes) {
-      constellation.nodeIds.forEach(function (id, idx) {
-        var node = SuitNodeRenderer.getNodeById(id);
-        if (!node) return;
-        var pos = _getNodeScreenPos(node);
-        setTimeout(function () {
-          try {
-            CurrencySpawning.scatterPostCombatNodes(
-              pos.x, pos.y, rewardPerNode,
-              { burstRadius: 20, fallDuration: 800 }
-            );
-          } catch (e) {}
-        }, idx * 50);
-      });
+    // ── Build screen-space point array for the resolution animation ──
+    var screenPoints = [];
+    for (var i = 0; i < resolvedPath.length; i++) {
+      var node = SuitNodeRenderer.getNodeById(resolvedPath[i]);
+      if (node) screenPoints.push(_getNodeScreenPos(node));
+    }
+    // Close the loop visually if shape validation
+    if (constellation.validation === 'shape' && screenPoints.length >= 3) {
+      screenPoints.push({ x: screenPoints[0].x, y: screenPoints[0].y });
     }
 
-    // Dispatch custom event
+    // ── Play the resolution animation (ConstellationRewards) ──
+    if (typeof ConstellationRewards !== 'undefined' && ConstellationRewards.play) {
+      ConstellationRewards.play(constellation, resolvedPath, screenPoints, function () {
+        console.log('[ConstellationTracer] Resolution animation complete');
+      });
+    } else {
+      // Fallback: old CurrencySpawning scatter (pre-Phase 8 rewards)
+      var rewardPerNode = constellation.rewardPerNode || 10;
+      if (typeof CurrencySpawning !== 'undefined' && CurrencySpawning.scatterPostCombatNodes) {
+        constellation.nodeIds.forEach(function (id, idx) {
+          var n = SuitNodeRenderer.getNodeById(id);
+          if (!n) return;
+          var pos = _getNodeScreenPos(n);
+          setTimeout(function () {
+            try {
+              CurrencySpawning.scatterPostCombatNodes(
+                pos.x, pos.y, rewardPerNode,
+                { burstRadius: 20, fallDuration: 800 }
+              );
+            } catch (e) {}
+          }, idx * 50);
+        });
+      }
+    }
+
+    // ── Dispatch custom event ──
+    var coinYield = 0;
+    if (typeof ConstellationRewards !== 'undefined') {
+      coinYield = ConstellationRewards.calculateYield({
+        nodeCount: constellation.nodeIds.length,
+        revealedStars: 0,
+        dirChanges: Math.max(0, constellation.nodeIds.length - 2),
+        intersections: 0,
+      });
+    }
     try {
       var evt = new CustomEvent('constellation-solved', {
         detail: {
-          constellationId: _activeConstellationId,
-          path: _path.slice(),
+          constellationId: resolvedConstellationId,
+          path: resolvedPath,
           nodeCount: constellation.nodeIds.length,
-          totalReward: rewardPerNode * constellation.nodeIds.length,
+          totalReward: coinYield,
           difficulty: constellation.difficulty,
         },
       });
@@ -435,8 +464,8 @@
     } catch (e) {}
 
     console.log('[ConstellationTracer] ★ Constellation solved!',
-                _activeConstellationId,
-                '| Reward:', rewardPerNode * constellation.nodeIds.length, 'coins');
+                resolvedConstellationId,
+                '| Yield:', coinYield, 'coins');
 
     // Reset tracer state (keep enabled for continued dragging)
     _state = 'idle';
@@ -450,6 +479,11 @@
   // ── Render Hook ──────────────────────────────────────────
 
   function _renderHook(hookCtx) {
+    // Always render the rewards animation (particles persist after tracer resets)
+    if (typeof ConstellationRewards !== 'undefined' && ConstellationRewards.renderFrame) {
+      ConstellationRewards.renderFrame(hookCtx.ctx, hookCtx.W, hookCtx.H);
+    }
+
     if (!_enabled) return;
 
     var ctx = hookCtx.ctx;
@@ -487,33 +521,43 @@
     ctx.lineJoin = 'round';
 
     if (_path.length >= 2) {
-      // Glow layer
-      ctx.strokeStyle = tc.glow;
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      for (var i = 0; i < _path.length; i++) {
-        var node = SuitNodeRenderer.getNodeById(_path[i]);
-        if (!node) continue;
-        var px = node.x * W;
-        var py = node.y * H;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+      // Collect screen-space points for gradient
+      var pts = [];
+      for (var pi2 = 0; pi2 < _path.length; pi2++) {
+        var pn = SuitNodeRenderer.getNodeById(_path[pi2]);
+        if (pn) pts.push({ x: pn.x * W, y: pn.y * H });
       }
-      ctx.stroke();
 
-      // Solid line
-      ctx.strokeStyle = tc.color;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (var j = 0; j < _path.length; j++) {
-        var node2 = SuitNodeRenderer.getNodeById(_path[j]);
-        if (!node2) continue;
-        var px2 = node2.x * W;
-        var py2 = node2.y * H;
-        if (j === 0) ctx.moveTo(px2, py2);
-        else ctx.lineTo(px2, py2);
+      if (pts.length >= 2) {
+        // Glow layer — soft wide halo
+        ctx.strokeStyle = tc.glow;
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (var gi = 1; gi < pts.length; gi++) ctx.lineTo(pts[gi].x, pts[gi].y);
+        ctx.stroke();
+
+        // Core line — subtle flowing gradient (gold shimmer travels along path)
+        var flowGrad = null;
+        try {
+          flowGrad = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[pts.length - 1].x, pts[pts.length - 1].y);
+          var flowT = (_animTime * 0.003) % 1;
+          var lo = Math.max(0.01, flowT - 0.12);
+          var hi = Math.min(0.99, flowT + 0.12);
+          flowGrad.addColorStop(0,    tc.color);
+          flowGrad.addColorStop(lo,   tc.color);
+          flowGrad.addColorStop(flowT, tc.snap);
+          flowGrad.addColorStop(hi,   tc.color);
+          flowGrad.addColorStop(1,    tc.color);
+        } catch (e) { flowGrad = tc.color; }
+
+        ctx.strokeStyle = flowGrad || tc.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (var ci = 1; ci < pts.length; ci++) ctx.lineTo(pts[ci].x, pts[ci].y);
+        ctx.stroke();
       }
-      ctx.stroke();
     }
 
     // ── Live tether from last node to cursor ──

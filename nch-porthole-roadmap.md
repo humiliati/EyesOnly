@@ -839,3 +839,1247 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 
 **Next up:** Phase 6 (magnifying glass zoom repurpose) → Phase 8 (gold lens constellation tracing with suit-symbol nodes and lens gradients) → Phase 9 (multi-lens suit transformation).
+
+
+
+
+
+---
+
+## Constellation Resolution & Yield Economy — Refined Spec (Phase 8.5)
+
+**Status:** ✅ constellation-rewards.js shipped (2026-03-17)
+**File:** `public/js/constellation-rewards.js`
+
+### Yield Economy (Phase 11 Risk Model)
+
+Base formula: `(nodeCount × 3) + (revealedStars × 2) + (dirChanges × 1) + (intersections × 2)`
+Clamped: min 6, max 60.
+
+| Tier   | Nodes | Expected Yield | Bursts/Star | Trail |
+|--------|-------|---------------|-------------|-------|
+| Tiny   | 3     | 6–9           | 1           | none  |
+| Small  | 4–6   | 12–20         | 2           | none  |
+| Medium | 7–9   | 20–35         | 2           | faint |
+| Large  | 10–12 | 35–50         | 3           | yes   |
+
+### Resolution Animation Timeline (1.5 s)
+
+```
+  0 ms   SURGE — tether pops, line glows gold, width 1.5→5.5px, scale +6%
+150 ms   ENERGY SWEEP — gold pulse travels parametric t=0→1 along path
+         Stars ignite sequentially as pulse passes; 4 sparks per star
+300 ms   LINE FRACTURE — emitters activate behind pulse (every 30px)
+         Coins eject perpendicular to line direction from fracture points
+500 ms   COIN WATERFALL — star burst coins (1–3 bursts/star, staggered 120ms)
+         coin_rain.wav plays; coin_flip.wav per star (staggered 80ms)
+1000 ms  COUNTER TICKS — currency-increment events dispatch (~60ms/tick)
+         clickandrelease-1 SFX per tick
+1200 ms  COIN POUCH — coin_pouch_1.wav; last coins fade; tether fully dissolved
+1500 ms  COUNTER SETTLES — currency-settle event; animation complete
+```
+
+### Coin Particle System (Canvas)
+
+- Sprite source: `assets/Sprites/Coin/Coin Flip (animation frames)/goldcoin-frame1..6.png`
+- Animation: 12 fps (~83ms/frame), 6 frames, no loop
+- Physics: vx random(±40), vy initial -40...-70, gravity 350 px/s²
+- 30% of coins spawn as "background" depth (70% scale, slower fall, 50% opacity)
+- Sparks: 1–2px gold dots, 200–350ms lifetime, light gravity
+
+### Audio Stack (layered)
+
+| Timing   | SFX                  | Volume | Source Path                           |
+|----------|---------------------|--------|---------------------------------------|
+| 500 ms   | coin_rain            | 0.45   | encoded_for_r2/coin_sfx/coin_rain     |
+| 600+ ms  | coin_flip ×nodeCount | 0.30   | encoded_for_r2/coin_sfx/coin_flip     |
+| 1000+ ms | clickandrelease-1    | 0.20   | encoded_for_r2/new_sfx/clickandrelease-1 |
+| 1200 ms  | coin_pouch_1         | 0.55   | encoded_for_r2/coin_sfx/coin_pouch_1  |
+
+### Integration Points
+
+- `ConstellationTracer._resolveConstellation()` → calls `ConstellationRewards.play()`
+- Render hook: tracer's `_renderHook()` calls `ConstellationRewards.renderFrame()` every frame
+- Counter events: `currency-increment` and `currency-settle` CustomEvents on document
+
+### Remaining Polish (not yet shipped)
+
+- [ ] Coin motion trails (2 ghost frames behind each coin for streak illusion)
+- [ ] Depth parallax: background coins fall slower (vy × 0.7)
+- [ ] Star flare particle burst before coin spawn (spark spray → coin burst sequence)
+- [ ] Moving gradient "liquid gold" shader on tether during surge phase
+- [ ] Specular sweep (thin white shimmer band ahead of gold pulse)
+- [ ] Micro-ripple sine-wave brightness along tether
+- [ ] Ultra-polish: slight constellation plane tilt toward viewer (scaleY 1.05)
+- [ ] Counter UI widget (visual coin counter with pulse animation on settle)
+- [ ] Phase 11: revealed-star bonus wired to multi-suit lens prep system
+
+---
+
+### Original Design Notes (archived)
+
+Below are the raw brainstorm notes that produced the above spec. Kept for reference.
+
+
+
+rough ideas:
+
+
+
+3 node puzzles should only yield~ 6 coins
+
+4 node puzzles with multiple star reveals yield ~ 15 coins
+
+12 node puzzles all multiple stars ~ 50 coins
+
+
+
+let's design a skeleton for a coherent yield economy that incentivizes risk per phase 11
+
+
+
+then
+
+
+
+we have at C:\Users\hughe\.openclaw\workspace\EyesOnly\MEDIA_ASSETS\SFX\ coin sfx that needs to be encoded and moved to encoded_for_r2 folder , and ready for deployment to r2 via the r2-gap-upload . 
+
+we want to Play coin rain once or twice depending on yeld with a normal Coin Pouch 1 that finishes the rain sound as our new coin sprite "waterfalls" from the star nodes. 
+
+
+
+we have a new set of sprites to utilize at C:\Users\hughe\.openclaw\workspace\EyesOnly\public\assets\Sprites\Coin\Coin Flip
+
+
+
+the vision is these coins are rendered at the same width as the club.star node, and when a constellation resolution happens, each symbol as it burns in "rains" 1 or 2 coin flip animations as the sfx play and currency cointer updates.
+
+
+
+the currency counter should start updating at about 1 second into the animation and be the last thing moving at the 2 & 3nd second as it updates while the waterfall and sounds had been complete for ~a seconds
+
+
+
+the tether line needs to pop and glow and rise towards the screen with a zoom and a fade as the coin waterfalls and the currency counter updates
+
+
+
+the currency counter should make the same click-release sfx as the decoder rings while they're spinning to update. so we're playing 
+
+coin rain + coin flip to finalize
+
+currency counter starts sounding click-release, based on yeld, halfway through coin rain and should tick a few times after coin rain has been finalized by coin flip.
+
+
+
+the total animation time should take ~1.5 second
+
+
+You’re designing two systems simultaneously:
+
+Puzzle yield economy (risk vs reward progression)
+
+Resolution animation pipeline (visual + audio choreography)
+
+Below is a clean skeleton that ties them together so the economy, animation timing, and asset pipeline all stay consistent.
+
+1. Constellation Yield Economy (Phase 11 Risk Model)
+
+The reward should reflect three risk variables:
+
+Variable	Meaning
+Nodes	path length / effort
+Hidden stars	required lens prep
+Path complexity	angles / intersections
+
+Define a base yield per node and multiply by modifiers.
+
+Base Node Value
+baseNodeValue = 3 coins
+
+Example baseline:
+
+Nodes	Base
+3	9
+4	12
+8	24
+12	36
+Lens Preparation Bonus
+
+Each revealed star adds risk.
+
++2 coins per revealed star
+
+Examples:
+
+Puzzle	Calculation	Yield
+3 nodes	3×3	~9 → clamp to 6
+4 nodes +2 reveals	12 +4	16
+12 nodes +6 reveals	36 +12	48
+
+This lands very close to your targets.
+
+Complexity Bonus
+
+Add small bonuses for interesting shapes.
+
++1 coin per direction change
++2 coins per intersection
+
+Final yield clamped:
+
+min = 6
+max = 60
+Risk Incentive Curve
+
+Players should want to attempt bigger shapes.
+
+Tier	Nodes	Yield
+Tiny	3	6
+Small	4-6	12-20
+Medium	7-9	20-35
+Large	10-12	35-50
+
+The yield per node rises slightly for longer puzzles to encourage risk.
+
+2. Constellation Resolution Animation
+
+Total target time:
+
+1.5 seconds
+
+Timeline below.
+
+Animation Timeline
+0 ms — Lock Event
+
+When the final node connects:
+
+tether line pops
+
+line glows gold
+
+quick scale-up toward camera
+
+slight fade
+
+Duration:
+
+0 → 200 ms
+200 ms — Constellation Burn-In
+
+Stars brighten sequentially along the path.
+
+Each star:
+
+glow → flare → coin spawn
+
+Duration:
+
+200 → 600 ms
+600 ms — Coin Waterfall Begins
+
+Each star emits 1–2 coins.
+
+Rules:
+
+Yield	Coins per star
+≤15	1
+
+15 | 2 |
+
+Coins:
+
+use Coin Flip sprites
+
+same width as club.star nodes
+
+Motion:
+
+spawn at star
+fall ~80px
+fade out
+
+Duration:
+
+600 → 1100 ms
+
+Sound:
+
+coin_rain.wav
+1000 ms — Counter Begins Updating
+
+The currency counter delays intentionally.
+
+Start update:
+
+~1 second
+
+Sound:
+
+click-release (decoder ring)
+
+Each increment:
+
+~60 ms per tick
+
+Example:
+
++15 coins → 15 ticks
+
+But visually batch them:
+
+tick every 2–3 coins
+
+to prevent long sequences.
+
+1200 ms — Coin Rain Finalization
+
+Play:
+
+Coin Pouch 1
+
+Sound effect marks coin rain completion.
+
+Coin flips stop.
+
+1200 → 1500 ms — Counter Finish
+
+Currency counter continues ticking slightly after rain ends.
+
+Final visual moment:
+
+counter pulse
+
+small glow
+
+Visual Flow Summary
+0ms    tether pop + glow
+200ms  constellation burn
+600ms  coin waterfall + rain sfx
+1000ms counter starts ticking
+1200ms coin pouch finish
+1500ms counter settles
+Coin Spawn Logic
+
+Example pseudo-code:
+
+function spawnCoins(stars, yield){
+  const coinsPerStar = yield > 15 ? 2 : 1
+
+  stars.forEach(star=>{
+    for(let i=0;i<coinsPerStar;i++){
+      spawnCoinFlip(star.x, star.y)
+    }
+  })
+}
+Counter Update Logic
+function animateCounter(yield){
+  const step = Math.ceil(yield / 8)
+
+  let remaining = yield
+
+  const interval = setInterval(()=>{
+    const add = Math.min(step, remaining)
+    account.balance += add
+    updateCounterUI()
+
+    remaining -= add
+    if(remaining <= 0) clearInterval(interval)
+  },60)
+}
+
+This keeps the counter active but fast.
+
+Audio Stack
+
+During a victory event:
+
+1. coin_rain.wav
+2. coin_flip.wav (per star)
+3. coin_pouch_1.wav
+4. click_release.wav (counter)
+
+The key is overlapping layers.
+
+The ear hears:
+
+rain → flip → pouch → counter ticks
+
+which feels rich but controlled.
+
+Asset Pipeline (R2 Deployment)
+
+Source folder:
+
+MEDIA_ASSETS/SFX/coin
+
+Target:
+
+encoded_for_r2
+
+Pipeline:
+
+source WAV
+→ encode OGG + MP3
+→ place in encoded_for_r2
+→ r2-gap-upload
+
+Example encoded structure:
+
+encoded_for_r2/
+  coin_rain.ogg
+  coin_flip.ogg
+  coin_pouch_1.ogg
+  click_release.ogg
+Coin Sprite Behavior
+
+Sprites:
+
+Sprites/Coin/Coin Flip
+
+Animation properties:
+
+fps: 12
+duration: ~450 ms
+loop: false
+
+Physics:
+
+velocityY: 120px/s
+gravity: 350px/s²
+
+Coins fade before reaching bottom so the screen never fills.
+
+Psychological Effect
+
+The sequence should feel like:
+
+Constellation ignites
+
+Stars pay tribute
+
+Coins rain from the sky
+
+Account acknowledges the bounty
+
+This reinforces the fantasy that the sky itself rewards discovery.
+
+If you'd like, I can also show a very powerful UI trick for the coin rain that will make the waterfall look 10× richer without spawning hundreds of DOM elements (it uses a single canvas particle layer that renders coin sprites extremely cheaply).
+
+how do we make the waterfall look richer while only pouring from star.node . we also want the yield animation to somewhat align with yield.
+
+To make the coin waterfall feel rich while still spawning only from star nodes, the trick is not increasing the number of objects — it’s increasing visual depth per coin event. You can make a small number of coins feel like a large cascade by layering staggering, parallax, trails, and burst timing.
+
+The second goal is making the animation visually proportional to yield without extending total animation time.
+
+Below is a system that accomplishes both.
+
+1. Yield → Visual Intensity Mapping
+
+Instead of directly mapping coins to yield, map yield to three parameters:
+
+coinBursts
+burstDensity
+trailIntensity
+
+Example scaling:
+
+Yield	Bursts per star	Coins per burst	Trail
+6	1	1	none
+15	2	1–2	faint
+50	3	2	strong
+
+This keeps object count small but visual richness increases.
+
+2. Burst Waterfall Instead of Continuous Rain
+
+Instead of coins dripping steadily, each star releases burst clusters.
+
+Example:
+
+star.node
+   ↓
+burst 1 (3 coins)
+burst 2 (2 coins)
+burst 3 (3 coins)
+
+Stagger bursts slightly:
+
+0ms
+120ms
+260ms
+
+The brain reads this as a flowing waterfall even with ~6 coins total.
+
+3. Micro-Arc Motion
+
+Straight vertical falls look cheap.
+
+Give each coin a slight horizontal arc.
+
+Example physics:
+
+vx = random(-40,40)
+vy = 120
+gravity = 350
+
+Coins drift outward slightly from the star before falling.
+
+This creates spray like a fountain.
+
+4. Motion Trails
+
+Instead of spawning more coins, give each coin a faint streak trail.
+
+Implementation:
+
+coin sprite
++ 2 fading ghost frames behind it
+
+or canvas trail:
+
+draw previous positions with opacity decay
+
+Visually this turns:
+
+1 coin
+
+into something that looks like:
+
+3-4 streaks
+5. Depth Parallax
+
+Spawn two coin layers:
+
+foreground coins (100%)
+background coins (70% scale)
+
+Background coins:
+
+fall slower
+fade sooner
+
+This creates depth without extra objects.
+
+Example:
+
+foreground: vy = 130
+background: vy = 90
+6. Star Flare Emitters
+
+Before coins spawn, the star briefly flares and ejects particles.
+
+Sequence per star:
+
+flare
+spark spray
+coin burst
+
+Spark particles are cheap (small circles) but give the feeling of energy release.
+
+7. Constellation Wave Trigger
+
+Instead of all stars raining simultaneously, activate them along the constellation path.
+
+Example:
+
+star1 → star2 → star3 → star4
+
+Delay:
+
+40ms per star
+
+This makes the constellation feel like a fuse burning.
+
+Then the coins cascade after each ignition.
+
+8. Coin Flip Timing
+
+Your coin flip animation should finish just before the coin disappears.
+
+Example:
+
+spawn
+flip animation (450ms)
+fade
+
+Coins should vanish mid-fall before reaching the bottom of the screen so the scene never fills up.
+
+9. Yield-Proportional Coin Logic
+
+Use yield to control burst count rather than object count.
+
+Example logic:
+
+function waterfallForStar(star, yield){
+  const bursts = Math.min(3, Math.ceil(yield / 20))
+
+  for(let b=0;b<bursts;b++){
+    setTimeout(()=>{
+      spawnBurst(star)
+    }, b * 120)
+  }
+}
+
+Burst definition:
+
+function spawnBurst(star){
+  const coins = 1 + Math.floor(Math.random()*2)
+
+  for(let i=0;i<coins;i++){
+    spawnCoin(star.x, star.y)
+  }
+}
+
+Typical outcome:
+
+small puzzle → ~3 coins total
+large puzzle → ~15 coins total
+
+But visually it feels much larger.
+
+10. Coin Pouch Finale
+
+When the rain finishes:
+
+coin_pouch_1.wav
+
+At that moment:
+
+last coin flips
+
+star glow fades
+
+counter accelerates its final ticks
+
+This gives closure to the cascade.
+
+11. Synchronizing With the Counter
+
+Counter should begin after the first coin burst.
+
+Suggested timing:
+
+0ms   constellation lock
+200ms stars ignite
+500ms coin bursts begin
+1000ms counter ticks start
+1200ms coin pouch
+1500ms counter settles
+
+This way the counter feels like the accounting system catching up to the sky’s reward.
+
+12. Cheap Rendering Trick
+
+Instead of individual DOM nodes, use a single canvas particle system for coins.
+
+Each coin stores:
+
+x
+y
+vx
+vy
+frame
+opacity
+
+Rendering loop draws all coins in one pass.
+
+Benefits:
+
+50+ coins possible
+minimal performance cost
+
+Even if you only spawn ~10 coins, canvas lets them feel fluid.
+
+13. Visual Density Multiplier
+
+You can multiply perceived density by adding coin echo sprites.
+
+Example:
+
+coin
++ faint mirrored copy offset by 3px
+
+This creates the illusion of more coins than exist.
+
+Resulting Experience
+
+When a constellation resolves:
+
+tether line surges toward the viewer
+
+stars ignite sequentially
+
+coins burst from each star in small fountains
+
+streak trails create a waterfall illusion
+
+coin rain sound fills the space
+
+coin pouch closes the cascade
+
+counter ticks upward
+
+All within ~1.5 seconds, but it feels dense and rewarding.
+
+If you want, I can also show a very slick constellation-to-coin animation trick where the tether lines themselves dissolve into coins as they rise toward the camera.
+
+It looks like the constellation is literally melting into currency, and it costs almost no extra rendering work.
+
+let's look at the constellation to coin animation trick where the tether lines themselves dissolve into coins
+
+The tether-to-coin dissolve works well because it converts an existing visual element (the constellation lines) into the reward particles instead of spawning everything from scratch. It looks richer, keeps object counts low, and visually explains “the constellation turning into money.”
+
+The idea is: the line itself fractures into coin emitters that travel along the path before falling.
+
+Below is a clean structure for implementing it.
+
+Core Idea
+
+Instead of:
+
+stars → coins
+
+You do:
+
+stars → line ignition → line fracture → coins emerge from the line
+
+The player sees the tether line melt into currency.
+
+Visual Sequence
+Phase 1 — Lock & Surge (0–200 ms)
+
+The constellation line:
+
+thickens
+
+glows gold
+
+scales slightly toward camera
+
+opacity ↑
+width ↑
+bloom effect
+
+Purpose: focus the player on the constellation shape.
+
+Phase 2 — Energy Sweep (200–450 ms)
+
+A gold pulse travels along the line path.
+
+Think of it as a fuse.
+
+star1 → star2 → star3 → star4
+
+The pulse width should be about:
+
+8–12px
+
+It leaves a heated trail.
+
+Implementation trick:
+
+gradient sweep along line path
+Phase 3 — Line Fracture (450–750 ms)
+
+As the energy pulse travels, the line breaks into segments.
+
+Each segment becomes a coin emitter.
+
+Visual look:
+
+----->____->____->____
+
+Where each break point spawns coins.
+
+Segment spacing:
+
+every 24–40px along the line
+
+So even a small constellation line yields multiple coin sources.
+
+Phase 4 — Coin Emergence (600–1100 ms)
+
+Coins spawn along the line segments, not just the stars.
+
+This dramatically increases perceived density.
+
+Example for a 4-node constellation:
+
+stars: 4
+line segments: ~8
+emitters: 12
+
+But each emitter spawns only 1 coin.
+
+So you might spawn:
+
+12 coins total
+
+but it looks like a full waterfall.
+
+Phase 5 — Coin Waterfall Motion
+
+Coins appear to peel off the line.
+
+Initial motion:
+
+vx: random(-50,50)
+vy: 80
+
+Then gravity pulls them downward.
+
+Add slight rotation while falling.
+
+Phase 6 — Star Final Burst (900 ms)
+
+After line emitters finish, stars release one final coin burst.
+
+This ties the animation back to the star nodes.
+
+Example:
+
+each star → 1–2 coins
+Phase 7 — Coin Pouch Finale (1200 ms)
+
+Play:
+
+coin_pouch_1.wav
+
+At that moment:
+
+last coins flip
+
+constellation line fades
+
+Aligning With Yield
+
+Yield determines how many fracture emitters activate.
+
+Example:
+
+Yield	Line Emitters Activated
+6	stars only
+15	stars + 30% line segments
+50	stars + all line segments
+
+Example logic:
+
+emitters = lineSegments.slice(0, yield / 3)
+
+This ties animation density to reward.
+
+Efficient Rendering
+
+Instead of DOM elements, treat coins as particles in a canvas.
+
+Each coin object:
+
+x
+y
+vx
+vy
+rotation
+frame
+opacity
+
+Rendering loop:
+
+draw coin sprite
+update physics
+fade
+
+You can render 50+ coins cheaply.
+
+Visual Trick: Coin Sparks
+
+When the line fractures, emit tiny gold sparks.
+
+These are just 2px glowing dots.
+
+3 sparks per fracture
+
+They make the break feel energetic without heavy rendering.
+
+Making the Line “Melt”
+
+Instead of abruptly removing the line, shrink its opacity behind the pulse.
+
+pulse position → line opacity = 0
+
+So it appears the energy consumes the constellation.
+
+Example Timing
+0 ms     line lock + glow
+200 ms   energy sweep begins
+450 ms   line fractures
+600 ms   coins peel from line
+900 ms   star burst coins
+1200 ms  coin pouch
+1500 ms  counter settles
+Resulting Visual Narrative
+
+The player experiences:
+
+constellation ignites
+
+golden energy travels the path
+
+the tether lines fracture
+
+coins burst from the fracture points
+
+stars pay tribute with final coins
+
+pouch sound closes the cascade
+
+counter tallies the reward
+
+The constellation literally transmutes into currency.
+
+Optional Ultra-Polish Trick
+
+At the start of the animation, slightly tilt the constellation plane toward the viewer (scale Y ~1.05, X ~1.1).
+
+When the coins fall, they appear to drop out of the sky plane, making the reward feel dimensional.
+
+
+The elegant trick is to treat the constellation lines as a parametric path and place emitters using a normalized distance parameter (t) along that path.
+
+Instead of hard-coding emitter positions, you sample the line geometry itself. This guarantees that fracture emitters always sit exactly on the tether line, even if the constellation shape changes.
+
+This is a standard technique in particle systems called path sampling or arc-length emission.
+
+1. Represent the Constellation as Segments
+
+Your constellation is already a sequence of nodes.
+
+Example:
+
+A → B → C → D
+
+Convert this into line segments:
+
+[A,B]
+[B,C]
+[C,D]
+
+Each segment has a length.
+
+2. Compute Total Path Length
+
+You measure the entire constellation path.
+
+function segmentLength(a,b){
+  return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+Then sum:
+
+totalLength = segments.reduce(
+  (sum,s)=>sum + segmentLength(s.a,s.b),
+  0
+)
+
+Now the entire constellation can be addressed as:
+
+t = 0 → start
+t = 1 → end
+3. Sample Emitters Along the Path
+
+Instead of placing emitters per node, sample them along the path at regular intervals.
+
+Example spacing:
+
+every 30px
+
+Convert to normalized parameter:
+
+spacing = 30 / totalLength
+
+Emitter loop:
+
+for(let t = 0; t <= 1; t += spacing){
+  emitters.push(samplePointOnPath(t))
+}
+4. Sampling Function (The Key Trick)
+
+The sampler walks the path until it finds where t lands.
+
+function samplePointOnPath(t){
+  let target = t * totalLength
+  let acc = 0
+
+  for(const s of segments){
+    const len = segmentLength(s.a,s.b)
+
+    if(acc + len >= target){
+      const localT = (target - acc) / len
+
+      return {
+        x: s.a.x + (s.b.x - s.a.x) * localT,
+        y: s.a.y + (s.b.y - s.a.y) * localT
+      }
+    }
+
+    acc += len
+  }
+}
+
+Now emitters perfectly follow the constellation geometry.
+
+5. Fracture Pulse Along the Path
+
+Use the same t parameter for the energy sweep.
+
+Example pulse position:
+
+pulseT = time / duration
+
+Emit coins when:
+
+abs(emitter.t - pulseT) < threshold
+
+This makes emitters activate exactly as the pulse passes them.
+
+Result:
+
+star → line → star → line → star
+
+fractures naturally.
+
+6. Coin Ejection Direction
+
+You can compute the local line direction for each emitter.
+
+Segment direction:
+
+dx = b.x - a.x
+dy = b.y - a.y
+
+Perpendicular vector:
+
+px = -dy
+py = dx
+
+Use it to push coins outward:
+
+vx = px * random(20,50)
+vy = py * random(20,50)
+
+Coins peel away from the line, which looks like the tether exploding.
+
+7. Yield Scaling
+
+Instead of adding more emitters, activate more of the sampled points.
+
+Example:
+
+emitters = allEmitters.slice(0, yield / 3)
+
+So high yield means:
+
+more fracture points
+denser coin rain
+
+without changing the geometry logic.
+
+8. Why This Is Powerful
+
+This technique automatically adapts to:
+
+any constellation shape
+
+any node count
+
+procedural constellations
+
+curved paths if you add splines later
+
+No manual placement.
+
+9. Visual Result
+
+When the constellation resolves:
+
+tether line glows
+
+energy pulse travels along the path
+
+fracture emitters activate along the geometry
+
+coins peel outward from those points
+
+star nodes finish with coin bursts
+
+The constellation literally dissolves into currency along its exact geometry.
+
+
+1. Use a Moving Gradient Instead of a Static Line
+
+Instead of rendering the tether as a flat color, render it as a linear gradient whose offset moves over time.
+
+Conceptually:
+
+dark gold → bright gold → white highlight → bright gold → dark gold
+
+As this gradient shifts along the line, it appears like liquid metal flowing.
+
+Example gradient stops:
+
+0%   #6e4b00
+40%  #c69200
+50%  #fff3b0
+60%  #c69200
+100% #6e4b00
+
+Then animate the gradient offset.
+
+Pseudo-logic:
+
+flowOffset += time * flowSpeed
+
+Each frame the highlight moves forward.
+
+2. Pulse Thickness With the Flow
+
+As the golden wave passes a section of line, briefly increase the line width.
+
+Example:
+
+base width: 3px
+pulse width: 6px
+
+Use the same t parameter from the path sampling system.
+
+distance = abs(segment.t - pulseT)
+width = base + max(0, (1 - distance * falloff)) * pulseAmount
+
+This gives the impression of pressure pushing through the conduit.
+
+3. Add a Specular Sweep
+
+Metal looks metallic because of moving highlights.
+
+Add a thin white shimmer band slightly ahead of the gold pulse.
+
+white highlight width ≈ 2px
+opacity ≈ 0.6
+
+Offset it slightly:
+
+highlightT = pulseT + 0.02
+
+So visually:
+
+white shimmer → molten gold → cooling gold
+
+This layering makes the line look molten rather than glowing.
+
+4. Add Micro Ripples
+
+Introduce a tiny sine-wave distortion to the brightness along the line.
+
+Concept:
+
+brightness = base + sin(t * rippleFrequency + time * rippleSpeed)
+
+This creates subtle liquid movement instead of a flat gradient.
+
+Use small values:
+
+frequency ≈ 12
+amplitude ≈ 0.1
+
+The ripple makes the gold appear to flow turbulently.
+
+5. Coin Fracture Synchronization
+
+Your fracture emitters should activate exactly when the gold pulse reaches them.
+
+If each emitter has parameter t:
+
+if abs(emitter.t - pulseT) < 0.02
+    fracture()
+
+At the fracture moment:
+
+line brightness spikes
+
+tiny gold sparks eject
+
+coin particles spawn
+
+Visually:
+
+gold flow → pressure spike → line cracks → coins erupt
+
+It looks like gold liquefying and breaking apart into coins.
+
+6. Add Gold Sparks Along the Pulse
+
+Before coins appear, emit a few tiny particles from the line:
+
+size: 1–2px
+lifetime: 200ms
+color: warm gold
+
+They travel slightly upward before fading.
+
+This makes the line feel energetic and molten.
+
+7. Fade the Line Behind the Pulse
+
+As the gold wave travels, fade the line behind it.
+
+opacity = 1 - smoothstep(pulseT - fadeDistance, pulseT, segmentT)
+
+This gives the illusion that the pulse consumes the constellation.
+
+Eventually the line disappears entirely, replaced by coins.
+
+8. Timing With the Full Animation
+
+Recommended timeline:
+
+0ms   constellation locks
+150ms gold flow begins
+300ms pulse traveling
+450ms fracture emitters trigger
+600ms coin waterfall starts
+1000ms counter starts ticking
+1200ms coin pouch sound
+1500ms animation complete
+
+The gold flow and fracture must overlap slightly so the transition feels natural.
+
+9. Rendering Efficiency Trick
+
+Instead of drawing each segment individually:
+
+draw the constellation path once on a canvas layer
+
+apply the moving gradient shader-style
+
+This avoids per-segment DOM updates and makes the animation smooth.
+
+10. Visual Narrative
+
+When the player completes a constellation:
+
+the tether ignites
+
+molten gold begins flowing through the path
+
+a bright shimmer leads the wave
+
+the line thickens as pressure builds
+
+fracture points burst open
+
+coins peel from the golden stream
+
+the constellation dissolves into falling currency
+
+The result feels like the sky itself is minting coins from the discovered constellation.

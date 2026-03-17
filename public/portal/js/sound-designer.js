@@ -69,6 +69,7 @@ var SoundDesigner = (function () {
     _loadManifest();        // optional enrichment — library works without it
     _applyPersistedFlags(); // apply delete marks + missing flags to DOM
     _loadVideoLibrary();    // fetch uploaded videos from R2
+    _bindMobileLibraryToggle(); // collapsible sidebar on mobile
   }
 
   // ---- Manifest Loading (optional enrichment) ----
@@ -671,6 +672,8 @@ var SoundDesigner = (function () {
 
   function _startUpload() {
     var dest = document.getElementById('upload-dest-select').value;
+    var catSelect = document.getElementById('upload-category-select');
+    var category = catSelect ? catSelect.value : '';
     var startBtn = document.getElementById('upload-start-btn');
     startBtn.disabled = true;
 
@@ -685,6 +688,7 @@ var SoundDesigner = (function () {
       formData.append('file', item.file);
       formData.append('destination', dest);
       formData.append('filename', item.file.name);
+      if (category) formData.append('category', category);
 
       item.status = 'uploading';
       _updateUploadItemUI(item);
@@ -701,9 +705,23 @@ var SoundDesigner = (function () {
         item.status = 'done';
         item.progress = 100;
         uploaded++;
-        _uploadHistory.push({ name: item.file.name, dest: dest, time: new Date().toISOString(), key: data.key });
+        var catLabel = category || _inferCategory(dest);
+        _uploadHistory.push({ name: item.file.name, dest: dest, category: catLabel, time: new Date().toISOString(), key: data.key });
         _updateUploadItemUI(item);
         _renderUploadHistory();
+
+        // Auto-register in local manifest so Refresh picks it up
+        if (_manifest && data.key && dest !== 'video') {
+          var soundId = _deriveManifestId(item.file.name);
+          if (soundId && !_manifest[soundId]) {
+            _manifest[soundId] = {
+              src: '/' + data.key,
+              category: catLabel,
+              _status: 'uploaded'
+            };
+          }
+        }
+
         if (uploaded + errors === pending.length) {
           _toast('Upload complete: ' + uploaded + ' succeeded, ' + errors + ' failed');
         }
@@ -718,6 +736,19 @@ var SoundDesigner = (function () {
         }
       });
     });
+  }
+
+  function _inferCategory(dest) {
+    if (dest === 'music') return 'music';
+    if (dest === 'video') return 'video';
+    return 'sfx';
+  }
+
+  function _deriveManifestId(filename) {
+    // strip extension, lowercase, replace spaces/underscores with hyphens
+    var name = filename.replace(/\.[^.]+$/, '').toLowerCase();
+    name = name.replace(/[_\s]+/g, '-').replace(/[^a-z0-9\-]/g, '');
+    return name || null;
   }
 
   function _updateUploadItemUI(item) {
@@ -752,8 +783,9 @@ var SoundDesigner = (function () {
     }
 
     el.innerHTML = _uploadHistory.map(function (h) {
+      var catBadge = h.category ? ' <span style="color:#ff9933;font-size:10px;">[' + h.category + ']</span>' : '';
       return '<div class="inspector-row">' +
-        '<span class="label">' + h.name + '</span>' +
+        '<span class="label">' + h.name + catBadge + '</span>' +
         '<span class="value" style="color:#33ff33">' + h.dest + '/' + '</span>' +
         '</div>';
     }).join('');
@@ -939,6 +971,25 @@ var SoundDesigner = (function () {
         _stopPreview();
       }
     });
+  }
+
+  // ---- Mobile Library Toggle ----
+
+  function _bindMobileLibraryToggle() {
+    var lib = document.querySelector('.sound-library');
+    var h2 = lib ? lib.querySelector('h2') : null;
+    if (!h2) return;
+
+    h2.addEventListener('click', function () {
+      // Only toggle on mobile (< 768px)
+      if (window.innerWidth >= 768) return;
+      lib.classList.toggle('collapsed');
+    });
+
+    // Start collapsed on mobile
+    if (window.innerWidth < 768) {
+      lib.classList.add('collapsed');
+    }
   }
 
   // ---- Entity Population ----

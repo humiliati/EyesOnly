@@ -283,11 +283,24 @@
     var H = hookCtx.H;
     var t = hookCtx.time;
 
-    // 1. Forever pixels — permanent #ffffff 1px marks
-    ctx.fillStyle = '#ffffff';
+    // 1. Forever pixels — permanent bright marks from solved constellations
+    //    Rendered as 3px glow + 2px core so they're visible over starfield layers.
     for (var fi = 0; fi < _foreverPixels.length; fi++) {
       var fp = _foreverPixels[fi];
-      ctx.fillRect(Math.round(fp.x * W), Math.round(fp.y * H), 1, 1);
+      var fpx = fp.x * W;
+      var fpy = fp.y * H;
+
+      // Subtle glow halo (4px radius, warm white)
+      var fpGrad = ctx.createRadialGradient(fpx, fpy, 0, fpx, fpy, 4);
+      fpGrad.addColorStop(0, 'rgba(255,255,240,0.7)');
+      fpGrad.addColorStop(0.5, 'rgba(255,250,220,0.25)');
+      fpGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = fpGrad;
+      ctx.fillRect(fpx - 4, fpy - 4, 8, 8);
+
+      // Bright core (2px)
+      ctx.fillStyle = '#fffff0';
+      ctx.fillRect(Math.round(fpx) - 1, Math.round(fpy) - 1, 2, 2);
     }
 
     // 2. Active constellation nodes
