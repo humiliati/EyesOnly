@@ -1,3 +1,15 @@
+let's update the splash screen so that the constellation tether works
+
+let's apply the porthole lens -> glowing ring effect to each coin-card in the nch overlay and splash-screen
+
+when we open the nch overlay at pages that aren't splash or terminal the cards aren't rendering as anything except a list of data
+
+let's make sure this widget is uniform and functioning site-wide. we recently added an easter egg theme that inverts the pather's lens' contents to a different sky type and it's not working currently, can be removed. when the easter-egg theme applys the different sky type flashes then dissapears and im thinking of a very complicated conflict regarding having multiple viewports rendering differently theme'd sky and we want to make sure everything else works first before we try that
+
+
+
+
+
 What's styled (white/off-white/light-grey):
 
 Header nav buttons — BOOKING, PARTNERS, CONTACT, ARCADE, and the AWOL chip

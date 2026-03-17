@@ -121,6 +121,78 @@ const SplashScreen = (() => {
   // Easter egg: armed when amber coin is dropped near the bottom (last) card position
   var _easterEggArmed = false;
 
+  // ── Phase 8: Constellation tracer integration ──────────────
+  var _SPLASH_LENS_MAP = { silver: 'silver', amber: 'blue', phosphor: 'amber', panther: 'pink' };
+  function _splashLensClass(theme) { return _SPLASH_LENS_MAP[theme] || 'silver'; }
+  function _isSplashGoldLens(index) { var m = MISSIONS[index]; return m && m.suitClass === 'suit-club'; }
+
+  // Previous cursor for drag-velocity ring glow
+  var _splashPrevCX = 0, _splashPrevCY = 0, _splashPrevTracerState = 'idle';
+
+  function _splashStartTrace(drag) {
+    if (!_isSplashGoldLens(drag.index)) return;
+    if (typeof ConstellationTracer === 'undefined') return;
+    ConstellationTracer.beginSession();
+    var ghost = drag.ghostEl;
+    if (!ghost) return;
+    // Activate lens glow ring
+    var lensEl = ghost.querySelector('.porthole-lens-overlay');
+    if (lensEl) lensEl.classList.add('lens-active');
+    // Flicker suit symbol off
+    var suitEl = ghost.querySelector('.coin-suit-large');
+    if (suitEl) {
+      suitEl.classList.remove('suit-flicker-in', 'suit-dimmed');
+      suitEl.classList.add('suit-flicker-off');
+      setTimeout(function () { if (suitEl) { suitEl.classList.remove('suit-flicker-off'); suitEl.classList.add('suit-dimmed'); } }, 260);
+    }
+  }
+
+  function _splashUpdateTrace(ghost) {
+    if (typeof ConstellationTracer === 'undefined' || !ConstellationTracer.isEnabled()) return;
+    var portholeCanvas = ghost.querySelector('.starfield-window');
+    var lensEl = portholeCanvas || ghost;
+    var lr = lensEl.getBoundingClientRect();
+    var cx = lr.left + lr.width / 2;
+    var cy = lr.top + lr.height / 2;
+    ConstellationTracer.updateCursor(cx, cy);
+
+    var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
+    var state = ConstellationTracer.getState();
+    if (lensOverlay) {
+      if (state === 'hasNode' || state === 'tethered') {
+        lensOverlay.classList.add('lens-tracing');
+      } else {
+        lensOverlay.classList.remove('lens-tracing');
+      }
+      // Ring pulse on state transitions
+      if (state !== _splashPrevTracerState && (state === 'hasNode' || state === 'tethered')) {
+        lensOverlay.classList.remove('ring-pulse');
+        void lensOverlay.offsetWidth;
+        lensOverlay.classList.add('ring-pulse');
+        setTimeout(function () { if (lensOverlay) lensOverlay.classList.remove('ring-pulse'); }, 420);
+      }
+      // Drag velocity → ring brightness via CSS custom property
+      var dx = cx - _splashPrevCX, dy = cy - _splashPrevCY;
+      var speed = Math.sqrt(dx * dx + dy * dy);
+      lensOverlay.style.setProperty('--ring-vel', (1.0 + Math.min(0.35, speed / 85)).toFixed(2));
+    }
+    _splashPrevCX = cx; _splashPrevCY = cy; _splashPrevTracerState = state;
+  }
+
+  function _splashEndTrace() {
+    if (typeof ConstellationTracer === 'undefined') return;
+    if (ConstellationTracer.isEnabled()) ConstellationTracer.endSession();
+    // Flicker suit back on source card
+    if (_dragState && _dragState.cardEl) {
+      var suitEl = _dragState.cardEl.querySelector('.coin-suit-large');
+      if (suitEl) {
+        suitEl.classList.remove('suit-flicker-off', 'suit-dimmed');
+        suitEl.classList.add('suit-flicker-in');
+        setTimeout(function () { if (suitEl) suitEl.classList.remove('suit-flicker-in'); }, 220);
+      }
+    }
+  }
+
   // Per-card wheel state: { groupSize, price }
   const cardState = {};
 
@@ -276,6 +348,7 @@ const SplashScreen = (() => {
             </div>
             <div class="coin-artwork" data-card-index="${index}">
               <canvas class="starfield-window" width="200" height="200"></canvas>
+              <div class="porthole-lens-overlay lens-${_splashLensClass(mission.theme)}"></div>
               <div class="coin-rings"></div>
               <div class="coin-suit-large ${mission.suitClass}">${mission.suit}</div>
             </div>
@@ -1115,6 +1188,9 @@ const SplashScreen = (() => {
       });
     }
 
+    // Phase 8: Begin constellation tracing if gold lens card
+    _splashStartTrace(_dragState);
+
     // Sound
     _ensureAudioInit();
     _playAudio(PICKUP_SOUNDS[index % PICKUP_SOUNDS.length], { volume: 0.4 });
@@ -1144,6 +1220,9 @@ const SplashScreen = (() => {
       // Render zone content inside card's porthole area
       _updateSplashRevealContent(ghost);
     }
+
+    // Phase 8: Update constellation tracer cursor + ring glow
+    _splashUpdateTrace(_dragState.ghostEl);
   }
 
   // ── Edge-of-screen detection for drag-to-select ─────────
@@ -1158,6 +1237,8 @@ const SplashScreen = (() => {
 
   function _endCardDrag(ev) {
     if (!_dragState || _dragState.phase !== 'dragging') return;
+    // Phase 8: End constellation tracing
+    _splashEndTrace();
     _dragState.phase = 'ending';
 
     var x = ev.clientX;
