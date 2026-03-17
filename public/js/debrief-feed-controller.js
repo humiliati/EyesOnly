@@ -21,10 +21,47 @@ const DebriefFeedController = (function() {
   var _videoPlaying = false;
   var _videoUrl = null;     // URL of video being pushed
   var _videoTitle = null;   // Display title for video overlay
+  var _videoPaused = false; // True when user manually paused via widget
 
   // Terminal-row interaction state (sticky highlight + sticky expand)
   var _rowExpanded = {}; // { rowId: boolean }
   var _highlightedRow = 'hp';
+
+  /* ── Theme → Video + Audio mapping ────────────────────────────
+     Each theme has a default drone video (webm preferred, mp4 fallback)
+     and an associated audio track ID for sync playback.
+     Video URLs mirror splash-screen.js VIDEO_SOURCES.
+     Audio track IDs tag the <video> element for the audio system. */
+  var THEME_VIDEO_MAP = {
+    silver:   { webm: '/video/Sandpoint2_LakePendOreille.webm',       mp4: '/video/Sandpoint2_%20Lake%20Pend%20Oreille.mp4' },
+    amber:    { webm: '/video/Sandpoint3_LakePendOreille.webm',       mp4: '/video/Sandpoint3_%20Lake%20Pend%20Oreille.mp4' },
+    phosphor: { webm: '/video/Sandpoint_LakePendOreille.webm',        mp4: '/video/Sandpoint%20_%20Lake%20Pend%20Oreille.mp4' },
+    panther:  { webm: '/video/Sandpoint1_SchweitzerMountain.webm',     mp4: '/video/Sandpoint1_%20Schweitzer%20Mountain%20Resort.mp4' }
+  };
+  var THEME_AUDIO_MAP = {
+    silver:   'theme-silver',
+    amber:    'theme-amber',
+    phosphor: 'theme-phosphor',
+    panther:  'theme-panther'
+  };
+
+  /**
+   * Get the current theme's default video URL.
+   * Reads from body[data-theme] or localStorage fallback.
+   */
+  function _getThemeVideoUrl() {
+    var theme = document.body.getAttribute('data-theme') || 'phosphor';
+    try { if (!theme || theme === 'null') theme = localStorage.getItem('eyesonly_theme') || 'phosphor'; } catch (_) {}
+    var src = THEME_VIDEO_MAP[theme];
+    if (!src) return null;
+    return src.webm || src.mp4 || null;
+  }
+
+  function _getCurrentThemeId() {
+    var theme = document.body.getAttribute('data-theme') || 'phosphor';
+    try { if (!theme || theme === 'null') theme = localStorage.getItem('eyesonly_theme') || 'phosphor'; } catch (_) {}
+    return theme;
+  }
 
   /**
    * Game mode configurations
@@ -92,7 +129,10 @@ const DebriefFeedController = (function() {
     // Portrait Gone Rogue: tap to expand/collapse debrief width; drag to resize
     _setupPortraitDebriefSizing();
 
-    // Deferred theme-video: if splash stashed a video, queue it as lowest-priority
+    // Wire up debrief video controls widget
+    _initVideoWidget();
+
+    // Deferred theme-video: derive from current theme, lowest-priority
     // Waits for init dust to settle before the CRT "clicks on"
     _scheduleThemeVideo();
   }
@@ -557,8 +597,8 @@ const DebriefFeedController = (function() {
     // MOK visual container
     html += '<div id="mok-visual-container" class="mok-visual-container"></div>';
 
-    // MOK interjection area (existing system)
-    html += '<div id="mok-interjection" class="mok-interjection"></div>';
+    // NOTE: MOK interjection lives in #log-column footer (#mok-interjections),
+    // not inside the debrief feed. Stale orphan div removed — was stealing 30px.
 
     // Kernel API status (if in Gone Rogue)
     if (_currentMode === MODES.goneRogue) {
@@ -1280,8 +1320,14 @@ const DebriefFeedController = (function() {
     var html = '<div class="debrief-video-display">';
     html += '<div class="video-player-container">';
     html += titleBar;
+    var themeId = _getCurrentThemeId();
+    var audioTrack = THEME_AUDIO_MAP[themeId] || '';
     html += '<video id="debrief-video-el" autoplay playsinline';
     if (_isThemeVideo) html += ' muted loop';
+    // Audio-to-video sync tags (belt + suspenders: data-* for DOM, config for JS)
+    html += ' data-audio-track="' + audioTrack + '"';
+    html += ' data-audio-sync="' + (_isThemeVideo ? 'true' : 'false') + '"';
+    html += ' data-theme="' + themeId + '"';
     html += ' src="' + _videoUrl + '"';
     html += '></video>';
     html += '</div>';
@@ -1405,34 +1451,125 @@ const DebriefFeedController = (function() {
   var _isThemeVideo = false; // True when current video is the ambient theme feed
 
   function _scheduleThemeVideo() {
-    try {
-      var url = sessionStorage.getItem('eo_theme_video');
-      if (!url) return;
-      // Don't auto-play if we're mid-game (gone-rogue mode)
-      if (document.body.classList.contains('mode-gone-rogue') ||
-          document.body.classList.contains('in-gone-rogue')) return;
-    } catch (_) { return; }
+    // Don't auto-play if we're mid-game
+    if (document.body.classList.contains('mode-gone-rogue') ||
+        document.body.classList.contains('in-gone-rogue')) return;
 
-    // Wait 3s for the page to finish initializing
+    // Wait 3s for init dust to settle, then CRT "clicks on"
     _themeVideoTimer = setTimeout(function() {
       _themeVideoTimer = null;
-      try {
-        var videoUrl = sessionStorage.getItem('eo_theme_video');
-        if (!videoUrl) return;
-        // Lowest priority: bail if anything else is playing or user is in-game
-        if (_videoPlaying) return;
-        if (document.body.classList.contains('mode-gone-rogue') ||
-            document.body.classList.contains('in-gone-rogue')) return;
+      // Lowest priority: bail if anything else claimed the feed
+      if (_videoPlaying) return;
+      if (document.body.classList.contains('mode-gone-rogue') ||
+          document.body.classList.contains('in-gone-rogue')) return;
+      // Bail if splash is still open
+      if (document.getElementById('splash-screen')) return;
 
-        // Consume the stashed URL
-        sessionStorage.removeItem('eo_theme_video');
-        sessionStorage.removeItem('eo_theme_video_theme');
+      var videoUrl = _getThemeVideoUrl();
+      if (!videoUrl) return;
 
-        // Play with degauss effect
-        _isThemeVideo = true;
-        setVideoPlaying(true, videoUrl, null);
-      } catch (_) {}
+      _isThemeVideo = true;
+      setVideoPlaying(true, videoUrl, null);
     }, 3000);
+  }
+
+  /**
+   * Public: play/toggle the current theme's default video.
+   * Called by the debrief video widget or external API.
+   */
+  function playThemeVideo() {
+    if (_videoPlaying && _isThemeVideo) {
+      // Already playing theme video — stop it
+      setVideoPlaying(false);
+      return;
+    }
+    if (_videoPlaying) {
+      // Something else is playing — override with theme video
+      setVideoPlaying(false);
+    }
+    var url = _getThemeVideoUrl();
+    if (!url) return;
+    _isThemeVideo = true;
+    setVideoPlaying(true, url, null);
+  }
+
+  /**
+   * Public: toggle pause on the current video.
+   */
+  function toggleVideoPause() {
+    var vid = document.getElementById('debrief-video-el');
+    if (!vid || !_videoPlaying) return;
+    if (vid.paused) {
+      vid.play();
+      _videoPaused = false;
+    } else {
+      vid.pause();
+      _videoPaused = true;
+    }
+    _updateVideoWidget();
+  }
+
+  /**
+   * Public: stop current video and return to MOK display.
+   */
+  function stopVideo() {
+    if (_videoPlaying) {
+      setVideoPlaying(false);
+    }
+  }
+
+  /* ── Video controls widget ──────────────────────────────────── */
+
+  function _initVideoWidget() {
+    var playBtn = document.getElementById('video-play-btn');
+    var stopBtn = document.getElementById('video-stop-btn');
+
+    if (playBtn) {
+      playBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (_videoPlaying) {
+          toggleVideoPause();
+        } else {
+          playThemeVideo();
+        }
+        _updateVideoWidget();
+      });
+    }
+    if (stopBtn) {
+      stopBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (_videoPlaying) {
+          stopVideo();
+        } else {
+          // Not playing — start theme video
+          playThemeVideo();
+        }
+        _updateVideoWidget();
+      });
+    }
+    _updateVideoWidget();
+  }
+
+  function _updateVideoWidget() {
+    var playIcon = document.getElementById('video-play-icon');
+    var stopIcon = document.getElementById('video-stop-icon');
+    var playBtn = document.getElementById('video-play-btn');
+    var stopBtn = document.getElementById('video-stop-btn');
+    if (!playIcon || !stopIcon) return;
+
+    if (_videoPlaying) {
+      var vid = document.getElementById('debrief-video-el');
+      var isPaused = vid && vid.paused;
+      playIcon.textContent = isPaused ? '\u25B6' : '\u23F8'; // ▶ or ⏸
+      if (playBtn) playBtn.title = isPaused ? 'Resume video' : 'Pause video';
+      stopIcon.textContent = '\u25A0'; // ■
+      if (stopBtn) stopBtn.title = 'Stop video \u2192 MOK avatar';
+    } else {
+      playIcon.textContent = '\u25B6'; // ▶
+      if (playBtn) playBtn.title = 'Play theme video';
+      stopIcon.textContent = '\u25B6'; // ▶ (acts as "start default" when stopped)
+      if (stopBtn) stopBtn.title = 'Play default video';
+    }
   }
 
   /**
@@ -1489,7 +1626,9 @@ const DebriefFeedController = (function() {
         }
       }
     } catch (e) {}
+    _videoPaused = false;
     _render();
+    _updateVideoWidget();
   }
 
   /**
@@ -1927,7 +2066,12 @@ const DebriefFeedController = (function() {
     showSynergyOverlay: showSynergyOverlay,
     flashIncinerator: flashIncinerator,
     flashVictoryFrame: flashVictoryFrame,
-    triggerBatteryRecharge: triggerBatteryRecharge
+    triggerBatteryRecharge: triggerBatteryRecharge,
+
+    // Video controls
+    playThemeVideo: playThemeVideo,
+    toggleVideoPause: toggleVideoPause,
+    stopVideo: stopVideo
   };
 })();
 

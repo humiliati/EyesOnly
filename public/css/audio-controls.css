@@ -299,3 +299,47 @@
 .debrief-window.debrief-minimized .audio-controls-inline {
   display: flex;
 }
+
+/* ── Video Controls Widget (compact icon-only) ───────────────── */
+.video-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  pointer-events: auto;
+  z-index: 2;
+  margin-right: 4px;
+}
+.video-btn {
+  background: none;
+  border: none;
+  color: var(--phosphor-dim, #1a9c1a);
+  cursor: pointer;
+  padding: 1px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, text-shadow 0.15s;
+  font-family: var(--font, 'Courier New', monospace);
+  font-size: 10px;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.video-btn:hover,
+.video-btn:focus-visible {
+  color: var(--phosphor-bright, #66ff66);
+  text-shadow: 0 0 6px var(--phosphor-glow, rgba(51,255,51,0.15));
+  outline: none;
+}
+/* When video is actively playing, play/pause icon glows brighter */
+.video-btn.video-active {
+  color: var(--phosphor-bright, #66ff66);
+}
+/* Hide video controls when debrief is minimized */
+.debrief-window.debrief-minimized .video-controls-inline {
+  display: none;
+}
+@media (max-width: 767px) {
+  .video-btn { font-size: 9px; padding: 1px 2px; }
+}
