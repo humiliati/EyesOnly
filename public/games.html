@@ -281,6 +281,42 @@
               </div>
             </div>
 
+            <!-- ═══════════════ QR FIELD OPS (QR-activated puzzles) ═══════════════ -->
+            <div class="games-row" id="row-qr-field-ops">
+              <button class="games-row-header" data-target="qr-field-ops-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">QR FIELD OPS</span>
+                <span class="games-row-count">3 MISSIONS</span>
+                <span class="games-row-status">QR-LINKED</span>
+              </button>
+              <div class="games-row-body" id="qr-field-ops-body">
+                <div class="games-item games-item-playable" data-puzzle="qr-cipher" data-sound="ui-01">
+                  <span class="games-item-icon">&#9678;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Field Cipher Wheel</div>
+                    <div class="games-item-desc">Rotate the cipher wheel to decode an intercepted transmission. QR-activated at field waypoints.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">CIPHER</span>
+                </div>
+                <div class="games-item games-item-playable" data-puzzle="qr-jigsaw" data-sound="ui-01">
+                  <span class="games-item-icon">&#9638;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Surveillance Recon</div>
+                    <div class="games-item-desc">Reassemble a scrambled intelligence grid to recover surveillance data. Slide tiles to solve.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-timed">VISUAL</span>
+                </div>
+                <div class="games-item games-item-playable" data-puzzle="qr-riddle" data-sound="ui-01">
+                  <span class="games-item-icon">&#9733;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Intel Riddles</div>
+                    <div class="games-item-desc">Decode a series of field intelligence riddles. Three intercepts to crack — hints available.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">RIDDLE</span>
+                </div>
+              </div>
+            </div>
+
             <!-- ═══════════════ ARCADE ═══════════════ -->
             <div class="games-row" id="row-arcade">
               <button class="games-row-header" data-target="arcade-body" aria-expanded="false">
@@ -395,6 +431,14 @@
       </div><!-- /monitor-shell -->
     </div><!-- /crt-frame -->
   </div><!-- /crt-screen -->
+
+  <!-- QR Field Ops puzzle scripts -->
+  <script src="js/puzzles/qr-cipher-wheel.js"></script>
+  <script src="js/puzzles/qr-jigsaw.js"></script>
+  <script src="js/puzzles/qr-riddle.js"></script>
+
+  <!-- QR hash-route auto-opener (must load AFTER puzzle scripts register) -->
+  <script src="js/qr-router.js"></script>
 
   <script src="js/theme-widget.js"></script>
   <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>

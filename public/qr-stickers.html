@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EYES ONLY — QR Sticker Sheets</title>
+  <style>
+    @page {
+      size: letter;
+      margin: 0.5in;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: #111;
+      color: #ccc;
+      padding: 20px;
+    }
+
+    .print-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #333;
+    }
+
+    .print-header h1 {
+      font-size: 1.5em;
+      letter-spacing: 0.2em;
+      color: #1cff9b;
+      margin-bottom: 5px;
+    }
+
+    .print-header p {
+      font-size: 0.75em;
+      color: #666;
+      letter-spacing: 0.1em;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      max-width: 800px;
+      margin: 0 auto 40px auto;
+    }
+
+    .sticker {
+      background: #fff;
+      color: #000;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      page-break-inside: avoid;
+    }
+
+    .sticker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #000;
+      font-size: 0.7em;
+      letter-spacing: 0.15em;
+      font-weight: bold;
+    }
+
+    .sticker-logo {
+      font-size: 1.1em;
+    }
+
+    .sticker-code {
+      color: #666;
+    }
+
+    .sticker-qr {
+      margin: 10px auto;
+      max-width: 200px;
+    }
+
+    .sticker-qr img {
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+    }
+
+    .sticker-title {
+      font-size: 1em;
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      margin: 8px 0 4px 0;
+    }
+
+    .sticker-subtitle {
+      font-size: 0.7em;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    .sticker-url {
+      font-size: 0.55em;
+      color: #999;
+      word-break: break-all;
+      margin-bottom: 8px;
+    }
+
+    .sticker-footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 2px solid #000;
+      font-size: 0.65em;
+      letter-spacing: 0.2em;
+      font-weight: bold;
+    }
+
+    .sticker-diamond {
+      color: #4a8aff;
+    }
+
+    /* ---- Duplicate grid for extra stickers ---- */
+    .section-label {
+      text-align: center;
+      font-size: 0.8em;
+      letter-spacing: 0.2em;
+      color: #666;
+      margin: 30px 0 15px 0;
+      padding-top: 15px;
+      border-top: 1px solid #333;
+    }
+
+    /* ---- Print styles ---- */
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        padding: 0;
+      }
+
+      .print-header {
+        border-bottom-color: #000;
+      }
+
+      .print-header h1 {
+        color: #000;
+      }
+
+      .sticker {
+        border: 2px dashed #999;
+      }
+
+      .sticker-title {
+        color: #000 !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="print-header">
+    <h1>EYES ONLY — QR FIELD OPS STICKER SHEET</h1>
+    <p>Print on adhesive label stock &bull; Cut along sticker borders &bull; Place at approved waypoints</p>
+  </div>
+
+  <div class="section-label">SET A — FULL SIZE (2-UP)</div>
+  <div class="sheet-grid">
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#1cff9b;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-FC-001</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADfklEQVR4nO2cUWrkOBCGv1ob8ihDDpCj2DcLOdLcwD5KH2BAfgyo+fdBpbZ7l12YaXB6nNJDE9v5QKKrq1R/lWzil8fy168zEFBAAf2h0Go+JsCm1QzWHhbzv+oDH/3R0wvoWAgpd5IkMUqScifGDIy5k+ZU8HvtqeYnX1NAj0A9AAZdgfW1QPo06iUFGy89RirAOsD449jpBXQ41P/rzjog+DQtU1e0vJVerH35mukF9LVQKpi9FWwC7D1fjTGDTan8N3Tc9AI6Aqo+oqWg1x7oxGIgVoD1tT1MgnrvydcU0KPQtWYRsL6I8dJj77mTTXSyCbCppR5mw/HTC+hQqPfffh2fpmXoEBTEejXgavi9L5heQIdD1MxzphMkabusHzUtrQlqoaagkX2eGULKAKkg6aY9ZKoewahCNZUZwiK+AbQ3Aeh2/qA5hYLmVHCjCYXq7JBHDWWoXgCaUjmn0hxFhr23ePI1BfQI5K6AJI8QbgJNtp7TtssobdPx5GsK6BGoChAGoGXIYnn7NABUZeuLAVxNy/QiI+VDpxfQ4VDbLmRwR5HdH/iOIoOXu1SgxpQnX1NAj0C3b3qLHwUPE3Re7FSrghIWcXqIVgh3R9H2mPvtpebktXLCIk4PuQoxV3GqZROefWrnHqpZRK5xesidwk6QTLrrjkk3e8m0LponX1NAD0JJsml9kT4GL2Tow7yXrvbXeXED9PFWjp5eQMdCTYYE16DGu7pGzT+AlnqEHnF2aJ9V3sePTav6h4GERZwaah0z62DeRFlbZK69wLUqSD+NMb/C+KMvT7+mgB6BWq6B55z74AC0qBF6xLeBbq33d3qEpxnNGCR5XWOOqHF2qPVH4CZwVwXdPMi2+QyLODl00yO0q27uCqBsCUereoRFnBpqZ7ryXe/MqFtxo9oBt7aZ8BEnh9wOfHT78oV7iy2w+L+ERZwdSmXXSMViPVK+Wu3JJ+3VCr98/jUF9NvQ3gHsJKmtqsV9OIl9xNmhHj/1Sz3wW3Wp8WIwzmCkn71BV494Kc50fRPI3wuxmrHYi2cdHwPUc1712NfQiSUqXd8L6lTfFrAMnez90rcGmtaXa+/5K6cX0AHQLddw4fKuNVt3utSt0y72EeeHtgIoy7Ad6MF3m8sANnG1O+i46QX0VblG67ytD2a26pc/jTNd54cs3l4YUEAB/c/4G1iCJGAavXq6AAAAAElFTkSuQmCC" alt="QR Code for FIELD CIPHER" />
+      </div>
+      <div class="sticker-title" style="color:#1cff9b;">FIELD CIPHER</div>
+      <div class="sticker-subtitle">Decode the intercepted transmission</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#cipher</div>
+      <div class="sticker-footer" style="border-color:#1cff9b;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#4a8aff;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-SR-002</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADjklEQVR4nO2cQY6rOhBFT30sZehIWUAvBXYWvSX9HcBSsoBIMGwJdN+gbEJPvvRevkiaLgYWgRzJVpyy760CE398DP/8OQMBBRTQN4UmK0c3JWBKWMdijxt+rRxp7+4FtD/USJIELAYspl+WMPuYUZ8lszPQSpLG/bsX0Aug8t+nkXVZsqsk9TSivaX61cnMupd0L6AdobT9kD+NwYDBQO24JL9GHl/UvYBeDDUqi4Mk6wD1NHWteH33AtoB8hhRJOh0mQVLou1BTGdgMjR0zQxZwLRv9wJ6CbRUSQFYN51UBUcju46N7DoCg5n5HvM7jCmgv4VS+e8DMIGGM8bwMaPh49PkQYE1jOzcvYBeBJlZwjqgyIwpQXs7bRSp2XnVJN9iTAE941CpZzH1AEwJyJ9mnTdz2V72gKR57+4FtC+ENDaiHRtBlnDBMVaF0WrGr0GVHv2bjymgZyDcrmyrJSWNTTnrs7SZL6ssjRlxaIjyI68fe0B9XiNDnvGmHQFyzIgfAC1Wl4l16ZhO8mnR3k6SbmmdJft3L6Ddocb9Sd9KXm9mVnKf1eIezqVxEfIdxhTQ30IJWJJgdpNSw8ecaPslQb4X18rzGtOpehJvPqaAnoESRUgsibafS1QYrHHjUvBp5e54wdrxsmv3AtodcovBFYYfVWvUL6z6I8+E1vgR0HSq+wjA7LwY7bhYqY/QXK4BMIRneXSoxIi+FlKVeTCWyfCYFuVuqM+jQwlPeue70fZLEvlu8kyXNfIbw/mOQTObmxJvPqaAnoHqPqIeD/eyFlbWsz6XssuIEYeG+OJTz9SEVqmy3frZKlmPmBGHhjbhoRjYm6wWXoFdY8SqRN58TAE9A+GhoBjYJZtRFSklm9FqXs9i1Tg4lIDGExZyS2q6YOQ71vbyy8Z0UTnbuXsB7Q5Vc6ruI2qz7hn8W9uNZsSIQ0ObBeOxVpRN5UNcPAqpQmscHWJrW2d5s91bQC2N8LOIEQeHtlpjnQfqs0Q7roFiTW5EXuPwEJsHtsru4XFjNSq8iTrLnwBt0p7bSspH7nN1IR5NzIgjQ14QYS5BS4bDayHEdJkZulo1Aw3mlsWbjymg/xMqNZWAP7Rx3awai8X7I44PrZKi+bKV9OLr1b1U0aGhNY4PfXk2PM/JyI3Mr5dXR8jaf88YpFnxbPjhoa9a42FJycODxw1tREjEiINDFm8vDCiggP7j+A0Y6QfGIjtg+wAAAABJRU5ErkJggg==" alt="QR Code for SURVEILLANCE RECON" />
+      </div>
+      <div class="sticker-title" style="color:#4a8aff;">SURVEILLANCE RECON</div>
+      <div class="sticker-subtitle">Recover the scrambled intel grid</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#jigsaw</div>
+      <div class="sticker-footer" style="border-color:#4a8aff;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#ff6b35;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-IR-003</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADbUlEQVR4nO2cTYrkOBBGX4wFtXRCHaCOYt+gj9TMkeYG9lH6AAPWskDmm4V+7KSZgZ4EZbYrtBBppR+EcKQi4pOcJn65rX/8OgMOOeTQbwpFK22OIQ/azG6sdRxioF6E3uY51B8aJEkCdmO97aY/LWDfldAySmY3YJIkbf3Nc6grlFcFgyEBQ7JpQzYJWG0Q04+Qyq3xBtNffc1z6LnQ+GkQLQcMJn2a2cenwZj+HepnnkP9oUEwJiRJNjNIC0ONFc83z6EOUI4apQSN7+koRkV8TwYhlZgyCoh9zXPoKdBeSwrA5vgmm2PAZoBpq10uPW79zXOoKxTKbx+ACFpvmNaPhNaPTxMRSvcM8xzqDlELz0FM2yAmJWAslaakxDEGDNLy4nNy6EEoBpi23bQAEN+yMmFzrTC0xIAWqoP8BnNy6H9DoX4YkjEmWG8D5Koj3jAAYxQGhtZ5SC8/J4cegXLU0DKqVZpDvawdOaaoNo8aV4aaZmkAu2mdMcEegJBs2vYA49+WNUvGrat5Dj0F2i2vDNoGlQQyBrSMCYhvkn60yyeY51BXqNQaU+2qPjmc6o+cVC5jIgcWjxpXhgKwB+Uu3tD6LQWmBUqsACzHilyE9DXPoe4QNV08ZId0/20dy2rF5mvExaH8zI88olQTOWAAnOqPhNca14eyM+QFgFHZD7JcuYw1wQDPI74MVNaI/KSbANH07LJaKN3pFi8+J4cegdp6UNKF4iBNsGpfcMhU7hFXhmoeUVt55sfKsFGOWOao4WvE1aFzHlHCBPykTJwyCs8jLg5RN71VhagsTtFSiLabkXfI3SMuDjVnKEcsy9hGDRgbRagonzxqXBwKEG/5gJSIIZ+uZJ3BpqUMQ3wXoLwd9vJzcugR6CROlaVAVZ/MOUO+q8UPjxpXhzicoaqXTaM4iovxXrJ48Tk59AhUPOIoKU5HLLeSY1Y9G3xf4/rQSYo4/KAKl3fa9WnX48Xn5NAjEKcXtvLeZ25Nozh1+L7GF4A4fvtn7eFIKpsKcXTuEVeGznnEdJc4lKd/urWkGu4RXwja7dgKtZnd7Pspauzm/x9xfeh+jWip5Nhe7NJ5P9RrjetD93lE3fQGTrL1T6epXnxODj0CBWC34zoL1+u3DdaP1DRuYeW+oat5DnWHzP+90CGHHPqP9g+8vDe0c+dImQAAAABJRU5ErkJggg==" alt="QR Code for INTEL RIDDLES" />
+      </div>
+      <div class="sticker-title" style="color:#ff6b35;">INTEL RIDDLES</div>
+      <div class="sticker-subtitle">Decode field intelligence intercepts</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#riddle</div>
+      <div class="sticker-footer" style="border-color:#ff6b35;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#e0c040;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-DD-004</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADbElEQVR4nO2cUY6rOBBFTw2W3qeRsoBeCtnBLKk1S3o7gKVkAS3BZ0ugOx8uA5kZjfReJDpNyh8oEI5ki+K6qlzGxC+34Y9fZyCggAL6ptBk3q5TwswSdmUxs3Yp16H8YWZm6ejuBXQ81EiSBCwmjYvpL0vQ3RLqs2TWAp0kaTy+ewF9AeTvPo3sSiN7l6Q+S3S3VG+dzOz6Jd0L6Kug/GkM7WIMZuWX2dunQZ6foXsBHQ81otOMJMneR1AP+Fzx9d0L6ACozAkegk6XWdDIuh7EdJFBwqCZIQuYju1eQF8CrSEFYNcpUYKLK0A3NqIbgcHMio/5HcYU0O9Cyd99ACbQ0DZoeJvR8PZp2437TNaTjymgRyBq4NnI9UAzlIh0PS3Xst+n/snHFNAjENLYlDyDm8DYSNrZwey39FnewiLODK0W0WhTAchrNqq0pkwa6kMjzg7hr32WyuNeDWQTBbp6CI04P7T6EfW0B9RndyY8OZVnSsBBDot4AWixf00dU3Kz6G4/JN3SaiXHdy+gQyHXCA8z5LkHb9XR7HHdCD/i/FACliQmEFMLw9uc6PolQf7wrBV5BKYfdXZ58jEF9AjE6i+6UKyrWkUUpM2PWCXjyccU0CNQeeZbcFGniWadP7bQYyZijfNDu7zUlrPcJ6xqJBJ+xItArhHlSZe8VLObP1wtNN/lLZ58TAE9AiWYWtyLzEsS+dPKSldxJfOHMbQfZUncykzy5GMK6BGo+hGbe6lNGVbJKPIwExpxfsgLpDYX4t4YymmJNRRrn68AVS9Sqomou8O2mlFXv8IiTg65RWxSQA08q3jg6+L+K2aNk0OlztK68YKYEmK6IJiTdb2gFE9NFwHCju5eQIdDd/mItU6mRJ/4kgb8w7d48jEF9AjEXUJyTU5pZh9cwD5lERZxZsg1Yq2c8gqI3R93LdY1XgHa5OFmJt0SkCW7stgud71qyXcYU0C/De03bK1rGOxqsXeHqLN8BahW3t6XU/bUfMSWhdgVYD75mAJ6BNr7Ea4C4PmIahu11SLtsIjXgqrjULb+ve9mjcXi+xHnh/5TI7zotu7lqcGooobqBaC7veF5TtYJzK8vRtc3su5ni0GaFXvDTw8lYNlv+B3aEQ1/jl6Dy9QiT2AvBjSHdi+gwyGLrxcGFFBA/9P+Bg2zKzOBFa+DAAAAAElFTkSuQmCC" alt="QR Code for DEAD DROP CIPHER" />
+      </div>
+      <div class="sticker-title" style="color:#e0c040;">DEAD DROP CIPHER</div>
+      <div class="sticker-subtitle">Caesar cipher dead-drop recovery</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#decode</div>
+      <div class="sticker-footer" style="border-color:#e0c040;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+  </div>
+
+  <div class="section-label">SET B — DUPLICATES (2-UP)</div>
+  <div class="sheet-grid">
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#1cff9b;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-FC-001</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADfklEQVR4nO2cUWrkOBCGv1ob8ihDDpCj2DcLOdLcwD5KH2BAfgyo+fdBpbZ7l12YaXB6nNJDE9v5QKKrq1R/lWzil8fy168zEFBAAf2h0Go+JsCm1QzWHhbzv+oDH/3R0wvoWAgpd5IkMUqScifGDIy5k+ZU8HvtqeYnX1NAj0A9AAZdgfW1QPo06iUFGy89RirAOsD449jpBXQ41P/rzjog+DQtU1e0vJVerH35mukF9LVQKpi9FWwC7D1fjTGDTan8N3Tc9AI6Aqo+oqWg1x7oxGIgVoD1tT1MgnrvydcU0KPQtWYRsL6I8dJj77mTTXSyCbCppR5mw/HTC+hQqPfffh2fpmXoEBTEejXgavi9L5heQIdD1MxzphMkabusHzUtrQlqoaagkX2eGULKAKkg6aY9ZKoewahCNZUZwiK+AbQ3Aeh2/qA5hYLmVHCjCYXq7JBHDWWoXgCaUjmn0hxFhr23ePI1BfQI5K6AJI8QbgJNtp7TtssobdPx5GsK6BGoChAGoGXIYnn7NABUZeuLAVxNy/QiI+VDpxfQ4VDbLmRwR5HdH/iOIoOXu1SgxpQnX1NAj0C3b3qLHwUPE3Re7FSrghIWcXqIVgh3R9H2mPvtpebktXLCIk4PuQoxV3GqZROefWrnHqpZRK5xesidwk6QTLrrjkk3e8m0LponX1NAD0JJsml9kT4GL2Tow7yXrvbXeXED9PFWjp5eQMdCTYYE16DGu7pGzT+AlnqEHnF2aJ9V3sePTav6h4GERZwaah0z62DeRFlbZK69wLUqSD+NMb/C+KMvT7+mgB6BWq6B55z74AC0qBF6xLeBbq33d3qEpxnNGCR5XWOOqHF2qPVH4CZwVwXdPMi2+QyLODl00yO0q27uCqBsCUereoRFnBpqZ7ryXe/MqFtxo9oBt7aZ8BEnh9wOfHT78oV7iy2w+L+ERZwdSmXXSMViPVK+Wu3JJ+3VCr98/jUF9NvQ3gHsJKmtqsV9OIl9xNmhHj/1Sz3wW3Wp8WIwzmCkn71BV494Kc50fRPI3wuxmrHYi2cdHwPUc1712NfQiSUqXd8L6lTfFrAMnez90rcGmtaXa+/5K6cX0AHQLddw4fKuNVt3utSt0y72EeeHtgIoy7Ad6MF3m8sANnG1O+i46QX0VblG67ytD2a26pc/jTNd54cs3l4YUEAB/c/4G1iCJGAavXq6AAAAAElFTkSuQmCC" alt="QR Code for FIELD CIPHER" />
+      </div>
+      <div class="sticker-title" style="color:#1cff9b;">FIELD CIPHER</div>
+      <div class="sticker-subtitle">Decode the intercepted transmission</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#cipher</div>
+      <div class="sticker-footer" style="border-color:#1cff9b;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#4a8aff;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-SR-002</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADjklEQVR4nO2cQY6rOhBFT30sZehIWUAvBXYWvSX9HcBSsoBIMGwJdN+gbEJPvvRevkiaLgYWgRzJVpyy760CE398DP/8OQMBBRTQN4UmK0c3JWBKWMdijxt+rRxp7+4FtD/USJIELAYspl+WMPuYUZ8lszPQSpLG/bsX0Aug8t+nkXVZsqsk9TSivaX61cnMupd0L6AdobT9kD+NwYDBQO24JL9GHl/UvYBeDDUqi4Mk6wD1NHWteH33AtoB8hhRJOh0mQVLou1BTGdgMjR0zQxZwLRv9wJ6CbRUSQFYN51UBUcju46N7DoCg5n5HvM7jCmgv4VS+e8DMIGGM8bwMaPh49PkQYE1jOzcvYBeBJlZwjqgyIwpQXs7bRSp2XnVJN9iTAE941CpZzH1AEwJyJ9mnTdz2V72gKR57+4FtC+ENDaiHRtBlnDBMVaF0WrGr0GVHv2bjymgZyDcrmyrJSWNTTnrs7SZL6ssjRlxaIjyI68fe0B9XiNDnvGmHQFyzIgfAC1Wl4l16ZhO8mnR3k6SbmmdJft3L6Ddocb9Sd9KXm9mVnKf1eIezqVxEfIdxhTQ30IJWJJgdpNSw8ecaPslQb4X18rzGtOpehJvPqaAnoESRUgsibafS1QYrHHjUvBp5e54wdrxsmv3AtodcovBFYYfVWvUL6z6I8+E1vgR0HSq+wjA7LwY7bhYqY/QXK4BMIRneXSoxIi+FlKVeTCWyfCYFuVuqM+jQwlPeue70fZLEvlu8kyXNfIbw/mOQTObmxJvPqaAnoHqPqIeD/eyFlbWsz6XssuIEYeG+OJTz9SEVqmy3frZKlmPmBGHhjbhoRjYm6wWXoFdY8SqRN58TAE9A+GhoBjYJZtRFSklm9FqXs9i1Tg4lIDGExZyS2q6YOQ71vbyy8Z0UTnbuXsB7Q5Vc6ruI2qz7hn8W9uNZsSIQ0ObBeOxVpRN5UNcPAqpQmscHWJrW2d5s91bQC2N8LOIEQeHtlpjnQfqs0Q7roFiTW5EXuPwEJsHtsru4XFjNSq8iTrLnwBt0p7bSspH7nN1IR5NzIgjQ14QYS5BS4bDayHEdJkZulo1Aw3mlsWbjymg/xMqNZWAP7Rx3awai8X7I44PrZKi+bKV9OLr1b1U0aGhNY4PfXk2PM/JyI3Mr5dXR8jaf88YpFnxbPjhoa9a42FJycODxw1tREjEiINDFm8vDCiggP7j+A0Y6QfGIjtg+wAAAABJRU5ErkJggg==" alt="QR Code for SURVEILLANCE RECON" />
+      </div>
+      <div class="sticker-title" style="color:#4a8aff;">SURVEILLANCE RECON</div>
+      <div class="sticker-subtitle">Recover the scrambled intel grid</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#jigsaw</div>
+      <div class="sticker-footer" style="border-color:#4a8aff;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#ff6b35;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-IR-003</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADbUlEQVR4nO2cTYrkOBBGX4wFtXRCHaCOYt+gj9TMkeYG9lH6AAPWskDmm4V+7KSZgZ4EZbYrtBBppR+EcKQi4pOcJn65rX/8OgMOOeTQbwpFK22OIQ/azG6sdRxioF6E3uY51B8aJEkCdmO97aY/LWDfldAySmY3YJIkbf3Nc6grlFcFgyEBQ7JpQzYJWG0Q04+Qyq3xBtNffc1z6LnQ+GkQLQcMJn2a2cenwZj+HepnnkP9oUEwJiRJNjNIC0ONFc83z6EOUI4apQSN7+koRkV8TwYhlZgyCoh9zXPoKdBeSwrA5vgmm2PAZoBpq10uPW79zXOoKxTKbx+ACFpvmNaPhNaPTxMRSvcM8xzqDlELz0FM2yAmJWAslaakxDEGDNLy4nNy6EEoBpi23bQAEN+yMmFzrTC0xIAWqoP8BnNy6H9DoX4YkjEmWG8D5Koj3jAAYxQGhtZ5SC8/J4cegXLU0DKqVZpDvawdOaaoNo8aV4aaZmkAu2mdMcEegJBs2vYA49+WNUvGrat5Dj0F2i2vDNoGlQQyBrSMCYhvkn60yyeY51BXqNQaU+2qPjmc6o+cVC5jIgcWjxpXhgKwB+Uu3tD6LQWmBUqsACzHilyE9DXPoe4QNV08ZId0/20dy2rF5mvExaH8zI88olQTOWAAnOqPhNca14eyM+QFgFHZD7JcuYw1wQDPI74MVNaI/KSbANH07LJaKN3pFi8+J4cegdp6UNKF4iBNsGpfcMhU7hFXhmoeUVt55sfKsFGOWOao4WvE1aFzHlHCBPykTJwyCs8jLg5RN71VhagsTtFSiLabkXfI3SMuDjVnKEcsy9hGDRgbRagonzxqXBwKEG/5gJSIIZ+uZJ3BpqUMQ3wXoLwd9vJzcugR6CROlaVAVZ/MOUO+q8UPjxpXhzicoaqXTaM4iovxXrJ48Tk59AhUPOIoKU5HLLeSY1Y9G3xf4/rQSYo4/KAKl3fa9WnX48Xn5NAjEKcXtvLeZ25Nozh1+L7GF4A4fvtn7eFIKpsKcXTuEVeGznnEdJc4lKd/urWkGu4RXwja7dgKtZnd7Pspauzm/x9xfeh+jWip5Nhe7NJ5P9RrjetD93lE3fQGTrL1T6epXnxODj0CBWC34zoL1+u3DdaP1DRuYeW+oat5DnWHzP+90CGHHPqP9g+8vDe0c+dImQAAAABJRU5ErkJggg==" alt="QR Code for INTEL RIDDLES" />
+      </div>
+      <div class="sticker-title" style="color:#ff6b35;">INTEL RIDDLES</div>
+      <div class="sticker-subtitle">Decode field intelligence intercepts</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#riddle</div>
+      <div class="sticker-footer" style="border-color:#ff6b35;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+    <div class="sticker">
+      <div class="sticker-header" style="border-color:#e0c040;">
+        <div class="sticker-logo">EYES ONLY</div>
+        <div class="sticker-code">QR-DD-004</div>
+      </div>
+      <div class="sticker-qr">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADbElEQVR4nO2cUY6rOBBFTw2W3qeRsoBeCtnBLKk1S3o7gKVkAS3BZ0ugOx8uA5kZjfReJDpNyh8oEI5ki+K6qlzGxC+34Y9fZyCggAL6ptBk3q5TwswSdmUxs3Yp16H8YWZm6ejuBXQ81EiSBCwmjYvpL0vQ3RLqs2TWAp0kaTy+ewF9AeTvPo3sSiN7l6Q+S3S3VG+dzOz6Jd0L6Kug/GkM7WIMZuWX2dunQZ6foXsBHQ81otOMJMneR1AP+Fzx9d0L6ACozAkegk6XWdDIuh7EdJFBwqCZIQuYju1eQF8CrSEFYNcpUYKLK0A3NqIbgcHMio/5HcYU0O9Cyd99ACbQ0DZoeJvR8PZp2437TNaTjymgRyBq4NnI9UAzlIh0PS3Xst+n/snHFNAjENLYlDyDm8DYSNrZwey39FnewiLODK0W0WhTAchrNqq0pkwa6kMjzg7hr32WyuNeDWQTBbp6CI04P7T6EfW0B9RndyY8OZVnSsBBDot4AWixf00dU3Kz6G4/JN3SaiXHdy+gQyHXCA8z5LkHb9XR7HHdCD/i/FACliQmEFMLw9uc6PolQf7wrBV5BKYfdXZ58jEF9AjE6i+6UKyrWkUUpM2PWCXjyccU0CNQeeZbcFGniWadP7bQYyZijfNDu7zUlrPcJ6xqJBJ+xItArhHlSZe8VLObP1wtNN/lLZ58TAE9AiWYWtyLzEsS+dPKSldxJfOHMbQfZUncykzy5GMK6BGo+hGbe6lNGVbJKPIwExpxfsgLpDYX4t4YymmJNRRrn68AVS9Sqomou8O2mlFXv8IiTg65RWxSQA08q3jg6+L+K2aNk0OlztK68YKYEmK6IJiTdb2gFE9NFwHCju5eQIdDd/mItU6mRJ/4kgb8w7d48jEF9AjEXUJyTU5pZh9cwD5lERZxZsg1Yq2c8gqI3R93LdY1XgHa5OFmJt0SkCW7stgud71qyXcYU0C/De03bK1rGOxqsXeHqLN8BahW3t6XU/bUfMSWhdgVYD75mAJ6BNr7Ea4C4PmIahu11SLtsIjXgqrjULb+ve9mjcXi+xHnh/5TI7zotu7lqcGooobqBaC7veF5TtYJzK8vRtc3su5ni0GaFXvDTw8lYNlv+B3aEQ1/jl6Dy9QiT2AvBjSHdi+gwyGLrxcGFFBA/9P+Bg2zKzOBFa+DAAAAAElFTkSuQmCC" alt="QR Code for DEAD DROP CIPHER" />
+      </div>
+      <div class="sticker-title" style="color:#e0c040;">DEAD DROP CIPHER</div>
+      <div class="sticker-subtitle">Caesar cipher dead-drop recovery</div>
+      <div class="sticker-url">https://flapsandseals.com/games.html#decode</div>
+      <div class="sticker-footer" style="border-color:#e0c040;">
+        <span>SCAN TO ENGAGE</span>
+        <span class="sticker-diamond">&#9830;</span>
+      </div>
+    </div>
+    
+  </div>
+
+  <div class="section-label no-print" style="margin-top:40px;">
+    <p>&#9830; Print this page (Ctrl+P / Cmd+P) for physical stickers &#9830;</p>
+    <p style="margin-top:8px;font-size:0.7em;color:#555;">
+      QR codes link to: flapsandseals.com/games.html#cipher | #jigsaw | #riddle | #decode
+    </p>
+  </div>
+
+</body>
+</html>
