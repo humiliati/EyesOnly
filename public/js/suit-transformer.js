@@ -37,21 +37,65 @@
 
   var DWELL_FRAMES    = 18;    // ~300ms at 60fps to lock on and transform
   var HIT_RADIUS      = 48;    // px — same as constellation tracer
-  var OUTLIER_COINS_SM = 1;    // coins for small solo diamond shatter
-  var OUTLIER_COINS_LG = 5;    // coins for large solo diamond shatter
-  var SHATTER_DURATION = 350;  // ms — shatter particle animation
+  var SHATTER_DURATION = 350;  // ms — shatter/effect particle animation
 
-  // Lens → target suit mapping (Phase 9: panther only)
+  // ── Lens → target suit mapping ──
+  // Each card's lens targets a different suit for transformation.
   var LENS_TARGETS = {
-    panther: 'diamond',
-    // silver: 'spade',     // Phase 9 future
-    // phosphor: 'heart',   // Phase 9 future
+    panther:  'diamond',  // ♦ → ♣ (refract: prism splits, re-forms as club)
+    silver:   'spade',    // ♠ → ♣ (amplify: dim spade brightens to club)
+    phosphor: 'heart',    // ♥ → ♣ (reveal: invisible heart warms into club)
   };
 
-  // SFX for transformation and shatter
-  var TRANSFORM_SFX = 'snap-3';       // "woop" sound for transformation lock
-  var SHATTER_SFX_SM = 'coin-flip';   // small outlier shatter
-  var SHATTER_SFX_LG = 'coin-rain';   // big outlier shatter
+  // ── Per-suit outlier mechanics ──
+  // Solo outliers (not in a constellation) have unique interactions per suit.
+  //
+  // ♦ Diamond outliers: SHATTER → coins (1 or 5, immediate)
+  //   Diamonds are brittle. Lock on → they crack and burst into currency.
+  //   Phase 11 adds volatility timer to constellation diamonds.
+  //
+  // ♠ Spade outliers: ABSORB → satellite clear radius
+  //   Spades are magnets. Lock on → they pulse and push all satellites
+  //   within a radius away from the area. Like a chaff flare. Grants
+  //   a brief safe zone. No coins — tactical value instead.
+  //   Phase 10 adds spade chains (absorb 3+ in a row = bonus).
+  //
+  // ♥ Heart outliers: GAMBLE → coin jackpot OR damage pulse
+  //   Hearts are wild. Lock on → outcome roulette.
+  //   70% = coin burst (3-8 coins). 20% = double (10 coins).
+  //   10% = broken heart (0 coins + screen flash, cosmetic scare).
+  //   Phase 11 adds real broken heart damage to nearby forever pixels.
+
+  var OUTLIER_CONFIG = {
+    diamond: {
+      sfxSmall: 'coin-flip',
+      sfxLarge: 'coin-rain',
+      coinsSmall: 1,
+      coinsLarge: 5,
+      largeChance: 0.25,
+      effect: 'shatter',
+    },
+    spade: {
+      sfx: 'snap-2',
+      clearRadius: 150,        // px — satellite push-away radius
+      clearDuration: 2000,     // ms — safe zone lasts this long
+      effect: 'absorb',
+    },
+    heart: {
+      sfxWin: 'coin-rain',
+      sfxJackpot: 'coin-pouch-1',
+      sfxBroken: 'snap-4',
+      outcomes: [
+        { weight: 70, type: 'win',     coins: 5,  label: 'Healthy' },
+        { weight: 20, type: 'jackpot', coins: 10, label: 'Wild' },
+        { weight: 10, type: 'broken',  coins: 0,  label: 'Broken' },
+      ],
+      effect: 'gamble',
+    },
+  };
+
+  // SFX for constellation node transformation (not outlier)
+  var TRANSFORM_SFX = 'snap-3';
 
   // ── State ──────────────────────────────────────────────
 
@@ -133,15 +177,23 @@
   }
 
   /**
-   * Dwell lock complete — either transform or shatter.
+   * Dwell lock complete — constellation node transforms, outlier does per-suit mechanic.
    */
   function _onDwellComplete(node) {
-    if (_isSoloOutlier(node)) {
-      // Solo diamond outlier → shatter into coins
-      _shatterOutlier(node);
-    } else {
-      // Constellation node → transform ♦ to ♣
+    if (!_isSoloOutlier(node)) {
+      // Constellation node → transform to ♣
       _transformNode(node);
+      return;
+    }
+
+    // Solo outlier — dispatch to per-suit handler
+    var config = OUTLIER_CONFIG[node.suit];
+    if (!config) return;
+
+    switch (config.effect) {
+      case 'shatter':  _outlierShatter(node, config);  break;
+      case 'absorb':   _outlierAbsorb(node, config);   break;
+      case 'gamble':   _outlierGamble(node, config);   break;
     }
   }
 
@@ -179,49 +231,147 @@
                 node.suit, '→ ♣ via', _lensType);
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  OUTLIER HANDLERS (per-suit unique mechanics)
+  // ══════════════════════════════════════════════════════════
+
   /**
-   * Shatter a solo diamond outlier into coins.
+   * ♦ Diamond outlier → SHATTER into coins.
+   * Diamonds are brittle. Lock on → crack → burst into currency.
    */
-  function _shatterOutlier(node) {
-    var W = window.innerWidth;
-    var H = window.innerHeight;
-    var sx = node.x * W;
-    var sy = node.y * H;
+  function _outlierShatter(node, cfg) {
+    var W = window.innerWidth, H = window.innerHeight;
+    var sx = node.x * W, sy = node.y * H;
 
-    // Coin amount: random 1 or 5
-    var isLarge = Math.random() < 0.25; // 25% chance of 5-coin drop
-    var coins = isLarge ? OUTLIER_COINS_LG : OUTLIER_COINS_SM;
+    var isLarge = Math.random() < cfg.largeChance;
+    var coins = isLarge ? cfg.coinsLarge : cfg.coinsSmall;
 
-    // Play shatter SFX
     if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-      AudioSystem.play(isLarge ? SHATTER_SFX_LG : SHATTER_SFX_SM, { volume: 0.35 });
+      AudioSystem.play(isLarge ? cfg.sfxLarge : cfg.sfxSmall, { volume: 0.35 });
     }
 
-    // Start shatter animation
     _shatters.push({
-      x: sx, y: sy,
-      startTime: performance.now(),
-      duration: SHATTER_DURATION,
-      large: isLarge,
-      coins: coins,
+      x: sx, y: sy, startTime: performance.now(),
+      duration: SHATTER_DURATION, suit: 'diamond',
+      large: isLarge, coins: coins,
     });
 
-    // Remove the node from the renderer
-    if (typeof SuitNodeRenderer !== 'undefined') {
-      // Mark it as forever so it's removed from active rendering
-      var n = SuitNodeRenderer.getNodeById(node.id);
-      if (n) n.state = 'forever';
+    _removeOutlierNode(node);
+    _awardCoins(coins);
+    console.log('[SuitTransformer] ♦ Shattered:', node.id, '→', coins, 'coins');
+  }
+
+  /**
+   * ♠ Spade outlier → ABSORB → satellite clear pulse.
+   * Spades are magnets. Lock on → EMP pulse pushes satellites away.
+   * Grants a brief safe zone. Tactical value, not coins.
+   */
+  function _outlierAbsorb(node, cfg) {
+    var W = window.innerWidth, H = window.innerHeight;
+    var sx = node.x * W, sy = node.y * H;
+
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play(cfg.sfx, { volume: 0.4 });
     }
 
-    // Award coins
+    // Push satellites away from this point
+    if (typeof SatelliteScrubber !== 'undefined') {
+      var sats = SatelliteScrubber._getSatellites ? SatelliteScrubber._getSatellites() : [];
+      for (var i = 0; i < sats.length; i++) {
+        var s = sats[i];
+        var satX = s.x * W, satY = s.y * H;
+        var dx = satX - sx, dy = satY - sy;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < cfg.clearRadius && dist > 1) {
+          var pushForce = (1 - dist / cfg.clearRadius) * 6;
+          var angle = Math.atan2(dy, dx);
+          s.vx += Math.cos(angle) * pushForce;
+          s.vy += Math.sin(angle) * pushForce;
+          s.baseVx = s.vx * 0.5;
+          s.baseVy = s.vy * 0.5;
+        }
+      }
+    }
+
+    // Absorb animation (expanding ring pulse)
+    _shatters.push({
+      x: sx, y: sy, startTime: performance.now(),
+      duration: 500, suit: 'spade',
+      large: true, coins: 0, clearRadius: cfg.clearRadius,
+    });
+
+    _removeOutlierNode(node);
+    console.log('[SuitTransformer] ♠ Absorbed:', node.id, '→ satellite clear pulse');
+  }
+
+  /**
+   * ♥ Heart outlier → GAMBLE → coin jackpot OR cosmetic scare.
+   * Hearts are wild. Lock on → outcome roulette.
+   * Phase 11 upgrades "broken" from cosmetic to real damage.
+   */
+  function _outlierGamble(node, cfg) {
+    var W = window.innerWidth, H = window.innerHeight;
+    var sx = node.x * W, sy = node.y * H;
+
+    // Weighted random roll
+    var roll = Math.random() * 100;
+    var cumulative = 0;
+    var outcome = cfg.outcomes[0];
+    for (var i = 0; i < cfg.outcomes.length; i++) {
+      cumulative += cfg.outcomes[i].weight;
+      if (roll < cumulative) { outcome = cfg.outcomes[i]; break; }
+    }
+
+    var coins = outcome.coins || 0;
+
+    // SFX varies by outcome
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      if (outcome.type === 'jackpot') AudioSystem.play(cfg.sfxJackpot, { volume: 0.45 });
+      else if (outcome.type === 'win')  AudioSystem.play(cfg.sfxWin, { volume: 0.35 });
+      else AudioSystem.play(cfg.sfxBroken, { volume: 0.4 });
+    }
+
+    // Animation depends on outcome
+    _shatters.push({
+      x: sx, y: sy, startTime: performance.now(),
+      duration: outcome.type === 'broken' ? 500 : SHATTER_DURATION,
+      suit: 'heart', outcome: outcome.type,
+      large: outcome.type === 'jackpot', coins: coins,
+    });
+
+    _removeOutlierNode(node);
+    if (coins > 0) _awardCoins(coins);
+
+    // Dispatch gamble event (Phase 11 hooks broken heart damage here)
     try {
-      document.dispatchEvent(new CustomEvent('currency-increment', {
-        detail: { amount: coins, remaining: 0, total: coins },
+      document.dispatchEvent(new CustomEvent('heart-gamble', {
+        detail: {
+          nodeId: node.id, x: node.x, y: node.y,
+          outcome: outcome.type, coins: coins,
+        },
       }));
     } catch (e) {}
 
-    console.log('[SuitTransformer] Shattered outlier:', node.id,
-                '→', coins, 'coins');
+    console.log('[SuitTransformer] ♥ Gamble:', node.id, '→',
+                outcome.label, '(' + coins + ' coins)');
+  }
+
+  // ── Shared outlier helpers ────────────────────────────
+
+  function _removeOutlierNode(node) {
+    if (typeof SuitNodeRenderer !== 'undefined') {
+      var n = SuitNodeRenderer.getNodeById(node.id);
+      if (n) n.state = 'forever';
+    }
+  }
+
+  function _awardCoins(amount) {
+    if (amount <= 0) return;
+    try {
+      document.dispatchEvent(new CustomEvent('currency-increment', {
+        detail: { amount: Math.floor(amount), remaining: 0, total: Math.floor(amount) },
+      }));
+    } catch (e) {}
   }
 
   // ── Persistence ───────────────────────────────────────
@@ -288,7 +438,7 @@
       ctx.restore();
     }
 
-    // ── Shatter particles (solo outlier destruction) ──
+    // ── Outlier effect animations (per-suit visual) ──
     for (var i = _shatters.length - 1; i >= 0; i--) {
       var sh = _shatters[i];
       var elapsed = performance.now() - sh.startTime;
@@ -299,24 +449,77 @@
 
       var t = elapsed / sh.duration;
       var fade = 1 - t;
-      var numFrags = sh.large ? 8 : 5;
 
       ctx.save();
-      for (var f = 0; f < numFrags; f++) {
-        var fragAngle = (f / numFrags) * Math.PI * 2 + t * 2;
-        var fragDist = (sh.large ? 25 : 15) * t;
-        var fx = sh.x + Math.cos(fragAngle) * fragDist;
-        var fy = sh.y + Math.sin(fragAngle) * fragDist;
 
-        // Diamond-shaped fragments (rotated squares)
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(fragAngle + t * Math.PI);
-        ctx.globalAlpha = fade * 0.8;
-        ctx.fillStyle = f % 2 === 0 ? 'rgba(255, 48, 144, 0.9)' : '#ffffff';
-        ctx.fillRect(-2 * fade, -2 * fade, 4 * fade, 4 * fade);
-        ctx.restore();
+      if (sh.suit === 'diamond') {
+        // ♦ SHATTER: pink diamond fragments spin outward
+        var numFrags = sh.large ? 8 : 5;
+        for (var f = 0; f < numFrags; f++) {
+          var fragAngle = (f / numFrags) * Math.PI * 2 + t * 2;
+          var fragDist = (sh.large ? 25 : 15) * t;
+          var fx = sh.x + Math.cos(fragAngle) * fragDist;
+          var fy = sh.y + Math.sin(fragAngle) * fragDist;
+          ctx.save();
+          ctx.translate(fx, fy);
+          ctx.rotate(fragAngle + t * Math.PI);
+          ctx.globalAlpha = fade * 0.8;
+          ctx.fillStyle = f % 2 === 0 ? 'rgba(255, 48, 144, 0.9)' : '#ffffff';
+          ctx.fillRect(-2 * fade, -2 * fade, 4 * fade, 4 * fade);
+          ctx.restore();
+        }
+
+      } else if (sh.suit === 'spade') {
+        // ♠ ABSORB: expanding steel-blue ring pulse (satellite clear zone)
+        var ringRadius = (sh.clearRadius || 150) * t;
+        ctx.globalAlpha = fade * 0.5;
+        ctx.strokeStyle = 'rgba(176, 196, 222, 0.8)';
+        ctx.lineWidth = 2 * fade;
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner shimmer
+        ctx.globalAlpha = fade * 0.15;
+        ctx.fillStyle = 'rgba(176, 196, 222, 0.4)';
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, ringRadius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (sh.suit === 'heart') {
+        // ♥ GAMBLE: outcome-dependent animation
+        if (sh.outcome === 'broken') {
+          // Broken: red flash + crack lines
+          ctx.globalAlpha = fade * 0.12;
+          ctx.fillStyle = 'rgba(255, 30, 30, 0.6)';
+          ctx.fillRect(0, 0, W, H);
+          // Crack lines from center
+          ctx.globalAlpha = fade * 0.6;
+          ctx.strokeStyle = '#ff2020';
+          ctx.lineWidth = 1;
+          for (var cr = 0; cr < 4; cr++) {
+            var crAngle = (cr / 4) * Math.PI * 2 + 0.3;
+            ctx.beginPath();
+            ctx.moveTo(sh.x, sh.y);
+            ctx.lineTo(sh.x + Math.cos(crAngle) * 20 * t, sh.y + Math.sin(crAngle) * 20 * t);
+            ctx.stroke();
+          }
+        } else {
+          // Win/Jackpot: warm gold burst
+          var burstFrags = sh.outcome === 'jackpot' ? 10 : 6;
+          for (var hf = 0; hf < burstFrags; hf++) {
+            var hAngle = (hf / burstFrags) * Math.PI * 2;
+            var hDist = (sh.outcome === 'jackpot' ? 30 : 18) * t;
+            var hx = sh.x + Math.cos(hAngle) * hDist;
+            var hy = sh.y + Math.sin(hAngle) * hDist;
+            ctx.globalAlpha = fade * 0.7;
+            ctx.fillStyle = sh.outcome === 'jackpot' ? '#ffdd44' : '#ffe8a0';
+            ctx.beginPath();
+            ctx.arc(hx, hy, (sh.outcome === 'jackpot' ? 3 : 2) * fade, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
+
       ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -348,29 +551,57 @@
   function isEnabled() { return _enabled; }
   function getLensType() { return _lensType; }
 
-  // ── Solo Diamond Outlier Spawner ──────────────────────
-  // Spawns a few standalone diamonds in the starfield that
-  // aren't part of any constellation. Shatter for quick coins.
+  // ── Solo Outlier Spawner (all suit types) ──────────────
+  // Spawns standalone suit nodes across the starfield.
+  // Each suit has its own outlier mechanic when locked onto.
 
   var _outlierSpawned = false;
 
-  function _spawnOutlierDiamonds() {
+  function _spawnOutliers() {
     if (_outlierSpawned) return;
     _outlierSpawned = true;
     if (typeof SuitNodeRenderer === 'undefined') return;
 
-    var count = 2 + Math.floor(Math.random() * 3); // 2-4 outliers
-    for (var i = 0; i < count; i++) {
-      var node = {
-        id: 'outlier-d-' + i,
+    var spawned = 0;
+
+    // ♦ Diamond outliers (2-4): shatter → coins
+    var dCount = 2 + Math.floor(Math.random() * 3);
+    for (var d = 0; d < dCount; d++) {
+      SuitNodeRenderer.registerNode({
+        id: 'outlier-d-' + d,
         x: 0.15 + Math.random() * 0.70,
         y: 0.15 + Math.random() * 0.70,
         suit: 'diamond',
-      };
-      // Register as a standalone node (no constellation)
-      SuitNodeRenderer.registerNode(node);
+      });
+      spawned++;
     }
-    console.log('[SuitTransformer] Spawned', count, 'solo diamond outliers');
+
+    // ♠ Spade outliers (1-2): absorb → satellite clear pulse
+    var sCount = 1 + Math.floor(Math.random() * 2);
+    for (var s = 0; s < sCount; s++) {
+      SuitNodeRenderer.registerNode({
+        id: 'outlier-s-' + s,
+        x: 0.15 + Math.random() * 0.70,
+        y: 0.15 + Math.random() * 0.70,
+        suit: 'spade',
+      });
+      spawned++;
+    }
+
+    // ♥ Heart outliers (1-2): gamble → coin burst or cosmetic scare
+    var hCount = 1 + Math.floor(Math.random() * 2);
+    for (var h = 0; h < hCount; h++) {
+      SuitNodeRenderer.registerNode({
+        id: 'outlier-h-' + h,
+        x: 0.15 + Math.random() * 0.70,
+        y: 0.15 + Math.random() * 0.70,
+        suit: 'heart',
+      });
+      spawned++;
+    }
+
+    console.log('[SuitTransformer] Spawned', spawned,
+                'outliers (' + dCount + '♦ ' + sCount + '♠ ' + hCount + '♥)');
   }
 
   // ── Init ──────────────────────────────────────────────
@@ -379,8 +610,8 @@
     // Restore session transforms
     setTimeout(_restoreTransforms, 500);
 
-    // Spawn solo outlier diamonds
-    setTimeout(_spawnOutlierDiamonds, 1000);
+    // Spawn solo outliers (all suit types)
+    setTimeout(_spawnOutliers, 1000);
 
     // Register render hook
     if (typeof EyesOnlyStarfield !== 'undefined' && EyesOnlyStarfield.addPostRenderHook) {

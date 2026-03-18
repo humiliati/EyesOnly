@@ -141,6 +141,12 @@ var NchOverlay = (function () {
     var ghost = drag.ghostEl;
     if (!ghost) return;
 
+    // Centralized lens state
+    var mission = MISSIONS[drag.index];
+    if (mission && typeof LensState !== 'undefined') {
+      LensState.activate(mission.suitClass, drag.index);
+    }
+
     // Activate lens effect on the ghost card (swap idle → active)
     var lensEl = ghost.querySelector('.porthole-lens-overlay');
     if (lensEl) {
@@ -166,6 +172,7 @@ var NchOverlay = (function () {
    * Deactivate lens + flicker suit back on the source card.
    */
   function _deactivateLens() {
+    if (typeof LensState !== 'undefined') LensState.deactivate();
     if (_cardDrag && _cardDrag.cardEl) {
       // Restore lens to idle state on source card
       var lensEl = _cardDrag.cardEl.querySelector('.porthole-lens-overlay');
@@ -211,9 +218,13 @@ var NchOverlay = (function () {
    * Start suit transformer during panther card drag (♦ diamond transformation).
    */
   function _startSuitTransform(drag) {
-    if (!_isPantherLensCard(drag.index)) return;
     if (typeof SuitTransformer === 'undefined') return;
-    SuitTransformer.beginSession('panther');
+    // Each non-club card activates its suit's transformation lens
+    var mission = MISSIONS[drag.index];
+    if (!mission) return;
+    var lensMap = { 'suit-diamond': 'panther', 'suit-spade': 'silver', 'suit-heart': 'phosphor' };
+    var lensType = lensMap[mission.suitClass];
+    if (lensType) SuitTransformer.beginSession(lensType);
   }
 
   function _endSuitTransform() {

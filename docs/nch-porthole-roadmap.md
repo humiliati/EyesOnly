@@ -469,7 +469,7 @@ Phase 8 ships the full gold lens constellation tracing system: core engine (8 JS
 
 ---
 
-## Phase 9: Multi-Lens Suit Transformation ⬜
+## Phase 9: Multi-Lens Suit Transformation 🔧 (~70% shipped)
 
 Each non-club suit is a puzzle that a specific card's lens solves. The lens doesn't just "reveal" the node — it physically transforms the suit symbol into a ♣ club through a distinct animation, making the node connectable by the gold lens. Players don't gain new inventory keys — they gain new ways of converting the world into a traceable graph.
 
@@ -539,15 +539,25 @@ const lensState = {
 | 4 | 6 | 2 ♣ + 1 ♦ + 1 ♠ + 1 ♥ + 1 ♣ | All four lenses | Full instrument mastery |
 | 5+ | 4–9 | Procedural mix | Variable | Difficulty from suit ratio + angular complexity |
 
-### Shipped (when complete)
+### Shipped ✅
 
-- `public/js/suit-transformer.js` — per-suit transformation logic, hold-timer, progress ring, origami-fold animations
-- `public/js/lens-state.js` — cross-lens state manager, transformation persistence (sessionStorage), constellation session tracking
-- `public/js/star-layer-renderer.js` — renders suit symbols at node positions, brightness/visibility per suit type, transformation animation sequences
-- Porthole lens gradient CSS — per-card radial gradient overlays integrated into existing porthole rendering pipeline
-- Pink lens: diamond refraction transformation (particle burst + fold animation)
-- Silver lens: spade amplification (brightness ramp + morph animation)
-- Amber lens: heart reveal (fade-in + warmth pulse + morph animation)
+- **`public/js/suit-transformer.js`** — Unified transformation engine for all three non-club suits. Dwell-to-lock pattern (18 frames / ~300ms) with per-lens progress ring (pink for panther, steel-blue for silver, amber for phosphor). Two outcomes per node: constellation nodes transform ♦/♠/♥→♣; solo outliers trigger per-suit mechanic. Session persistence via sessionStorage. Dispatches `suit-transformed` event (Phase 11 hooks decay timer here) and `heart-gamble` event (Phase 11 hooks damage pulse here).
+- **Solo outlier system** — Three distinct per-suit mechanics for standalone nodes (not in any constellation):
+  - ♦ Diamond outliers: SHATTER → coins (1 or 5, 25% large chance). Pink rotating fragments.
+  - ♠ Spade outliers: ABSORB → satellite clear pulse (150px radius EMP pushes all satellites away). Steel-blue expanding ring. Tactical value, no coins.
+  - ♥ Heart outliers: GAMBLE → weighted outcome roulette (70% win/5 coins, 20% jackpot/10 coins, 10% broken/cosmetic scare). Phase 11 upgrades broken to real damage.
+- **Outlier spawner** — On init, spawns 2-4 ♦, 1-2 ♠, 1-2 ♥ standalone nodes across the safe viewport zone.
+- **`public/js/satellite-scrubber.js`** — Silver lens (♠ spade) gameplay. Orbital physics adapted from cosmic particle system. Velocity-gated destruction (gentle swipe nudges, vigorous slash destroys). Hydra spawn (no cap — gets hectic). Diminishing returns (6→5→3→1→0.04→0.01 per generation). Snap-1 through snap-4 SFX on orbital apex. Tether collision API.
+- **All three non-club cards wired** — `_startSuitTransform` maps suitClass to lens type (suit-diamond→panther, suit-spade→silver, suit-heart→phosphor). Cursor fed to transformer each frame. Silver card also feeds satellite scrubber in parallel.
+- **Tier-2 constellation progression** — Loader now includes tier-2 templates (mixed club+diamond/spade/heart). After tier-1 exhausted, tier-2 constellations require panther lens to transform ♦ nodes before amber lens can trace.
+- Per-theme porthole lens effects (4 technologies) — shipped in Phase 8, active for all cards during drag.
+
+### Remaining
+
+- `lens-state.js` — cross-lens state manager (currently transformation state is in suit-transformer sessionStorage; a dedicated module would centralize all lens interactions)
+- Origami-fold transformation animations (♦ rotates 45° and folds, ♠ stem retracts, ♥ splits at cleft) — currently uses simple state change, not animated morphs
+- Per-lens visual feedback differentiation (angle-reject color per lens, resolve ghost color per lens)
+- Transformation SFX per suit type (currently all use snap-3; should be ♦=crystalline, ♠=amplifier hum, ♥=warm pulse)
 
 ### Phase 9 Visual Feedback Polish (depends on Phase 8.5 feedback system)
 
@@ -578,13 +588,11 @@ Phase 8.5 ships the visual feedback infrastructure that Phase 9 builds on:
 - `ConstellationTracer._renderHook` already runs per-frame — Phase 9 adds a `_lensType` state variable that gates which visual treatment to apply
 - The angle-reject flash in Phase 9 plays a per-lens SFX (silver=click, phosphor=buzz, panther=zap) in addition to the visual
 
-### Deliverables
+### Deliverables (remaining for Phase 9 completion)
 
-- `suit-transformer.js` — transformation engine with hold-timer, per-suit animations, state persistence
-- `lens-state.js` — cross-lens state manager
-- `star-layer-renderer.js` — per-lens node rendering pipeline, suit symbol renderer
-- Porthole lens gradient overlays (CSS pseudo-elements per card theme)
-- Transformation SFX per suit type (distinct audio cues so player knows which conversion happened)
+- `lens-state.js` — centralized cross-lens state manager
+- Origami-fold transformation animations per suit
+- Per-lens visual feedback differentiation (colors, SFX, ghost styles)
 - Hint system that detects which suits the player hasn't tried transforming yet
 
 ---
@@ -891,12 +899,12 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 6 — Magnifying Glass Repurpose | ⬜ Not started | Phase 5 |
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
 | 8 — Gold Lens Constellation Tracing | ✅ Complete | Phase 5 + 6 |
-| 9 — Multi-Lens Suit Transformation | ⬜ Transformation matrix designed (♦→♣, ♠→♣, ♥→♣). Per-lens visual feedback spec drafted. | Phase 8 |
+| 9 — Multi-Lens Suit Transformation | 🔧 ~70% shipped (suit-transformer.js, satellite-scrubber.js, 3 outlier mechanics, tier-2 progression, all cards wired). Remaining: lens-state.js, origami animations, per-lens SFX. | Phase 8 |
 | 10 — Procedural Generation, Cascades & Forever Sky | 🔧 Proc-gen engine shipped (constellation-procgen.js). Cascades + forever sky damage remaining. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
 
-**Next up:** Phase 12 (trick glasses compound porthole system) → Phase 9 (multi-lens suit transformation).
+**Next up:** Finish Phase 9 (origami animations, per-lens SFX, lens-state.js) → Phase 10 (cascades + forever sky damage) → Phase 12 (trick glasses).
 
 
 

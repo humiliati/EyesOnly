@@ -414,6 +414,7 @@
     getSatelliteCount:     getSatelliteCount,
     getTotalCoins:         getTotalCoins,
     getGeneration:         getGeneration,
+    _getSatellites:        function () { return _satellites; },
   };
 
 })(typeof window !== 'undefined' ? window : this);
