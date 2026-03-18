@@ -680,19 +680,23 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    // ── Angle-reject flash ──
+    // ── Angle-reject flash (color per active lens) ──
     if (_angleRejectFlash > 0) {
       _angleRejectFlash--;
-      // Brief red flash on the entire tether area
       if (_angleRejectFlash % 3 < 2) {
+        var rejectColor = 'rgba(255, 40, 30, 0.06)';
+        if (typeof LensState !== 'undefined' && LensState.getActiveLens) {
+          var lc = LensState.getThemeColors();
+          rejectColor = lc.reject || rejectColor;
+        }
         ctx.save();
-        ctx.fillStyle = 'rgba(255, 40, 30, 0.06)';
+        ctx.fillStyle = rejectColor;
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
       }
     }
 
-    // ── Resolved ghost constellation (hold 3s then fade) ──
+    // ── Resolved ghost constellation (color per active lens) ──
     if (_resolvedGhost) {
       var ghostElapsed = performance.now() - _resolvedGhost.startTime;
       if (ghostElapsed > _resolvedGhost.duration) {
@@ -704,7 +708,11 @@
         if (ghostPts.length >= 2) {
           ctx.save();
           ctx.globalAlpha = ghostFade * 0.35;
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          var ghostColor = 'rgba(255, 255, 255, 0.7)';
+          if (typeof LensState !== 'undefined' && LensState.getThemeColors) {
+            ghostColor = LensState.getThemeColors().ghost || ghostColor;
+          }
+          ctx.strokeStyle = ghostColor;
           ctx.lineWidth = 1;
           ctx.setLineDash([3, 4]);
           ctx.beginPath();

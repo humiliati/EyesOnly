@@ -243,12 +243,32 @@
 
   /**
    * Transform a non-club node into a club (lens transformation).
+   * Starts an origami-fold animation if LensState provides params.
    */
   function transformNode(nodeId) {
     var n = getNodeById(nodeId);
     if (!n || n.suit === 'club') return false;
     n.transformedTo = 'club';
     n.state = 'transformed';
+
+    // Start origami animation (query LensState for per-suit params)
+    var params = null;
+    if (typeof LensState !== 'undefined' && LensState.getOrigamiParams) {
+      var lens = LensState.getActiveLens();
+      params = LensState.getOrigamiParams(lens);
+    }
+    if (params) {
+      n._origami = {
+        startTime: performance.now(),
+        duration: params.duration || 500,
+        rotationDeg: params.rotationDeg || 0,
+        foldScale: params.foldScale || 0.6,
+        bloomScale: params.bloomScale || 1.2,
+        colorFrom: params.colorFrom || 'rgba(255,48,144,0.9)',
+        colorTo: params.colorTo || 'rgba(212,168,67,0.9)',
+      };
+    }
+
     return true;
   }
 
@@ -421,6 +441,61 @@
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.fillRect(nx - glowSize, ny - glowSize, glowSize * 2, glowSize * 2);
+      }
+
+      // ── Origami-fold transformation animation ──
+      if (node._origami) {
+        var og = node._origami;
+        var ogElapsed = performance.now() - og.startTime;
+        var ogT = Math.min(1, ogElapsed / og.duration);
+
+        if (ogT >= 1) {
+          // Animation complete — clear it, render normally from here
+          node._origami = null;
+        } else {
+          // Phase 1 (0–0.4): fold inward — scale shrinks, rotate, color from
+          // Phase 2 (0.4–0.7): hold compressed
+          // Phase 3 (0.7–1.0): bloom outward — scale expands, color to gold
+          var foldT, bloomT, scale, rotation, color;
+
+          if (ogT < 0.4) {
+            // Fold phase
+            foldT = ogT / 0.4;
+            scale = 1 - (1 - og.foldScale) * foldT;
+            rotation = og.rotationDeg * foldT * (Math.PI / 180);
+            color = og.colorFrom;
+          } else if (ogT < 0.7) {
+            // Hold phase
+            scale = og.foldScale;
+            rotation = og.rotationDeg * (Math.PI / 180);
+            color = og.colorFrom;
+          } else {
+            // Bloom phase
+            bloomT = (ogT - 0.7) / 0.3;
+            scale = og.foldScale + (og.bloomScale - og.foldScale) * bloomT;
+            rotation = og.rotationDeg * (1 - bloomT) * (Math.PI / 180);
+            color = og.colorTo;
+          }
+
+          ctx.save();
+          ctx.translate(nx, ny);
+          ctx.rotate(rotation);
+          ctx.scale(scale, scale);
+
+          // Glow during animation
+          ctx.globalAlpha = 0.8;
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 8;
+          ctx.font = (fontSize + 2) + 'px serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(suitDef.symbol, 0, 0);
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+          ctx.restore();
+          continue; // skip normal rendering for this frame
+        }
       }
 
       // Suit symbol (text rendering)

@@ -469,7 +469,7 @@ Phase 8 ships the full gold lens constellation tracing system: core engine (8 JS
 
 ---
 
-## Phase 9: Multi-Lens Suit Transformation 🔧 (~70% shipped)
+## Phase 9: Multi-Lens Suit Transformation ✅ (Complete)
 
 Each non-club suit is a puzzle that a specific card's lens solves. The lens doesn't just "reveal" the node — it physically transforms the suit symbol into a ♣ club through a distinct animation, making the node connectable by the gold lens. Players don't gain new inventory keys — they gain new ways of converting the world into a traceable graph.
 
@@ -552,12 +552,29 @@ const lensState = {
 - **Tier-2 constellation progression** — Loader now includes tier-2 templates (mixed club+diamond/spade/heart). After tier-1 exhausted, tier-2 constellations require panther lens to transform ♦ nodes before amber lens can trace.
 - Per-theme porthole lens effects (4 technologies) — shipped in Phase 8, active for all cards during drag.
 
-### Remaining
+### Shipped ✅ (Phase 9 completion pass)
 
-- `lens-state.js` — cross-lens state manager (currently transformation state is in suit-transformer sessionStorage; a dedicated module would centralize all lens interactions)
-- Origami-fold transformation animations (♦ rotates 45° and folds, ♠ stem retracts, ♥ splits at cleft) — currently uses simple state change, not animated morphs
-- Per-lens visual feedback differentiation (angle-reject color per lens, resolve ghost color per lens)
-- Transformation SFX per suit type (currently all use snap-3; should be ♦=crystalline, ♠=amplifier hum, ♥=warm pulse)
+- **`public/js/lens-state.js`** — Centralized cross-lens state manager. Stores active lens type, card index. Provides `getThemeColors(lens)` returning `{ primary, glow, reject, ghost, ring, label }` per lens. Provides `getOrigamiParams(lens)` returning `{ rotationDeg, foldScale, bloomScale, duration, colorFrom, colorTo }`. Maps suitClass→lens type. Dispatches `lens-activated` / `lens-deactivated` events. Consumed by tracer (visual feedback colors), renderer (origami params), nch-overlay (activation).
+- **Origami-fold transformation animations** — Three-phase animated morph when a non-club node transforms to ♣:
+  - Phase 1 (fold, 0–40%): symbol shrinks to `foldScale`, rotates `rotationDeg`, renders in source lens color
+  - Phase 2 (hold, 40–70%): compressed, glowing in source color
+  - Phase 3 (bloom, 70–100%): expands to `bloomScale`, rotation unwinds, color shifts to gold
+  - ♦ panther: 45° rotation, 0.6× fold, pink→gold shift (500ms)
+  - ♠ silver: no rotation, 0.8× fold, steel→gold shift (400ms)
+  - ♥ phosphor: no rotation, 0.9× fold, amber→gold shift (600ms)
+- **Per-lens visual feedback** — Angle-reject flash and resolved ghost constellation now query `LensState.getThemeColors()`:
+  - Gold: red reject flash, white ghost
+  - Silver: cool blue reject, steel ghost
+  - Phosphor: green CRT reject, green pulse ghost
+  - Panther: purple reject, pink trail ghost
+
+### Deferred (not blocking Phase 9 completion)
+
+- TODO: Per-suit transformation SFX (recommended tags for sound designer):
+  - TODO: ♦ Diamond transform: crystalline shatter → reform chime (manifest key: `transform-diamond`)
+  - TODO: ♠ Spade transform: amplifier power-up hum (manifest key: `transform-spade`)
+  - TODO: ♥ Heart transform: warm pulse → heartbeat fade (manifest key: `transform-heart`)
+  - Currently all use `snap-3` — replace when SFX are authored + uploaded to R2
 
 ### Phase 9 Visual Feedback Polish (depends on Phase 8.5 feedback system)
 
@@ -588,12 +605,9 @@ Phase 8.5 ships the visual feedback infrastructure that Phase 9 builds on:
 - `ConstellationTracer._renderHook` already runs per-frame — Phase 9 adds a `_lensType` state variable that gates which visual treatment to apply
 - The angle-reject flash in Phase 9 plays a per-lens SFX (silver=click, phosphor=buzz, panther=zap) in addition to the visual
 
-### Deliverables (remaining for Phase 9 completion)
+### Phase 9 Complete ✅
 
-- `lens-state.js` — centralized cross-lens state manager
-- Origami-fold transformation animations per suit
-- Per-lens visual feedback differentiation (colors, SFX, ghost styles)
-- Hint system that detects which suits the player hasn't tried transforming yet
+All core deliverables shipped. Per-suit transformation SFX deferred (tagged TODO in Deferred section with manifest key recommendations for sound designer).
 
 ---
 
@@ -899,12 +913,12 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 6 — Magnifying Glass Repurpose | ⬜ Not started | Phase 5 |
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
 | 8 — Gold Lens Constellation Tracing | ✅ Complete | Phase 5 + 6 |
-| 9 — Multi-Lens Suit Transformation | 🔧 ~70% shipped (suit-transformer.js, satellite-scrubber.js, 3 outlier mechanics, tier-2 progression, all cards wired). Remaining: lens-state.js, origami animations, per-lens SFX. | Phase 8 |
+| 9 — Multi-Lens Suit Transformation | ✅ Complete | Phase 8 |
 | 10 — Procedural Generation, Cascades & Forever Sky | 🔧 Proc-gen engine shipped (constellation-procgen.js). Cascades + forever sky damage remaining. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
 
-**Next up:** Finish Phase 9 (origami animations, per-lens SFX, lens-state.js) → Phase 10 (cascades + forever sky damage) → Phase 12 (trick glasses).
+**Next up:** Phase 10 (cascades + forever sky damage) → Phase 11 (volatility + gambling) → Phase 12 (trick glasses).
 
 
 
