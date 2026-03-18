@@ -611,7 +611,7 @@ All core deliverables shipped. Per-suit transformation SFX deferred (tagged TODO
 
 ---
 
-## Phase 10: Procedural Generation, Cascades & Forever Sky ⬜
+## Phase 10: Procedural Generation, Cascades & Forever Sky 🔧 (~65% shipped)
 
 As players solve constellations, the system generates new puzzles procedurally, reveals hidden puzzle chains, and permanently marks the starfield with solved nodes. The sky becomes a living journal of achievements — and a resource that can be harvested or destroyed.
 
@@ -704,13 +704,21 @@ A massive hand-authored constellation requiring **all four lenses** and spanning
 
 The grand constellation's shape is a skeleton key. Reward: large coin waterfall + hidden travel page unlock (`/itinerary/night-flight`).
 
-### Shipped (when complete)
+### Shipped ✅
 
-- `public/js/constellation-generator.js` — procedural puzzle generation (seed → proximity graph → angle filter → DFS search → shape filter → suit mix → difficulty score)
-- `public/js/constellation-cascade.js` — unlock chain manager, new-node fade-in animation, cascade state persistence
-- `public/js/forever-sky.js` — persistent white pixel renderer, localStorage sync, hover-pulse detection, sky-mapped percentage tracker
-- `public/js/grand-constellation.js` — endgame multi-lens puzzle, hand-authored path, capstone reward
-- `public/data/cascade-chains.json` — cascade definitions (unlock sequences, suit assignments, reward tiers)
+- **`public/js/constellation-procgen.js`** (Phase 8) — Basic procedural generation: regular polygons, star shapes, convex hull random. Seeded PRNG, 3 techniques, difficulty scaling. Infinite shapes after designed templates exhausted.
+- **`public/js/constellation-cascade.js`** — Unlock chain manager. Listens for `constellation-solved` events, checks `cascade-chains.json` for a chain, spawns new constellation nodes with staggered ripple fade-in from solved centroid. New nodes register with SuitNodeRenderer. Dispatches `cascade-started` event.
+- **`public/data/cascade-chains.json`** — 3 cascade chains: triangle→diamond, pentagon→hexagon, pentagram→mixed (tier 2). Each defines fadeDelay, fadeDuration, and full constellation definition for the unlocked shape.
+- **Forever sky enhancements** — `burnForever()` now records `constellation` ID and `solvedAt` timestamp per pixel. Forever pixels hover-pulse (opacity oscillates 0.8–1.0) when gold lens is active, confirming "you've been here". Tier-scaled rendering (1px crisp for tier 1, 2px+glow for tier 2).
+- **Cross-page persistence** — `constellation-gamestate.js` syncs forever pixels including tier/constellation metadata. `eyesonly_account.puzzleCoins` updated on every `currency-increment`. Currency counter bridge updates `#currency-value` via `UIControls.updateCurrency` (terminal) or direct DOM (other pages).
+
+### Remaining
+
+- `constellation-generator.js` — Advanced procedural generation (proximity graph → angle filter → DFS → shape filter → suit mix → difficulty score). Currently using simpler procgen from Phase 8.
+- `forever-sky.js` — Dedicated module for sky-mapped percentage tracker, grey ghost sacrifice pixels, heal-by-proximity on new solves. Currently forever sky logic is spread across suit-node-renderer + constellation-gamestate.
+- `grand-constellation.js` — Endgame capstone: massive hand-authored multi-lens constellation spanning full viewport. Skeleton key shape. Reward: large coin waterfall + hidden travel page unlock.
+- Star Destroyer widget — Sacrifice forever stars for currency (gone-rogue endgame integration)
+- Additional cascade chains — More chain definitions as designed constellations grow
 
 ### Deliverables
 
@@ -914,7 +922,7 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
 | 8 — Gold Lens Constellation Tracing | ✅ Complete | Phase 5 + 6 |
 | 9 — Multi-Lens Suit Transformation | ✅ Complete | Phase 8 |
-| 10 — Procedural Generation, Cascades & Forever Sky | 🔧 Proc-gen engine shipped (constellation-procgen.js). Cascades + forever sky damage remaining. | Phase 8 + 9 |
+| 10 — Procedural Generation, Cascades & Forever Sky | 🔧 ~65% shipped (procgen, cascades, forever sky enhancements, currency bridge). Remaining: advanced generator, grand constellation, star destroyer. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
 

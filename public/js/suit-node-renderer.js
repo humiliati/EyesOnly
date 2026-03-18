@@ -277,13 +277,18 @@
    * @param {string[]} nodeIds
    * @param {number} [tier=1] — difficulty tier controls pixel size (1=1px, 2=2px+glow)
    */
-  function burnForever(nodeIds, tier) {
+  function burnForever(nodeIds, tier, constellationId) {
     var t = tier || 1;
+    var cid = constellationId || null;
+    var ts = Date.now();
     nodeIds.forEach(function (id) {
       var n = getNodeById(id);
       if (!n) return;
       n.state = 'forever';
-      _foreverPixels.push({ x: n.x, y: n.y, tier: t });
+      _foreverPixels.push({
+        x: n.x, y: n.y, tier: t,
+        constellation: cid, solvedAt: ts,
+      });
     });
     _saveForeverPixels();
   }
@@ -325,22 +330,53 @@
     var H = hookCtx.H;
     var t = hookCtx.time;
 
+    // 0. Ghost scars (from star-destroyer) — render UNDER forever pixels
+    //    so new stars earned later layer on top of old sacrifice marks.
+    if (typeof StarDestroyer !== 'undefined' && StarDestroyer._getGhosts) {
+      var ghosts = StarDestroyer._getGhosts();
+      if (ghosts.length > 0) {
+        ctx.fillStyle = '#444444';
+        ctx.globalAlpha = 0.3;
+        for (var gi = 0; gi < ghosts.length; gi++) {
+          ctx.fillRect(Math.round(ghosts[gi].x * W), Math.round(ghosts[gi].y * H), 1, 1);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // 1. Forever pixels — permanent marks from solved constellations.
-    //    Size scales by difficulty tier: tier 1 = single pixel (subtle),
-    //    tier 2 = 2px core + small glow (requires multi-lens work to earn).
+    //    Size scales by difficulty tier. Hover-pulse when gold lens is nearby.
+    var lensNearby = false;
+    var lensCX = 0, lensCY = 0;
+    if (typeof ConstellationTracer !== 'undefined' && ConstellationTracer.isEnabled && ConstellationTracer.isEnabled()) {
+      var cPath = ConstellationTracer.getPath ? ConstellationTracer.getPath() : [];
+      if (cPath.length === 0) {
+        // Cursor is near but hasn't picked up a node yet — check cursor position
+        // (we can't query cursor directly, but enabled means the lens is active)
+        lensNearby = true;
+      }
+    }
+
     for (var fi = 0; fi < _foreverPixels.length; fi++) {
       var fp = _foreverPixels[fi];
       var fpx = fp.x * W;
       var fpy = fp.y * H;
       var fpTier = fp.tier || 1;
 
+      // Hover-pulse: forever pixels breathe when gold lens is nearby
+      var fpAlpha = 1.0;
+      if (lensNearby) {
+        fpAlpha = 0.8 + 0.2 * Math.sin(t * 0.06 + fi * 0.7);
+      }
+
       if (fpTier <= 1) {
-        // Tier 1: single crisp white pixel — like a real star
+        ctx.globalAlpha = fpAlpha;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(Math.round(fpx), Math.round(fpy), 1, 1);
+        ctx.globalAlpha = 1;
       } else {
-        // Tier 2+: 2px core + subtle glow halo
         var glowR = 2 + fpTier;
+        ctx.globalAlpha = fpAlpha;
         var fpGrad = ctx.createRadialGradient(fpx, fpy, 0, fpx, fpy, glowR);
         fpGrad.addColorStop(0, 'rgba(255,255,240,0.6)');
         fpGrad.addColorStop(0.5, 'rgba(255,250,220,0.2)');
@@ -350,6 +386,7 @@
 
         ctx.fillStyle = '#fffff0';
         ctx.fillRect(Math.round(fpx) - 1, Math.round(fpy) - 1, 2, 2);
+        ctx.globalAlpha = 1;
       }
     }
 

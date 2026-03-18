@@ -1305,6 +1305,10 @@ const SplashScreen = (() => {
       });
     }
 
+    // Porthole size boost
+    var fanEl = document.getElementById('splash-card-fan');
+    if (fanEl) fanEl.classList.add('nch-drag-active');
+
     // Phase 8: Activate lens on ANY card + constellation tracing on gold
     _splashActivateLens(_dragState);
     _splashStartTrace(_dragState);
@@ -1358,6 +1362,10 @@ const SplashScreen = (() => {
 
   function _endCardDrag(ev) {
     if (!_dragState || _dragState.phase !== 'dragging') return;
+    // Remove porthole size boost
+    var fanEl2 = document.getElementById('splash-card-fan');
+    if (fanEl2) fanEl2.classList.remove('nch-drag-active');
+
     // Phase 8: End constellation tracing
     _splashDeactivateLens();
     _splashEndTrace();

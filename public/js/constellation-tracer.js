@@ -427,7 +427,7 @@
 
     // Burn nodes into forever pixels (tier scales pixel size)
     var diffTier = constellation.difficulty === 'intermediate' ? 2 : 1;
-    SuitNodeRenderer.burnForever(constellation.nodeIds, diffTier);
+    SuitNodeRenderer.burnForever(constellation.nodeIds, diffTier, resolvedConstellationId);
 
     // ── Build screen-space point array for the resolution animation ──
     var screenPoints = [];

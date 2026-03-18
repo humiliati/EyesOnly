@@ -749,6 +749,48 @@
 
 
 /* ============================================================
+   Porthole Size Boost During Drag
+   ============================================================
+   When any card is being dragged:
+     - Ghost card's porthole renders 35% larger (magnifying glass feel)
+     - All resting cards' portholes grow 15% (sky opens up)
+   Controlled by .nch-drag-active on the fan container. */
+
+/* Ghost porthole: 35% larger */
+.coin-card-ghost .starfield-window,
+.coin-card-ghost .porthole-lens-overlay {
+  transition: transform 0.3s ease-out;
+  transform-origin: center center;
+}
+.coin-card-ghost .starfield-window {
+  transform: scale(1.35);
+}
+.coin-card-ghost .porthole-lens-overlay {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+
+/* Resting cards: portholes grow 15% when any drag is active */
+.nch-drag-active .splash-dossier:not(.nch-fan-card-dragging) .starfield-window,
+.nch-drag-active .splash-dossier:not(.coin-card-dragging) .starfield-window {
+  transition: transform 0.35s ease-out;
+  transform: scale(1.15);
+}
+.nch-drag-active .splash-dossier:not(.nch-fan-card-dragging) .porthole-lens-overlay,
+.nch-drag-active .splash-dossier:not(.coin-card-dragging) .porthole-lens-overlay {
+  transition: transform 0.35s ease-out;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* Reset when drag ends (transition handles the shrink-back) */
+.starfield-window {
+  transition: transform 0.3s ease-out;
+}
+.porthole-lens-overlay {
+  transition: opacity 0.35s ease-out, transform 0.3s ease-out;
+}
+
+
+/* ============================================================
    Phase 8 — Suit Symbol Flicker-Off During Drag
    ============================================================
    When a card is being dragged (constellation tracing active),

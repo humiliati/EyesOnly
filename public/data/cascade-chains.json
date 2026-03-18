@@ -1,0 +1,59 @@
+{
+  "_description": "Constellation cascade chains. When a constellation is solved, the chain spawns new nodes that form the next puzzle. Creates the illusion of the sky growing in response to achievements.",
+
+  "t1-01-triangle": {
+    "unlocks": "cascade-diamond-1",
+    "newConstellation": {
+      "id": "cascade-diamond-1",
+      "name": "The Echo",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "ce-1", "x": 0.62, "y": 0.26, "suit": "club" },
+        { "id": "ce-2", "x": 0.74, "y": 0.40, "suit": "club" },
+        { "id": "ce-3", "x": 0.62, "y": 0.54, "suit": "club" },
+        { "id": "ce-4", "x": 0.50, "y": 0.40, "suit": "club" }
+      ]
+    },
+    "fadeDelay": 2000,
+    "fadeDuration": 2500
+  },
+
+  "t1-04-pentagon": {
+    "unlocks": "cascade-hex-1",
+    "newConstellation": {
+      "id": "cascade-hex-1",
+      "name": "The Resonance",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "cr-1", "x": 0.28, "y": 0.20, "suit": "club" },
+        { "id": "cr-2", "x": 0.42, "y": 0.20, "suit": "club" },
+        { "id": "cr-3", "x": 0.48, "y": 0.36, "suit": "club" },
+        { "id": "cr-4", "x": 0.38, "y": 0.48, "suit": "club" },
+        { "id": "cr-5", "x": 0.24, "y": 0.42, "suit": "club" },
+        { "id": "cr-6", "x": 0.22, "y": 0.30, "suit": "club" }
+      ]
+    },
+    "fadeDelay": 2500,
+    "fadeDuration": 3000
+  },
+
+  "t1-11-pentagram": {
+    "unlocks": "cascade-mixed-1",
+    "newConstellation": {
+      "id": "cascade-mixed-1",
+      "name": "The Compromise",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "cm-1", "x": 0.22, "y": 0.60, "suit": "club" },
+        { "id": "cm-2", "x": 0.36, "y": 0.62, "suit": "diamond" },
+        { "id": "cm-3", "x": 0.42, "y": 0.76, "suit": "club" },
+        { "id": "cm-4", "x": 0.28, "y": 0.78, "suit": "club" }
+      ]
+    },
+    "fadeDelay": 2000,
+    "fadeDuration": 2500
+  }
+}

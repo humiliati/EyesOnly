@@ -1150,6 +1150,9 @@ var NchOverlay = (function () {
     document.body.appendChild(ghost);
     drag.ghostEl = ghost;
 
+    // Porthole size boost: add drag-active class to fan container
+    if (_fanPanel) _fanPanel.classList.add('nch-drag-active');
+
     // Begin RevealGrid lens session (card's porthole aperture is the lens)
     if (window.RevealGrid) {
       var portholeCanvas = ghost.querySelector('.starfield-window');
@@ -1327,6 +1330,9 @@ var NchOverlay = (function () {
     _endConstellationTrace();
     _endSatelliteScrub();
     _endSuitTransform();
+
+    // Remove porthole size boost
+    if (_fanPanel) _fanPanel.classList.remove('nch-drag-active');
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;
@@ -1763,6 +1769,10 @@ var NchOverlay = (function () {
       if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
       if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
       if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
+      // Phase 10: Cascade chains (solve one → unlock next)
+      if (typeof ConstellationCascade !== 'undefined') ConstellationCascade.init();
+      // Phase 10: Star destroyer (endgame item — sacrifice forever pixels for coins)
+      if (typeof StarDestroyer !== 'undefined') StarDestroyer.init();
       // Phase 9: Suit transformer (panther lens → diamond transformation)
       if (typeof SuitTransformer !== 'undefined') SuitTransformer.init();
       // Phase 9: Satellite scrubber (silver lens mechanic)
