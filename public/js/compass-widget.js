@@ -116,6 +116,8 @@ var CompassWidget = (function() {
 
     _elements.overlay.innerHTML = [
       '<div class="compass-frame">',
+        '<button class="compass-close-btn" id="compass-close" aria-label="Close">\u2715</button>',
+        '<div class="compass-item-header">\ud83e\udded Baseplate Compass</div>',
         '<div class="compass-bezel">',
           '<div class="compass-dome">',
             '<div class="compass-needle-container">',
@@ -129,14 +131,15 @@ var CompassWidget = (function() {
               '<span class="compass-cardinal cardinal-s">S</span>',
               '<span class="compass-cardinal cardinal-w">W</span>',
             '</div>',
+            '<div class="compass-desktop-fallback" id="compass-desktop-msg" style="display:none;">',
+              '<span class="compass-desktop-icon">\ud83e\udded</span>',
+              '<span class="compass-desktop-text">ORIENTATION<br>UNAVAILABLE</span>',
+              '<span class="compass-desktop-sub">Requires mobile device</span>',
+            '</div>',
           '</div>',
         '</div>',
         '<div class="compass-readout">',
-          '<span class="compass-readout-heading"><span class="compass-readout-label">AZ</span> <span class="compass-readout-value" id="compass-azimuth">0</span>°</span>',
-        '</div>',
-        '<div class="compass-controls">',
-          '<button class="compass-btn" id="compass-minimize">MINIMIZE</button>',
-          '<button class="compass-btn" id="compass-telescope">TELESCOPE</button>',
+          '<span class="compass-readout-heading"><span class="compass-readout-label">AZ</span> <span class="compass-readout-value" id="compass-azimuth">---</span>\u00b0</span>',
         '</div>',
       '</div>'
     ].join('');
@@ -157,18 +160,10 @@ var CompassWidget = (function() {
       }
     });
 
-    // Minimize button
-    var minimizeBtn = document.getElementById('compass-minimize');
-    if (minimizeBtn) {
-      minimizeBtn.addEventListener('click', _minimize);
-    }
-
-    // Telescope button
-    var telescopeBtn = document.getElementById('compass-telescope');
-    if (telescopeBtn) {
-      telescopeBtn.addEventListener('click', function() {
-        window.location.href = '/telescope.html';
-      });
+    // Close button (× in top-right of expanded overlay)
+    var closeBtn = document.getElementById('compass-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', _minimize);
     }
 
     // Drag functionality for minimized widget
@@ -267,31 +262,57 @@ var CompassWidget = (function() {
   function _startOrientationTracking() {
     if (_state.hasOrientation) return;
 
-    // Check for iOS permission requirement
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // Will request on first interaction
-      document.body.addEventListener('click', _requestOrientationPermission, { once: true });
+    // Detect desktop (no DeviceOrientationEvent or no touch support)
+    var hasOrientationAPI = typeof DeviceOrientationEvent !== 'undefined';
+    var hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (!hasOrientationAPI || !hasTouchScreen) {
+      // Desktop: show static fallback, no orientation tracking
+      _state.isDesktop = true;
+      _showDesktopFallback();
+      console.log('[CompassWidget] Desktop detected — orientation unavailable');
+      return;
+    }
+
+    // iOS 13+ requires explicit permission request (must be triggered by user gesture)
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      _state.needsIOSPermission = true;
+      console.log('[CompassWidget] iOS detected — will request permission on expand');
     } else {
+      // Android / other — just enable directly
       _enableOrientation();
     }
   }
 
   async function _requestOrientationPermission() {
+    if (!_state.needsIOSPermission || _state.hasOrientation) return;
     try {
       var permission = await DeviceOrientationEvent.requestPermission();
       if (permission === 'granted') {
+        _state.needsIOSPermission = false;
         _enableOrientation();
+      } else {
+        console.warn('[CompassWidget] Orientation permission denied by user');
+        _showDesktopFallback();
       }
     } catch (e) {
-      console.warn('[CompassWidget] Orientation permission denied');
+      console.warn('[CompassWidget] Orientation permission error:', e);
+      _showDesktopFallback();
     }
   }
 
   function _enableOrientation() {
     window.addEventListener('deviceorientation', _handleOrientation);
     _state.hasOrientation = true;
+    // Hide desktop fallback if it was shown
+    var msg = document.getElementById('compass-desktop-msg');
+    if (msg) msg.style.display = 'none';
     console.log('[CompassWidget] Orientation tracking enabled');
+  }
+
+  function _showDesktopFallback() {
+    var msg = document.getElementById('compass-desktop-msg');
+    if (msg) msg.style.display = '';
   }
 
   function _handleOrientation(event) {
@@ -370,6 +391,11 @@ var CompassWidget = (function() {
     _state.expanded = true;
     _elements.overlay.hidden = false;
     _elements.widget.style.display = 'none';
+
+    // iOS 13+: request orientation permission on first expand (requires user gesture)
+    if (_state.needsIOSPermission && !_state.hasOrientation) {
+      _requestOrientationPermission();
+    }
 
     // Start fast update (every 0.2 seconds for expanded)
     _state.fastUpdateInterval = setInterval(function() {

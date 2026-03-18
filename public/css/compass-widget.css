@@ -86,25 +86,66 @@
 /* ───────────────────────────────────────────────────────────────── */
 
 .compass-widget-expanded {
-  width: 320px;
+  width: 280px;
 }
 
 .compass-frame {
+  position: relative;
   background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-  border: 3px solid #8b7355;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 
-    0 0 30px rgba(0, 0, 0, 0.8),
+  border: 2px solid #8b7355;
+  border-radius: 12px;
+  padding: 12px 14px 14px;
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 60px rgba(139, 115, 85, 0.3);
+    0 0 40px rgba(139, 115, 85, 0.2);
+}
+
+/* Close button — matches NCH overlay fan close */
+.compass-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(28, 255, 155, 0.35);
+  color: rgba(28, 255, 155, 0.7);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.compass-close-btn:hover {
+  background: rgba(28, 255, 155, 0.12);
+  border-color: rgba(28, 255, 155, 0.8);
+  color: rgba(28, 255, 155, 0.95);
+}
+
+/* Item name header */
+.compass-item-header {
+  text-align: center;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(212, 175, 55, 0.8);
+  margin-bottom: 10px;
+  padding-right: 28px;
+  text-shadow: 0 0 6px rgba(212, 175, 55, 0.2);
 }
 
 /* Brass bezel */
 .compass-bezel {
   width: 200px;
   height: 200px;
-  margin: 0 auto 15px;
+  margin: 0 auto 10px;
   background: linear-gradient(135deg, #d4af37 0%, #8b7355 50%, #d4af37 100%);
   border-radius: 50%;
   padding: 8px;
@@ -229,8 +270,8 @@
 /* Digital readout */
 .compass-readout {
   text-align: center;
-  margin-bottom: 15px;
-  padding: 8px;
+  margin-bottom: 0;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 4px;
   border: 1px solid #333;
@@ -254,53 +295,81 @@
   display: inline-block;
 }
 
-/* Control buttons */
-.compass-controls {
+/* Desktop fallback overlay (shown when no orientation API) */
+.compass-desktop-fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  z-index: 5;
+  gap: 4px;
 }
 
-.compass-btn {
-  flex: 1;
-  padding: 10px 15px;
+.compass-desktop-icon {
+  font-size: 28px;
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.compass-desktop-text {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
-  letter-spacing: 1px;
-  color: #ccc;
-  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
-  border: 1px solid #555;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
+  letter-spacing: 0.15em;
+  color: #666;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.compass-desktop-sub {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.compass-btn:hover {
-  background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
-  border-color: #777;
-  color: #fff;
-}
-
-.compass-btn:active {
-  transform: scale(0.98);
-}
-
-.compass-btn#compass-telescope {
-  background: linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%);
-  border-color: #33ff33;
-  color: #33ff33;
-}
-
-.compass-btn#compass-telescope:hover {
-  background: linear-gradient(180deg, #3a4a3a 0%, #2a3a2a 100%);
-  box-shadow: 0 0 10px rgba(51, 255, 51, 0.3);
 }
 
 /* ───────────────────────────────────────────────────────────────── */
 /* THEME INTEGRATION                                               */
 /* ───────────────────────────────────────────────────────────────── */
+
+/* Close button theme variants */
+body[data-theme="amber"] .compass-close-btn {
+  border-color: rgba(255, 176, 0, 0.35);
+  color: rgba(255, 176, 0, 0.7);
+}
+body[data-theme="amber"] .compass-close-btn:hover {
+  background: rgba(255, 176, 0, 0.12);
+  border-color: rgba(255, 176, 0, 0.8);
+  color: rgba(255, 176, 0, 0.95);
+}
+
+body[data-theme="silver"] .compass-close-btn {
+  border-color: rgba(176, 196, 222, 0.35);
+  color: rgba(176, 196, 222, 0.7);
+}
+body[data-theme="silver"] .compass-close-btn:hover {
+  background: rgba(176, 196, 222, 0.12);
+  border-color: rgba(176, 196, 222, 0.8);
+  color: rgba(176, 196, 222, 0.95);
+}
+
+body[data-theme="panther"] .compass-close-btn {
+  border-color: rgba(255, 48, 144, 0.35);
+  color: rgba(255, 48, 144, 0.7);
+}
+body[data-theme="panther"] .compass-close-btn:hover {
+  background: rgba(255, 48, 144, 0.12);
+  border-color: rgba(255, 48, 144, 0.8);
+  color: rgba(255, 48, 144, 0.95);
+}
 
 body[data-theme="phosphor"] .compass-readout-heading {
   color: #33ff33;
@@ -374,7 +443,11 @@ body[data-theme="panther"] .compass-readout-heading {
   }
 
   .compass-widget-expanded {
-    width: 280px;
+    width: 250px;
+  }
+
+  .compass-frame {
+    padding: 10px 12px 12px;
   }
 
   .compass-bezel {
@@ -387,8 +460,8 @@ body[data-theme="panther"] .compass-readout-heading {
     margin-top: -65px;
   }
 
-  .compass-btn {
-    padding: 8px 10px;
-    font-size: 10px;
+  .compass-item-header {
+    font-size: 9px;
+    margin-bottom: 8px;
   }
 }
