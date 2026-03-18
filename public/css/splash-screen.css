@@ -931,7 +931,8 @@
   border-radius: 4px;
 }
 
-/* Stars 2-6: tiny dot/suit particles that float upward from the button */
+/* Stars 2-6: tiny dot particles that float upward from the button.
+   Start as theme-colored specks, grow to bright white as they rise. */
 .cbtn-star-2, .cbtn-star-3, .cbtn-star-4, .cbtn-star-5, .cbtn-star-6 {
   inset: auto;
   width: 3px;
@@ -939,22 +940,26 @@
   border-radius: 50%;
   background: var(--theme-hover-glow);
   overflow: visible;
-  /* Start clustered inside the button center */
   bottom: 40%;
   left: 50%;
+  box-shadow: none;
   transition:
     bottom 1.2s cubic-bezier(0.05, 0.83, 0.43, 0.96),
     left   1.2s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    width  1.2s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    height 1.2s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    background 0.8s ease,
+    box-shadow 0.8s ease,
     opacity 0.5s ease;
 }
 
-/* Vary starting positions slightly */
+/* Vary starting positions */
 .cbtn-star-3 { bottom: 50%; left: 30%; width: 2px; height: 2px; }
 .cbtn-star-4 { bottom: 35%; left: 70%; width: 4px; height: 4px; }
 .cbtn-star-5 { bottom: 45%; left: 40%; width: 2px; height: 2px; }
 .cbtn-star-6 { bottom: 55%; left: 60%; width: 3px; height: 3px; }
 
-/* Inside particles: no canvas needed, hide it */
+/* No canvas needed for dot particles */
 .cbtn-star-2 .cbtn-canvas, .cbtn-star-3 .cbtn-canvas,
 .cbtn-star-4 .cbtn-canvas, .cbtn-star-5 .cbtn-canvas,
 .cbtn-star-6 .cbtn-canvas {
@@ -964,7 +969,7 @@
 /* ── Hover / Touch: portal opens, particles drift upward ── */
 .coin-book-btn:hover .cbtn-star-1,
 .coin-book-btn.cbtn-active .cbtn-star-1 {
-  opacity: 0.5;  /* portal window faintly visible behind text */
+  opacity: 0.5;
 }
 
 .coin-book-btn:hover .cbtn-star-2,
@@ -978,37 +983,45 @@
 .coin-book-btn.cbtn-active .cbtn-star-5,
 .coin-book-btn.cbtn-active .cbtn-star-6 {
   opacity: 1;
+  /* All particles transition to bright white with glow as they rise */
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(255,255,255,0.8), 0 0 8px rgba(255,255,255,0.3);
 }
 
-/* Each particle drifts to a different position above the button */
+/* Each particle drifts upward, doubles in size at destination */
 .coin-book-btn:hover .cbtn-star-2,
 .coin-book-btn.cbtn-active .cbtn-star-2 {
-  bottom: 180%; left: 35%;
-  transition: bottom 1.4s cubic-bezier(0.05,0.83,0.43,0.96), left 1.4s ease, opacity 0.4s ease;
+  bottom: 180%; left: 35%; width: 6px; height: 6px;
+  transition: bottom 1.4s cubic-bezier(0.05,0.83,0.43,0.96), left 1.4s ease,
+              width 1.4s ease, height 1.4s ease, background 0.6s ease, box-shadow 0.6s ease, opacity 0.4s ease;
 }
 
 .coin-book-btn:hover .cbtn-star-3,
 .coin-book-btn.cbtn-active .cbtn-star-3 {
-  bottom: 220%; left: 55%;
-  transition: bottom 1.8s cubic-bezier(0.05,0.83,0.43,0.96), left 1.8s ease, opacity 0.5s ease;
+  bottom: 220%; left: 55%; width: 5px; height: 5px;
+  transition: bottom 1.8s cubic-bezier(0.05,0.83,0.43,0.96), left 1.8s ease,
+              width 1.8s ease, height 1.8s ease, background 0.8s ease, box-shadow 0.8s ease, opacity 0.5s ease;
 }
 
 .coin-book-btn:hover .cbtn-star-4,
 .coin-book-btn.cbtn-active .cbtn-star-4 {
-  bottom: 160%; left: 70%;
-  transition: bottom 1.2s cubic-bezier(0.05,0.83,0.43,0.96), left 1.2s ease, opacity 0.4s ease;
+  bottom: 160%; left: 70%; width: 8px; height: 8px;
+  transition: bottom 1.2s cubic-bezier(0.05,0.83,0.43,0.96), left 1.2s ease,
+              width 1.2s ease, height 1.2s ease, background 0.5s ease, box-shadow 0.5s ease, opacity 0.4s ease;
 }
 
 .coin-book-btn:hover .cbtn-star-5,
 .coin-book-btn.cbtn-active .cbtn-star-5 {
-  bottom: 250%; left: 25%;
-  transition: bottom 2s cubic-bezier(0.05,0.83,0.43,0.96), left 2s ease, opacity 0.6s ease;
+  bottom: 250%; left: 25%; width: 5px; height: 5px;
+  transition: bottom 2s cubic-bezier(0.05,0.83,0.43,0.96), left 2s ease,
+              width 2s ease, height 2s ease, background 1s ease, box-shadow 1s ease, opacity 0.6s ease;
 }
 
 .coin-book-btn:hover .cbtn-star-6,
 .coin-book-btn.cbtn-active .cbtn-star-6 {
-  bottom: 200%; left: 80%;
-  transition: bottom 1.6s cubic-bezier(0.05,0.83,0.43,0.96), left 1.6s ease, opacity 0.5s ease;
+  bottom: 200%; left: 80%; width: 6px; height: 6px;
+  transition: bottom 1.6s cubic-bezier(0.05,0.83,0.43,0.96), left 1.6s ease,
+              width 1.6s ease, height 1.6s ease, background 0.7s ease, box-shadow 0.7s ease, opacity 0.5s ease;
 }
 
 /* ---- Coin info — title + description (stamped brass) ---- */

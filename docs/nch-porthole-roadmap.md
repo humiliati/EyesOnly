@@ -274,7 +274,7 @@ The reveal grid (Phase 5) already tracks individual zone discovery via `eyesonly
 
 ---
 
-## Phase 8: Gold Lens — Constellation Tracing ✅ (~95% shipped)
+## Phase 8: Gold Lens — Constellation Tracing ✅ (Complete)
 
 The gold lens becomes a **navigator's instrument** for tracing constellations in the starfield. The interaction feels like a phone unlock pattern: the player drags the gold porthole across suit-symbol nodes, and the system records a path graph constrained by angular rules. Valid shapes lock in, flash gold, rain coins, and burn permanent white pixels into the forever sky.
 
@@ -456,12 +456,16 @@ function fireConstellationReward(path, rewardPerNode) {
 - White theme starfield swap removed (prevents multi-viewport sky conflict)
 - R2 upload pipeline: `encoded_for_r2/coin_sfx/` mapped to `audio/sfx/` in `r2-gap-upload.mjs`
 
-### Remaining
+### Deferred to Phase 10+
 
-- Satellite interference — moving sprites that break active tether if crossed
-- Advanced constellations with non-trivial angular paths (more than 3 nodes, using all 6 angle axes)
-- Tutorial hint system — contextual nudges for first-time players ("Drag the gold card over the ♣ symbols")
-- Currency counter UI widget (visual coin counter with pulse animation on settle)
+- Satellite interference — moving sprites that break active tether if crossed (Phase 10: Cascades)
+- Tutorial hint system — contextual nudges for first-time players (Phase 9: requires multi-lens context)
+- Currency counter UI widget — visual coin counter in header/capsule (Phase 9: needs multi-lens economy)
+- Advanced angular constellations — using all 6 angle axes (Phase 10: procedural with constraints)
+
+### Phase 8 Complete ✅
+
+Phase 8 ships the full gold lens constellation tracing system: core engine (8 JS modules), 24 designed templates + infinite proc-gen, cross-page persistence via gamestate + eyesonly_account, per-theme porthole lens effects (4 technologies), visual feedback (angle-reject flash, progressive transparency, resolved ghost), coin SFX through AudioSystem manifest pipeline, drag-to-reorder parity across splash + nch-overlay, mobile porthole clipping fix, idle lens on resting cards, and action button portal burst effect.
 
 ---
 
@@ -883,7 +887,7 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 5 — Porthole Reveal Grid | ✅ Shipped (3 zone types, PuzzleState integration, dead attrs cleaned) | Phase 1 + 4 |
 | 6 — Magnifying Glass Repurpose | ⬜ Not started | Phase 5 |
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
-| 8 — Gold Lens Constellation Tracing | ✅ Shipped (core engine, validator, rewards, gamestate, proc-gen, 24 templates, per-theme lens effects, visual feedback, drag-to-reorder, mobile porthole fix) | Phase 5 + 6 |
+| 8 — Gold Lens Constellation Tracing | ✅ Complete | Phase 5 + 6 |
 | 9 — Multi-Lens Suit Transformation | ⬜ Transformation matrix designed (♦→♣, ♠→♣, ♥→♣). Per-lens visual feedback spec drafted. | Phase 8 |
 | 10 — Procedural Generation, Cascades & Forever Sky | 🔧 Proc-gen engine shipped (constellation-procgen.js). Cascades + forever sky damage remaining. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
