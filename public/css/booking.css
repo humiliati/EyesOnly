@@ -410,6 +410,26 @@ a:hover { text-decoration: underline; }
   transform: translateX(-50%);
 }
 
+/* ---- NCH coin lens polish on embedded portholes ---- */
+/* Override porthole-lens-overlay positioning for scenario context.
+   The lens sits inside .scenario-icon-wrap which is the brass frame. */
+.scenario-icon-wrap .porthole-lens-overlay {
+  /* Already inherits from nch-overlay.css — 82%, centered, circular */
+  /* Boost to lens-idle visibility so it's visible on the static page */
+  opacity: 0.35;
+}
+
+/* On hover of the scenario card → activate the lens with breathing animation */
+.postit:hover .scenario-icon-wrap .porthole-lens-overlay.lens-silver {
+  opacity: 1;
+  animation: silver-breathe 4s ease-in-out infinite;
+}
+
+.postit:hover .scenario-icon-wrap .porthole-lens-overlay.lens-blue {
+  opacity: 1;
+  animation: blue-breathe 3s ease-in-out infinite;
+}
+
 /* Suit symbol */
 .scenario-suit {
   z-index: 5;

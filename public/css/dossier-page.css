@@ -432,14 +432,16 @@
   transition: opacity 0.3s ease;
 }
 
-/* ---- CSS star sparkles (hidden by default, burst on hover) ---- */
+/* ---- CSS star sparkles (hidden by default, burst outward on hover) ---- */
 .porthole-btn .sparkle {
   position: absolute;
-  z-index: 2;
+  /* z-index high enough to paint over sibling elements */
+  z-index: 10;
   pointer-events: none;
   opacity: 0;
-  transition: all 0.7s cubic-bezier(0.05, 0.83, 0.43, 0.96);
+  transition: all 0.8s cubic-bezier(0.05, 0.83, 0.43, 0.96);
   filter: drop-shadow(0 0 0 transparent);
+  will-change: transform, opacity;
 }
 
 .porthole-btn .sparkle::before {
@@ -449,12 +451,13 @@
   font-size: inherit;
 }
 
-.porthole-btn .sparkle-1 { top: 15%; left: 12%; font-size: 14px; }
-.porthole-btn .sparkle-2 { top: -8%; left: 55%; font-size: 8px; }
-.porthole-btn .sparkle-3 { top: 50%; right: -4%; font-size: 18px; }
-.porthole-btn .sparkle-4 { bottom: -6%; left: 30%; font-size: 6px; }
-.porthole-btn .sparkle-5 { top: -10%; right: 15%; font-size: 11px; }
-.porthole-btn .sparkle-6 { bottom: 10%; left: -3%; font-size: 5px; }
+/* Default positions — clustered inside the button */
+.porthole-btn .sparkle-1 { top: 20%; left: 15%; font-size: 16px; }
+.porthole-btn .sparkle-2 { top: 10%; left: 55%; font-size: 9px; }
+.porthole-btn .sparkle-3 { top: 45%; right: 5%;  font-size: 20px; }
+.porthole-btn .sparkle-4 { bottom: 8%; left: 35%; font-size: 7px; }
+.porthole-btn .sparkle-5 { top: 5%;  right: 20%; font-size: 13px; }
+.porthole-btn .sparkle-6 { bottom: 15%; left: 8%; font-size: 6px; }
 
 
 /* ============================================================
@@ -495,27 +498,46 @@
   opacity: 0.8;
 }
 
-/* Sparkles burst outward on hover */
+/* Sparkles burst outward on hover — escaping the frame, spilling over other elements */
 .porthole-btn:hover .sparkle,
 .porthole-btn:focus-visible .sparkle {
   opacity: 1;
-  filter: drop-shadow(0 0 6px var(--theme-primary, #33ff33));
+  filter: drop-shadow(0 0 8px var(--theme-primary, #33ff33));
 }
 
-.porthole-btn:hover .sparkle-1 { top: -15%; left: -8%; }
-.porthole-btn:hover .sparkle-2 { top: -25%; left: 50%; }
-.porthole-btn:hover .sparkle-3 { top: 40%; right: -18%; }
-.porthole-btn:hover .sparkle-4 { bottom: -20%; left: 25%; }
-.porthole-btn:hover .sparkle-5 { top: -22%; right: -5%; }
-.porthole-btn:hover .sparkle-6 { bottom: 5%; left: -15%; }
+/* Each sparkle flies to a different position OUTSIDE the button bounds */
+.porthole-btn:hover .sparkle-1,
+.porthole-btn:focus-visible .sparkle-1 {
+  top: -40%; left: -20%; transform: scale(1.3) rotate(20deg);
+}
+.porthole-btn:hover .sparkle-2,
+.porthole-btn:focus-visible .sparkle-2 {
+  top: -50%; left: 45%; transform: scale(1.1) rotate(-15deg);
+}
+.porthole-btn:hover .sparkle-3,
+.porthole-btn:focus-visible .sparkle-3 {
+  top: 30%; right: -30%; transform: scale(1.4) rotate(10deg);
+}
+.porthole-btn:hover .sparkle-4,
+.porthole-btn:focus-visible .sparkle-4 {
+  bottom: -45%; left: 20%; transform: scale(0.9) rotate(35deg);
+}
+.porthole-btn:hover .sparkle-5,
+.porthole-btn:focus-visible .sparkle-5 {
+  top: -45%; right: -15%; transform: scale(1.2) rotate(-25deg);
+}
+.porthole-btn:hover .sparkle-6,
+.porthole-btn:focus-visible .sparkle-6 {
+  bottom: -10%; left: -25%; transform: scale(0.8) rotate(45deg);
+}
 
-/* Focus-visible same positions */
-.porthole-btn:focus-visible .sparkle-1 { top: -15%; left: -8%; }
-.porthole-btn:focus-visible .sparkle-2 { top: -25%; left: 50%; }
-.porthole-btn:focus-visible .sparkle-3 { top: 40%; right: -18%; }
-.porthole-btn:focus-visible .sparkle-4 { bottom: -20%; left: 25%; }
-.porthole-btn:focus-visible .sparkle-5 { top: -22%; right: -5%; }
-.porthole-btn:focus-visible .sparkle-6 { bottom: 5%; left: -15%; }
+/* Stagger sparkle timing for a cascading burst feel */
+.porthole-btn .sparkle-1 { transition-delay: 0s; }
+.porthole-btn .sparkle-2 { transition-delay: 0.04s; }
+.porthole-btn .sparkle-3 { transition-delay: 0.08s; }
+.porthole-btn .sparkle-4 { transition-delay: 0.06s; }
+.porthole-btn .sparkle-5 { transition-delay: 0.02s; }
+.porthole-btn .sparkle-6 { transition-delay: 0.1s; }
 
 
 /* ---- Press / active — tactile click-down ---- */
