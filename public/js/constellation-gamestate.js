@@ -64,11 +64,12 @@
     // Sync forever pixels into SuitNodeRenderer if it's already initialized
     _syncForeverPixels();
 
-    // Listen for constellation-solved events to auto-persist
+    // Listen for constellation-solved events — persist solve + forever pixels
+    // (currency is handled separately by currency-increment events below)
     document.addEventListener('constellation-solved', function (e) {
       var detail = e.detail || {};
       if (detail.constellationId && !isSolved(detail.constellationId)) {
-        markSolved(detail.constellationId, detail.totalReward || 0);
+        markSolved(detail.constellationId);
       }
     });
 
@@ -89,13 +90,15 @@
   }
 
   /**
-   * Mark a constellation as solved, award coins, persist forever pixels.
+   * Mark a constellation as solved and persist forever pixels.
+   * NOTE: Does NOT add currency here. Currency is awarded incrementally
+   * via 'currency-increment' events from the resolution animation counter.
+   * This prevents double-counting (markSolved + increment listener).
    */
-  function markSolved(constellationId, coinReward) {
+  function markSolved(constellationId) {
     if (isSolved(constellationId)) return;
 
     _state.solvedIds.push(constellationId);
-    _state.currency += (coinReward || 0);
 
     // Capture forever pixels from SuitNodeRenderer
     if (typeof SuitNodeRenderer !== 'undefined' && SuitNodeRenderer.getForeverPixels) {
@@ -103,10 +106,9 @@
     }
 
     _save();
-    _broadcastCurrency();
 
     console.log('[ConstellationGamestate] Solved:', constellationId,
-                '+' + coinReward + ' coins. Total:', _state.currency);
+                'Currency:', _state.currency);
   }
 
   function isSolved(constellationId) {

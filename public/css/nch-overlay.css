@@ -371,10 +371,16 @@
    so the fan is visible immediately when the panel appears.
    ALL card dimensions, transforms, nth-child spreads, hover scales,
    and grid layouts are inherited from splash-screen.css (canon). */
-.nch-porthole-fan .splash-card-fan {
+.nch-porthole-fan .splash-card-fan,
+.nch-porthole-fan .splash-card-fan.splash-fan-exit {
   pointer-events: auto;
-  opacity: 1;
-  animation: none;
+  /* Override splash-screen.css defaults that fight the NCH fan on terminal page */
+  opacity: 1 !important;
+  animation: none !important;
+  position: relative;
+  z-index: auto;        /* neutralize splash's z-index:10 — nch-porthole-fan handles stacking */
+  transform: none;      /* prevent splash exit transforms leaking */
+  transition: none;     /* no delayed transitions from splash entrance/exit */
 }
 
 /* ── 5. RESPONSIVE ──────────────────────────────────────────

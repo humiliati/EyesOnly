@@ -274,7 +274,7 @@ The reveal grid (Phase 5) already tracks individual zone discovery via `eyesonly
 
 ---
 
-## Phase 8: Gold Lens — Constellation Tracing 🔧 (~60% shipped)
+## Phase 8: Gold Lens — Constellation Tracing ✅ (~95% shipped)
 
 The gold lens becomes a **navigator's instrument** for tracing constellations in the starfield. The interaction feels like a phone unlock pattern: the player drags the gold porthole across suit-symbol nodes, and the system records a path graph constrained by angular rules. Valid shapes lock in, flash gold, rain coins, and burn permanent white pixels into the forever sky.
 
@@ -421,23 +421,47 @@ function fireConstellationReward(path, rewardPerNode) {
 
 ### Shipped ✅
 
-- **`public/js/starfield.js`** — Added `addPostRenderHook(fn)` and `getTime()` to public API. Hooks paint onto master canvas after stars render but before blit into portholes. Returns unregister function.
-- **`public/js/suit-node-renderer.js`** (new) — Full IIFE exposing `SuitNodeRenderer`. Node registry with `{ id, x, y, suit, state, constellation, brightness, pulsePhase, transformedTo }`. Constellation registry with validation rules and difficulty tiers. State-dependent rendering: clubs bright/gold, diamonds pink, spades dim/flickering, hearts invisible. `hitTest()` with suit filtering, `transformNode()` for ♦/♠/♥→♣ conversion, `burnForever()` for permanent white 1px pixels. Forever sky persistence via localStorage.
-- **`public/js/constellation-tracer.js`** (new) — State machine: `idle → hasNode → tethered → resolve`. Angular constraint validation (12°/90°/168° + 180° mirrors, ±5° tolerance). Golden tether line rendering with dashed animation. Snap detection with elastic overshoot animation. Auto-snap within 60% of snap radius. Loop closure detection and all-nodes-visited detection. Coin waterfall reward via CurrencySpawning integration. Custom `constellation-solved` event dispatch.
-- **`public/js/constellation-loader.js`** (new) — Fetches `/data/constellations.json` via XHR with inline fallback (tutorial triangle). Phase 8 MVP filter: only registers all-♣ constellations (multi-suit needs Phase 9). Registers constellations with SuitNodeRenderer on load.
-- **`public/data/constellations.json`** (new) — Three constellation definitions: tutorial-triangle (3 ♣, beginner), tutorial-diamond-path (2♣+2♦, intermediate), tutorial-spade-chain (3♣+2♠, intermediate). Only the triangle is active in Phase 8.
-- **`public/css/nch-overlay.css`** — Added porthole lens gradient overlays: `.lens-silver` (clear/neutral), `.lens-blue` (for amber/gold card, complementary contrast), `.lens-amber` (for phosphor card, warm complement), `.lens-pink` (for panther card, reinforced neon). Mix-blend-mode screen, 0.4s fade transition, pulse animation during active tracing.
-- **`public/js/nch-overlay.js`** — Integrated constellation tracing into card drag system. Added `_lensClassForTheme()`, `_isGoldLensCard()`, `_startConstellationTrace()`, `_updateConstellationTrace()`, `_endConstellationTrace()`. Gold lens (♣ club/amber card) activates constellation mode on drag. Porthole center feeds cursor position to tracer each frame. Lens overlay activates with tracing pulse class during active connections. Injected `.porthole-lens-overlay` div into card HTML template between starfield-window and coin-rings.
-- **All 5 public pages** — Added script tags for suit-node-renderer.js, constellation-tracer.js, constellation-loader.js (loaded before nch-overlay.js). Cache-busted to v=20260316d.
+**Core engine:**
+- **`public/js/starfield.js`** — `addPostRenderHook(fn)`, `getTime()`, `getPalette()`, `setPalette()` on public API. Hooks paint onto master canvas after stars but before porthole blit. Porthole blit via `getBoundingClientRect()` per frame.
+- **`public/js/suit-node-renderer.js`** — Node registry with per-suit rendering (clubs bright/gold twinkle, diamonds pink, spades dim/flicker, hearts invisible). `PALETTE_OVERRIDES` for per-palette contrast. `hitTest()` with suit filtering. `burnForever(nodeIds, tier)` with tier-scaled pixel size (tier 1 = 1px crisp, tier 2 = 2px + glow). Forever sky persistence via localStorage. `_setForeverPixels()` for cross-page sync.
+- **`public/js/constellation-tracer.js`** — State machine: `idle → highlighting → hasNode → tethered → resolve`. 8-frame highlight dwell before pickup. Per-constellation opt-in angular constraints (12°/90°/168° + mirrors, ±5°). Flowing gradient tether with gold shimmer. Snap detection with elastic overshoot. Loop closure detection. Palette-aware tether colors. Visual feedback: angle-reject flash (12-frame red flicker), resolved ghost constellation (3s hold then fade), progressive transparency (card chrome fades as nodes connect, snaps back on resolve).
+- **`public/js/constellation-validator.js`** — `validatePath()` for shape (closed loop) and Euler (all edges traversed) validation. `getShapeStats()` rotation-invariant geometry analysis (edge lengths, angles, area, centroid, convexity, edge/angle signatures). `classifyShape()` for automatic shape labeling.
+- **`public/js/constellation-rewards.js`** — Yield economy calculator: `(nodes × 3) + (revealed × 2) + (dirChanges × 1) + (intersections × 2)`, clamped 6–60. 5-phase resolution animation (surge → energy sweep → fracture → coin waterfall → counter). Canvas coin particle system with sprite animation (12fps goldcoin frames, physics: gravity 350px/s², arc motion). Path-sampled emitters for line fracture. Audio stack via `AudioSystem.play()`: coin-rain → coin-flip → coin-pouch-1 → clickandrelease-1. Counter dispatches `currency-increment` / `currency-settle` events.
+- **`public/js/constellation-gamestate.js`** — Cross-page persistence in localStorage (`eyesonly_constellation_state`). Tracks solved IDs, total currency, forever pixels. Auto-listens for `constellation-solved` and `currency-increment` events. Syncs currency to `eyesonly_account.puzzleCoins` for terminal SCORE / PuzzleState integration. Syncs forever pixels into SuitNodeRenderer on page load.
+- **`public/js/constellation-procgen.js`** — Seeded PRNG (mulberry32) procedural shape generator. Three techniques: regular polygon (3–8 sides, configurable jitter), star shape (alternating radii, 4–6 tips), convex hull random (scatter + Graham scan). Difficulty scales with level index. 32 spy-themed names. All shapes in safe viewport zone (0.18–0.82).
+- **`public/js/constellation-loader.js`** — Manages progression sequence: designed template → 2–4 proc-gen shapes → next designed template → repeat. Ratio scales with tier (2 early, 3 mid, 4 late). After all 18 designed templates exhausted, pure proc-gen with infinite extension. Skips solved levels on init via gamestate. Auto-advances on `constellation-solved` event.
+- **`public/data/constellations.json`** (v4) — 24 constellation definitions: 18 tier-1 (all ♣, beginner) + 6 tier-2 (multi-suit, intermediate). All closed shapes (`validation: "shape"`). Includes pentagram, Big Dipper, rabbit, cross, 6-pointed star, hourglass, octagon.
+
+**Per-theme porthole lens effects:**
+- **`public/css/nch-overlay.css`** — Four distinct lens technologies, all box-shadow-only (no pseudo-elements, no mask-image, per PORTHOLE_PUZZLE_TOOLKIT §3):
+  - **Silver / ♠**: Fine glass aperture — crisp 1px border, tight concentric ring shadows, slow mechanical breathe (4s cycle)
+  - **Amber / ♣**: Warm neon glow ring — 5-layer box-shadow in complementary blue, shadow spread pulses with breathe
+  - **Phosphor / ♥**: Vortex pull — animated inset shadow collapses inward (6px → 50px inset spread), creates ring-pulling illusion
+  - **Panther / ♦**: Color cycling halo — border-color and all shadow colors rotate through full spectrum (pink → purple → cyan → green → amber) over 3s linear cycle
+- Lens states: `lens-idle` (25% opacity, static, on resting cards) → `lens-active` (full effect during drag) → `lens-tracing` (faster/brighter during constellation connection)
+- Drag velocity modulates ring brightness via `--ring-vel` CSS custom property (1.0–1.35)
+- `.ring-pulse` fires on node snap events (0.4s brightness spike + 3% scale kick)
+- Suit symbol flicker-off during drag (stepped keyframe → dimmed hold → flicker-back on release)
+
+**Card layout + drag parity:**
+- **Splash-screen.js + nch-overlay.js** — Identical card HTML templates (starfield-window, porthole-lens-overlay, coin-rings, coin-suit-large). Identical lens class mapping (silver→silver, amber→blue, phosphor→amber, panther→pink). Both activate lens on ALL cards during drag, constellation tracing on gold lens only.
+- **Drag-to-reorder** — Ported from nch-overlay to splash-screen: `_splashUpdateDropGap()` moves placeholder during drag, `_splashReorderMissions()` persists new order to localStorage. Both systems support drag-to-edge-select AND drag-to-reorder.
+- **`splash-screen.css`** — Mobile porthole clipping fixed: coin-rings transparent zone shifted from 46% to 62% (+16% on all band stops). Mobile card size +5% (398px × 152px, grid-template-columns 33% 1fr 28%). Stacking transforms adjusted (-12px/-24px/-36px per card).
+
+**Infrastructure:**
+- All 5 pages: uniform script load order (starfield → suit-node-renderer → constellation-gamestate → constellation-rewards → constellation-tracer → constellation-validator → constellation-procgen → constellation-loader → nch-overlay → splash-screen → audio-system)
+- `splash-screen.css` included on all pages (was only on index.html)
+- `starfield.js` included on all pages (was missing from contact.html, partners.html)
+- Audio pipeline: constellation rewards delegate to `AudioSystem.play()` with manifest names (coin-rain, coin-flip, coin-pouch-1, clickandrelease-1). Files at `/audio/sfx/` with webm→mp3 fallback.
+- White theme starfield swap removed (prevents multi-viewport sky conflict)
+- R2 upload pipeline: `encoded_for_r2/coin_sfx/` mapped to `audio/sfx/` in `r2-gap-upload.mjs`
 
 ### Remaining
 
-- Dedicated `constellation-validator.js` — shape matching (rotation-invariant geometry), structural rules, Euler path check
-- Dedicated `constellation-rewards.js` — proper coin waterfall cascade with per-node staggered fountain animation, currency integration with `eyesonly_account`
-///no //- Tutorial hint system — "Drag the gold card over the ♣ symbols" nudge for first-time players
-- Visual feedback: angle-reject flicker, valid-constellation pulse, constellation hold for 3 seconds before fade, all the layers of the screen gradually become transparent as nodes are tethered and snap back to opaque when new level of stars populate
 - Satellite interference — moving sprites that break active tether if crossed
 - Advanced constellations with non-trivial angular paths (more than 3 nodes, using all 6 angle axes)
+- Tutorial hint system — contextual nudges for first-time players ("Drag the gold card over the ♣ symbols")
+- Currency counter UI widget (visual coin counter with pulse animation on settle)
 
 ---
 
@@ -859,9 +883,9 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 5 — Porthole Reveal Grid | ✅ Shipped (3 zone types, PuzzleState integration, dead attrs cleaned) | Phase 1 + 4 |
 | 6 — Magnifying Glass Repurpose | ⬜ Not started | Phase 5 |
 | 7 — Cross-Page Puzzle State | ✅ Shipped (puzzle-state.js, puzzles.json, NCH badge, reveal-grid integration) | Phase 5 |
-| 8 — Gold Lens Constellation Tracing | ✅ Shipped (renderer, tracer, loader, rewards, gamestate, 6 levels, cross-page persistence) | Phase 5 + 6 |
-| 9 — Multi-Lens Suit Transformation | ⬜ Transformation matrix designed (♦→♣, ♠→♣, ♥→♣) | Phase 8 |
-| 10 — Procedural Generation, Cascades & Forever Sky | ⬜ Not started | Phase 8 + 9 |
+| 8 — Gold Lens Constellation Tracing | ✅ Shipped (core engine, validator, rewards, gamestate, proc-gen, 24 templates, per-theme lens effects, visual feedback, drag-to-reorder, mobile porthole fix) | Phase 5 + 6 |
+| 9 — Multi-Lens Suit Transformation | ⬜ Transformation matrix designed (♦→♣, ♠→♣, ♥→♣). Per-lens visual feedback spec drafted. | Phase 8 |
+| 10 — Procedural Generation, Cascades & Forever Sky | 🔧 Proc-gen engine shipped (constellation-procgen.js). Cascades + forever sky damage remaining. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
 

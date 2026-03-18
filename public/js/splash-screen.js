@@ -406,6 +406,12 @@ const SplashScreen = (() => {
         <div class="coin-mid-row">
           <button class="coin-book-btn ${btnExtraClass}" data-mission="${mission.id}" data-index="${index}">
             <span class="coin-book-label">${btnLabel}</span><span class="coin-book-dot">.</span><span class="coin-book-duration">${btnDuration}</span>
+            <div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-2"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-3"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-4"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-5"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-6"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
           </button>
         </div>`;
 
@@ -990,13 +996,17 @@ const SplashScreen = (() => {
       // On mobile, the BOOK button also works on tap
       btn.addEventListener('touchend', function (e) {
         e.stopPropagation();
-        // Prevent ghost click
         e.preventDefault();
         if (dismissed) return;
         _ensureAudioInit();
         var missionId = btn.dataset.mission;
         var card = splashEl.querySelector('[data-mission="' + missionId + '"].splash-dossier');
         if (card) selectMission(card);
+      });
+
+      // Mobile: trigger starfield burst on touch
+      btn.addEventListener('touchstart', function () {
+        this.classList.add('cbtn-active');
       });
     });
   }

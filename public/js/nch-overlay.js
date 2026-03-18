@@ -502,11 +502,19 @@ var NchOverlay = (function () {
       mission.suitClass + '">' + mission.suit + '</span></div>';
 
     var btnClass = mission.btnClass || '';
+    var starBurst =
+      '<div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-2"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-3"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-4"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-5"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-6"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>';
     var midRow = '<div class="coin-mid-row">' +
       '<button class="coin-book-btn ' + btnClass + '" data-mission="' + mission.id + '" data-index="' + index + '" tabindex="-1" inputmode="none">' +
         '<span class="coin-book-label">' + mission.btnLabel + '</span>' +
         '<span class="coin-book-dot">.</span>' +
         '<span class="coin-book-duration">' + mission.btnDuration + '</span>' +
+        starBurst +
       '</button>' +
     '</div>';
 
@@ -712,6 +720,14 @@ var NchOverlay = (function () {
         btn.addEventListener('click', function (e) {
           e.stopPropagation();
           _selectMission(cardEl);
+        });
+        // Mobile: trigger starfield burst on touch (no hover on mobile)
+        btn.addEventListener('touchstart', function () {
+          this.classList.add('cbtn-active');
+        });
+        btn.addEventListener('touchend', function () {
+          var b = this;
+          setTimeout(function () { b.classList.remove('cbtn-active'); }, 500);
         });
       }
     });

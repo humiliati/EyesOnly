@@ -896,6 +896,118 @@
 }
 
 
+/* ============================================================
+   COIN BOOK BUTTON — Starfield Burst Effect
+   Adapted from uiverse.io/MuhammadHasann/silent-lizard-44
+   SVG stars → live starfield porthole windows (use .starfield-window
+   class so the blit loop picks them up automatically).
+   On hover/touch the button face goes transparent and 6 tiny
+   porthole particles burst outward like sky-windows popping
+   through the card.
+   ============================================================ */
+
+/* overflow: visible + isolation: isolate now set on .coin-book-btn base rule (above) */
+
+/* ── Shared particle base ── */
+.cbtn-star {
+  position: absolute;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    top    1s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    left   1s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    width  1s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    height 1s cubic-bezier(0.05, 0.83, 0.43, 0.96),
+    opacity 0.3s ease;
+  box-shadow:
+    0 0 4px var(--theme-hover-glow),
+    inset 0 0 4px rgba(0,0,0,0.6);
+}
+
+.cbtn-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+}
+
+/* ── Idle positions — clustered near center, hidden behind button ── */
+.cbtn-star-1 { top: 20%; left: 20%; width: 16px; height: 16px; }
+.cbtn-star-2 { top: 45%; left: 45%; width: 10px; height: 10px; }
+.cbtn-star-3 { top: 40%; left: 40%; width:  4px; height:  4px; }
+.cbtn-star-4 { top: 20%; left: 40%; width:  6px; height:  6px; }
+.cbtn-star-5 { top: 25%; left: 45%; width: 10px; height: 10px; }
+.cbtn-star-6 { top:  5%; left: 50%; width:  4px; height:  4px; }
+
+/* ── Hover: stars burst outward (desktop) ── */
+.coin-book-btn:hover .cbtn-star,
+.coin-book-btn.cbtn-active .cbtn-star {
+  opacity: 1;
+}
+
+.coin-book-btn:hover .cbtn-star-1,
+.coin-book-btn.cbtn-active .cbtn-star-1 {
+  top: -60%; left: -30%; width: 22px; height: 22px;
+  transition: top 1s cubic-bezier(0.05,0.83,0.43,0.96), left 1s cubic-bezier(0.05,0.83,0.43,0.96),
+              width 1s cubic-bezier(0.05,0.83,0.43,0.96), height 1s cubic-bezier(0.05,0.83,0.43,0.96), opacity 0.35s ease;
+}
+
+.coin-book-btn:hover .cbtn-star-2,
+.coin-book-btn.cbtn-active .cbtn-star-2 {
+  top: 90%; left: 90%; width: 12px; height: 12px;
+  transition: top 1s cubic-bezier(0,0.4,0,1.01), left 1s cubic-bezier(0,0.4,0,1.01),
+              width 1s cubic-bezier(0,0.4,0,1.01), height 1s cubic-bezier(0,0.4,0,1.01), opacity 0.3s ease;
+}
+
+.coin-book-btn:hover .cbtn-star-3,
+.coin-book-btn.cbtn-active .cbtn-star-3 {
+  top: 80%; left: -10%; width: 5px; height: 5px;
+  transition: top 1s cubic-bezier(0,0.4,0,1.01), left 1s cubic-bezier(0,0.4,0,1.01), opacity 0.3s ease;
+}
+
+.coin-book-btn:hover .cbtn-star-4,
+.coin-book-btn.cbtn-active .cbtn-star-4 {
+  top: -30%; left: 110%; width: 8px; height: 8px;
+  transition: top 0.8s cubic-bezier(0,0.4,0,1.01), left 0.8s cubic-bezier(0,0.4,0,1.01),
+              width 0.8s cubic-bezier(0,0.4,0,1.01), height 0.8s cubic-bezier(0,0.4,0,1.01), opacity 0.3s ease;
+}
+
+.coin-book-btn:hover .cbtn-star-5,
+.coin-book-btn.cbtn-active .cbtn-star-5 {
+  top: -60%; left: 80%; width: 12px; height: 12px;
+  transition: top 0.6s cubic-bezier(0,0.4,0,1.01), left 0.6s cubic-bezier(0,0.4,0,1.01),
+              width 0.6s cubic-bezier(0,0.4,0,1.01), height 0.6s cubic-bezier(0,0.4,0,1.01), opacity 0.3s ease;
+}
+
+.coin-book-btn:hover .cbtn-star-6,
+.coin-book-btn.cbtn-active .cbtn-star-6 {
+  top: 30%; left: 120%; width: 4px; height: 4px;
+  transition: top 0.8s ease, left 0.8s ease, opacity 0.3s ease;
+}
+
+/* Button face goes transparent on hover — particles "pop through" the hollow frame */
+.coin-book-btn:hover,
+.coin-book-btn.cbtn-active {
+  background: transparent !important;
+  box-shadow: 0 0 14px var(--theme-hover-glow), inset 0 1px 0 var(--theme-hover-accent);
+}
+
+/* Mobile: smaller particles */
+@media (max-width: 480px) {
+  .cbtn-star-1 { width: 12px; height: 12px; }
+  .cbtn-star-2 { width:  8px; height:  8px; }
+  .cbtn-star-5 { width:  8px; height:  8px; }
+  .coin-book-btn:hover .cbtn-star-1,
+  .coin-book-btn.cbtn-active .cbtn-star-1 { width: 16px; height: 16px; }
+  .coin-book-btn:hover .cbtn-star-2,
+  .coin-book-btn.cbtn-active .cbtn-star-2 { width: 10px; height: 10px; }
+  .coin-book-btn:hover .cbtn-star-5,
+  .coin-book-btn.cbtn-active .cbtn-star-5 { width: 10px; height: 10px; }
+}
+
 /* ---- Coin info — title + description (stamped brass) ---- */
 /* Info area grows to fill ~50% together with mid-row and wheel strip */
 .coin-info {
@@ -955,11 +1067,14 @@
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;     /* allow burst particles to escape (was: hidden) */
+  isolation: isolate;    /* own stacking context for z-index: -1 particles */
   box-shadow:
     inset 0 1px 0 var(--theme-hover-accent),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.4);
+  /* Idle lens glow: animated ring that pulses to attract attention */
+  animation: btn-idle-glow 2.5s ease-in-out infinite;
 }
 
 /* Sheen on the button */
@@ -985,7 +1100,20 @@
   opacity: 1;
 }
 
+/* ── Idle lens glow: attracts new visitors to the action button ──
+   Pulsing theme-colored glow ring. Disappears on hover/click. */
+@keyframes btn-idle-glow {
+  0%   { box-shadow: inset 0 1px 0 var(--theme-hover-accent), inset 0 -1px 0 rgba(0,0,0,0.4),
+                     0 2px 8px rgba(0,0,0,0.4), 0 0 6px var(--theme-hover-glow); }
+  50%  { box-shadow: inset 0 1px 0 var(--theme-hover-accent), inset 0 -1px 0 rgba(0,0,0,0.4),
+                     0 2px 8px rgba(0,0,0,0.4), 0 0 18px var(--theme-hover-glow), 0 0 36px var(--theme-hover-glow); }
+  100% { box-shadow: inset 0 1px 0 var(--theme-hover-accent), inset 0 -1px 0 rgba(0,0,0,0.4),
+                     0 2px 8px rgba(0,0,0,0.4), 0 0 6px var(--theme-hover-glow); }
+}
+
 .coin-book-btn:hover {
+  /* Kill the idle glow — burst particles take over */
+  animation: none;
   background: var(--theme-btn-bg-hover);
   border-color: var(--theme-btn-border);
   box-shadow:
@@ -993,7 +1121,9 @@
     inset 0 1px 0 var(--theme-hover-accent);
 }
 
-.coin-book-btn:active {
+.coin-book-btn:active,
+.coin-book-btn.cbtn-active {
+  animation: none;
   transform: scale(0.97);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
