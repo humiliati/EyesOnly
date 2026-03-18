@@ -1,37 +1,26 @@
 /* ============================================================
    EYES ONLY — Puzzle Designer API Routes
-   CRUD for designer-created QR puzzles.
-   Requires Ops-level auth (same as media designer portal).
+   Split into two Hono apps:
+     puzzleDesignerRoutes  — authed CRUD (mounted at /api/ops)
+     puzzlePublicRoutes    — public read (mounted at /api/puzzles)
    ============================================================ */
 
 import { Hono } from 'hono';
 import type { Env, AuthContext } from '../../shared/types';
 import { requireAuth } from '../middleware/auth';
+import { generateQR } from '../utils/qr-encode';
 
 type HonoEnv = { Bindings: Env; Variables: { auth: AuthContext } };
 
-export const puzzleDesignerRoutes = new Hono<HonoEnv>();
+// ---- QR helpers ----
 
-puzzleDesignerRoutes.use('*', requireAuth);
-
-// ---- QR Code Generator (pure JS, no dependencies) ----
-// Minimal QR Code generation using the API-based approach:
-// We generate a simple SVG QR code server-side.
-
-function generateQRSvg(url: string, size: number = 200): string {
-  // Use a simple text-based QR representation for the portal preview.
-  // For production print, the portal page generates high-res QR client-side.
-  // This is a placeholder SVG with the URL encoded.
-  const escaped = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <rect width="100%" height="100%" fill="white"/>
-    <text x="50%" y="45%" text-anchor="middle" font-family="monospace" font-size="10" fill="black">QR CODE</text>
-    <text x="50%" y="55%" text-anchor="middle" font-family="monospace" font-size="7" fill="#666">${escaped}</text>
-    <text x="50%" y="65%" text-anchor="middle" font-family="monospace" font-size="6" fill="#999">(render client-side)</text>
-  </svg>`;
+function generateQRBase64(url: string): string {
+  const png = generateQR(url, 10, 4);
+  // Convert Uint8Array to base64 in Workers runtime
+  let binary = '';
+  for (let i = 0; i < png.length; i++) binary += String.fromCharCode(png[i]);
+  return btoa(binary);
 }
-
-// ---- Helpers ----
 
 function slugify(text: string): string {
   return text
@@ -41,15 +30,19 @@ function slugify(text: string): string {
     .substring(0, 48);
 }
 
-// ---- Routes ----
+// ================================================================
+// AUTHED ROUTES — /api/ops/puzzles/*
+// Requires Bearer token (ops or director role)
+// ================================================================
 
-/**
- * GET /api/ops/puzzles
- * List all puzzles for the current scenario (or all if no scenario filter).
- */
+export const puzzleDesignerRoutes = new Hono<HonoEnv>();
+
+puzzleDesignerRoutes.use('*', requireAuth);
+
+/** GET /api/ops/puzzles — list all puzzles */
 puzzleDesignerRoutes.get('/puzzles', async (c) => {
   const scenarioId = c.req.query('scenario_id') || '1';
-  const status = c.req.query('status'); // optional filter
+  const status = c.req.query('status');
 
   let sql = 'SELECT id, slug, title, description, emoji, tag, tag_class, chain_order, next_slug, prev_slug, qr_url, status, created_at, updated_at FROM qr_puzzles WHERE scenario_id = ?';
   const params: (string | number)[] = [parseInt(scenarioId, 10)];
@@ -60,41 +53,26 @@ puzzleDesignerRoutes.get('/puzzles', async (c) => {
   }
 
   sql += ' ORDER BY chain_order ASC, created_at DESC';
-
   const result = await c.env.DB.prepare(sql).bind(...params).all();
   return c.json({ puzzles: result.results });
 });
 
-/**
- * GET /api/ops/puzzles/:slug
- * Get a single puzzle by slug (includes puzzle_js source code).
- */
+/** GET /api/ops/puzzles/:slug — single puzzle with source code */
 puzzleDesignerRoutes.get('/puzzles/:slug', async (c) => {
   const slug = c.req.param('slug');
   const puzzle = await c.env.DB.prepare(
     'SELECT * FROM qr_puzzles WHERE slug = ?'
   ).bind(slug).first();
-
   if (!puzzle) return c.json({ error: 'Puzzle not found' }, 404);
   return c.json({ puzzle });
 });
 
-/**
- * POST /api/ops/puzzles
- * Create a new puzzle. Generates slug and QR code URL.
- */
+/** POST /api/ops/puzzles — create new puzzle */
 puzzleDesignerRoutes.post('/puzzles', async (c) => {
   const body = await c.req.json<{
-    title: string;
-    description?: string;
-    emoji?: string;
-    tag?: string;
-    tag_class?: string;
-    puzzle_js: string;
-    scenario_id?: number;
-    chain_order?: number;
-    next_slug?: string;
-    status?: string;
+    title: string; description?: string; emoji?: string; tag?: string;
+    tag_class?: string; puzzle_js: string; scenario_id?: number;
+    chain_order?: number; next_slug?: string; status?: string;
   }>();
 
   if (!body.title || !body.puzzle_js) {
@@ -104,33 +82,23 @@ puzzleDesignerRoutes.post('/puzzles', async (c) => {
   const slug = slugify(body.title) + '-' + Date.now().toString(36).slice(-4);
   const scenarioId = body.scenario_id || 1;
   const qrUrl = `https://flapsandseals.com/games#${slug}`;
+  const qrImage = generateQRBase64(qrUrl);
 
   await c.env.DB.prepare(`
-    INSERT INTO qr_puzzles (scenario_id, slug, title, description, emoji, tag, tag_class, puzzle_js, chain_order, next_slug, qr_url, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO qr_puzzles (scenario_id, slug, title, description, emoji, tag, tag_class, puzzle_js, chain_order, next_slug, qr_url, qr_image, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    scenarioId,
-    slug,
-    body.title,
-    body.description || '',
-    body.emoji || '🔐',
-    body.tag || 'PUZZLE',
-    body.tag_class || 'games-tag-narrative',
-    body.puzzle_js,
-    body.chain_order || 0,
-    body.next_slug || null,
-    qrUrl,
-    body.status || 'draft',
+    scenarioId, slug, body.title, body.description || '', body.emoji || '🔐',
+    body.tag || 'PUZZLE', body.tag_class || 'games-tag-narrative', body.puzzle_js,
+    body.chain_order || 0, body.next_slug || null, qrUrl, qrImage, body.status || 'draft',
   ).run();
 
-  // Update prev_slug on the next puzzle if chained
   if (body.next_slug) {
     await c.env.DB.prepare(
       'UPDATE qr_puzzles SET prev_slug = ? WHERE slug = ?'
     ).bind(slug, body.next_slug).run();
   }
 
-  // Fetch the created puzzle to return it
   const created = await c.env.DB.prepare(
     'SELECT * FROM qr_puzzles WHERE slug = ?'
   ).bind(slug).first();
@@ -138,31 +106,20 @@ puzzleDesignerRoutes.post('/puzzles', async (c) => {
   return c.json({ puzzle: created, qr_url: qrUrl }, 201);
 });
 
-/**
- * PUT /api/ops/puzzles/:slug
- * Update an existing puzzle.
- */
+/** PUT /api/ops/puzzles/:slug — update puzzle */
 puzzleDesignerRoutes.put('/puzzles/:slug', async (c) => {
   const slug = c.req.param('slug');
   const body = await c.req.json<{
-    title?: string;
-    description?: string;
-    emoji?: string;
-    tag?: string;
-    tag_class?: string;
-    puzzle_js?: string;
-    chain_order?: number;
-    next_slug?: string;
-    status?: string;
+    title?: string; description?: string; emoji?: string; tag?: string;
+    tag_class?: string; puzzle_js?: string; chain_order?: number;
+    next_slug?: string; status?: string;
   }>();
 
   const existing = await c.env.DB.prepare(
     'SELECT id FROM qr_puzzles WHERE slug = ?'
   ).bind(slug).first();
-
   if (!existing) return c.json({ error: 'Puzzle not found' }, 404);
 
-  // Build dynamic UPDATE
   const fields: string[] = [];
   const values: (string | number | null)[] = [];
 
@@ -178,7 +135,7 @@ puzzleDesignerRoutes.put('/puzzles/:slug', async (c) => {
 
   fields.push('updated_at = ?');
   values.push(Date.now());
-  values.push(slug); // WHERE clause
+  values.push(slug);
 
   if (fields.length > 1) {
     await c.env.DB.prepare(
@@ -193,10 +150,7 @@ puzzleDesignerRoutes.put('/puzzles/:slug', async (c) => {
   return c.json({ puzzle: updated });
 });
 
-/**
- * DELETE /api/ops/puzzles/:slug
- * Archive a puzzle (soft delete).
- */
+/** DELETE /api/ops/puzzles/:slug — archive (soft delete) */
 puzzleDesignerRoutes.delete('/puzzles/:slug', async (c) => {
   const slug = c.req.param('slug');
   await c.env.DB.prepare(
@@ -205,15 +159,23 @@ puzzleDesignerRoutes.delete('/puzzles/:slug', async (c) => {
   return c.json({ ok: true });
 });
 
-/**
- * POST /api/ops/puzzles/:slug/publish
- * Set a puzzle live — makes it appear on /games and activates its QR route.
- */
+/** POST /api/ops/puzzles/:slug/publish — set puzzle live + ensure QR image */
 puzzleDesignerRoutes.post('/puzzles/:slug/publish', async (c) => {
   const slug = c.req.param('slug');
+
+  // Fetch current to check if QR image exists
+  const existing = await c.env.DB.prepare(
+    'SELECT qr_url, qr_image FROM qr_puzzles WHERE slug = ?'
+  ).bind(slug).first<{ qr_url: string; qr_image: string | null }>();
+
+  if (!existing) return c.json({ error: 'Puzzle not found' }, 404);
+
+  // Regenerate QR image if missing
+  const qrImage = existing.qr_image || generateQRBase64(existing.qr_url);
+
   await c.env.DB.prepare(
-    'UPDATE qr_puzzles SET status = ?, updated_at = ? WHERE slug = ?'
-  ).bind('live', Date.now(), slug).run();
+    'UPDATE qr_puzzles SET status = ?, qr_image = ?, updated_at = ? WHERE slug = ?'
+  ).bind('live', qrImage, Date.now(), slug).run();
 
   const puzzle = await c.env.DB.prepare(
     'SELECT slug, title, qr_url FROM qr_puzzles WHERE slug = ?'
@@ -222,30 +184,48 @@ puzzleDesignerRoutes.post('/puzzles/:slug/publish', async (c) => {
   return c.json({ ok: true, puzzle });
 });
 
-/**
- * GET /api/ops/puzzles/:slug/qr
- * Returns QR code SVG for the puzzle's URL.
- */
+/** GET /api/ops/puzzles/:slug/qr — QR code PNG image */
 puzzleDesignerRoutes.get('/puzzles/:slug/qr', async (c) => {
   const slug = c.req.param('slug');
   const puzzle = await c.env.DB.prepare(
-    'SELECT qr_url FROM qr_puzzles WHERE slug = ?'
-  ).bind(slug).first<{ qr_url: string }>();
+    'SELECT qr_url, qr_image FROM qr_puzzles WHERE slug = ?'
+  ).bind(slug).first<{ qr_url: string; qr_image: string | null }>();
 
   if (!puzzle) return c.json({ error: 'Puzzle not found' }, 404);
 
-  const svg = generateQRSvg(puzzle.qr_url, 300);
-  return new Response(svg, {
-    headers: { 'Content-Type': 'image/svg+xml' },
+  // If we have a stored base64 image, serve it
+  if (puzzle.qr_image) {
+    const binary = atob(puzzle.qr_image);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Response(bytes, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Disposition': `inline; filename="${slug}-qr.png"`,
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  }
+
+  // Generate fresh if not stored
+  const png = generateQR(puzzle.qr_url, 10, 4);
+  return new Response(png, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Content-Disposition': `inline; filename="${slug}-qr.png"`,
+    },
   });
 });
 
-/**
- * GET /api/puzzles/live
- * PUBLIC endpoint (no auth) — returns all live puzzle configs.
- * Called by the client-side qr-custom.js runtime loader.
- */
-puzzleDesignerRoutes.get('/live', async (c) => {
+// ================================================================
+// PUBLIC ROUTES — /api/puzzles/*
+// No auth required. Player-facing endpoints.
+// ================================================================
+
+export const puzzlePublicRoutes = new Hono<HonoEnv>();
+
+/** GET /api/puzzles/live — all live puzzles (for qr-custom.js runtime) */
+puzzlePublicRoutes.get('/live', async (c) => {
   const result = await c.env.DB.prepare(
     `SELECT slug, title, description, emoji, tag, tag_class, puzzle_js, chain_order, next_slug, qr_url
      FROM qr_puzzles WHERE status = 'live' ORDER BY chain_order ASC`
@@ -253,12 +233,8 @@ puzzleDesignerRoutes.get('/live', async (c) => {
   return c.json({ puzzles: result.results });
 });
 
-/**
- * GET /api/puzzles/live/:slug
- * PUBLIC endpoint — returns a single live puzzle's JS code.
- * Used by the runtime to load puzzle code on-demand.
- */
-puzzleDesignerRoutes.get('/live/:slug', async (c) => {
+/** GET /api/puzzles/live/:slug — single live puzzle's JS (on-demand load) */
+puzzlePublicRoutes.get('/live/:slug', async (c) => {
   const slug = c.req.param('slug');
   const puzzle = await c.env.DB.prepare(
     `SELECT slug, title, puzzle_js, next_slug FROM qr_puzzles WHERE slug = ? AND status = 'live'`

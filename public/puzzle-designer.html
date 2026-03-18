@@ -94,7 +94,11 @@
   </div>
 </header>
 
-<div class="layout">
+<!-- Auth gate: shown when not logged in -->
+<div id="auth-container"></div>
+
+<!-- Main app: hidden until authenticated -->
+<div class="layout" id="app-layout" style="display:none;">
 
   <!-- LEFT: Puzzle List -->
   <div class="col" id="col-list">
@@ -218,6 +222,9 @@
 <!-- Toast notification -->
 <div class="toast" id="toast"></div>
 
+<!-- Shared auth gate (checks all token locations, shows login if needed) -->
+<script src="js/auth-gate.js"></script>
+
 <!-- QR Code library (lightweight) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -225,21 +232,42 @@
 (function () {
   'use strict';
 
+  // ---- Auth Gate: authenticate before showing the app ----
+  AuthGate.init({
+    target: document.getElementById('auth-container'),
+    onAuth: function (session) {
+      // Hide auth container, show the app
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('app-layout').style.display = '';
+
+      // Update header with callsign
+      var meta = document.querySelector('header .meta');
+      if (meta && session.callsign) {
+        meta.innerHTML =
+          '<span style="color:#1cff9b;">' + session.callsign + '</span> &bull; ' +
+          '<a href="/games.html">VIEW LIVE FIELD KIT</a> &bull; ' +
+          '<a href="/qr-stickers.html">PRINT STICKERS</a> &bull; ' +
+          '<a href="#" id="logout-link" style="color:#ff6b35;">LOGOUT</a>';
+        var logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+          logoutLink.addEventListener('click', function (e) { e.preventDefault(); AuthGate.logout(); });
+        }
+      }
+
+      // Boot the app
+      initApp();
+    }
+  });
+
+  function initApp() {
+
   var API_BASE = '/api/ops';
   var currentSlug = null;
   var puzzles = [];
 
-  // ---- Auth: reuse ops session token ----
-  function getToken() {
-    try { return localStorage.getItem('eyesonly_ops_token') || localStorage.getItem('eyesonly_session_token') || ''; }
-    catch (_) { return ''; }
-  }
-
+  // ---- Auth: use unified AuthGate ----
   function headers() {
-    return {
-      'Content-Type': 'application/json',
-      'X-Session-Token': getToken()
-    };
+    return AuthGate.headers();
   }
 
   // ---- Toast ----
@@ -636,6 +664,8 @@
 
   // ---- Init ----
   loadPuzzles();
+
+  } // end initApp
 
 })();
 </script>
