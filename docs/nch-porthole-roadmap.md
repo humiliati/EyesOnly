@@ -348,13 +348,13 @@ idle ──(lens overlaps ♣ node)──► hasNode ──(lens reaches next �
 **Level 1 — Triangle (Gold lens only, 3 ♣ nodes):**
 Three tiny ♣ club symbols appear in a triangle formation among the dust stars. Player grabs the amber card and drags it over the first ♣ — it highlights with a gold glow. Dragging to the second ♣ snaps a golden line between them and ties a tether from node 2 to the cursor. Player recognizes they need to hit the third ♣ because they're stringing a rope. They hit the third ♣ — line snaps in but the triangle isn't closed. Player drags back toward node 1, the closing edge snaps, and the shape resolves. Coin waterfall cascades from each node (50ms stagger). Lines clean up. Three permanent white 1px dots burn into the starfield where the ♣ symbols were. The player just learned: clubs are connectable, the gold card strings them, completed shapes are permanent.
 
-**Level 2 — Square (Gold + Pink, 3 ♣ + 1 ♦):**
+**Difficulty 2 — Square (Gold + Pink, 3 ♣ + 1 ♦):**
 A new constellation appears: 3 ♣ clubs and 1 ♦ diamond in a square. Player starts connecting ♣ nodes with the amber card. Arrives at the ♦ — the tether line trails past it. Nothing happens. The diamond is inert to the gold lens. Knowledge gate: the ♦ matches the panther card's suit. Player grabs the panther card, drags it over the ♦. The pink lens transforms it — the ♦ rotates 45°, edges fold inward, and it re-blooms as a ♣ trefoil (color shifts pink → gold during the fold). Now the player can return to the amber card and complete the 4-node square. Four forever-white pixels earned. The player just learned: diamonds need the panther card first, different suits need different cards.
 
-**Level 3 — Pentagon (Gold + Silver + Pink, 3 ♣ + 1 ♠ + 1 ♦):**
+**Difficulty 3 — Pentagon (Gold + Silver + Pink, 3 ♣ + 1 ♠ + 1 ♦):**
 Five nodes, mixed suits. The ♠ spade is dim, barely visible, flickering. Gold lens sees it but can't connect — too dim, below brightness threshold. Player grabs the silver card, holds it over the ♠. The clear lens amplifies: ♠ brightens, stem retracts, lobes split into three → becomes a ♣. Now gold traces the full shape with the transformed ♦ and ♠. Five forever pixels.
 
-**Level 4 — Hexagon (All four lenses, ♣ + ♦ + ♠ + ♥):**
+**Difficulty 4 — Hexagon (All four lenses, ♣ + ♦ + ♠ + ♥):**
 Six nodes. The ♥ heart is completely invisible — a gap in the shape where a node should be. Player must use the phosphor card (♥ is its suit). The amber lens reveals the hidden heart (warmth makes it appear, fading in with a warm amber pulse). Heart splits at the top cleft into three lobes → becomes ♣. Now all nodes are connectable. Gold traces the full hexagon. Full instrument-panel mastery demonstrated.
 
 ### Background Star Types
@@ -434,8 +434,8 @@ function fireConstellationReward(path, rewardPerNode) {
 
 - Dedicated `constellation-validator.js` — shape matching (rotation-invariant geometry), structural rules, Euler path check
 - Dedicated `constellation-rewards.js` — proper coin waterfall cascade with per-node staggered fountain animation, currency integration with `eyesonly_account`
-- Tutorial hint system — "Drag the gold card over the ♣ symbols" nudge for first-time players
-- Visual feedback: angle-reject flicker (orange flash + node dim), valid-constellation gold pulse (3 flashes + halo), constellation hold (3s glow before fade)
+///no //- Tutorial hint system — "Drag the gold card over the ♣ symbols" nudge for first-time players
+- Visual feedback: angle-reject flicker, valid-constellation pulse, constellation hold for 3 seconds before fade, all the layers of the screen gradually become transparent as nodes are tethered and snap back to opaque when new level of stars populate
 - Satellite interference — moving sprites that break active tether if crossed
 - Advanced constellations with non-trivial angular paths (more than 3 nodes, using all 6 angle axes)
 

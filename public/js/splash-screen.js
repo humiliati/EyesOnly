@@ -132,16 +132,14 @@ const SplashScreen = (() => {
   // Previous cursor for drag-velocity ring glow
   var _splashPrevCX = 0, _splashPrevCY = 0, _splashPrevTracerState = 'idle';
 
-  function _splashStartTrace(drag) {
-    if (!_isSplashGoldLens(drag.index)) return;
-    if (typeof ConstellationTracer === 'undefined') return;
-    ConstellationTracer.beginSession();
+  /**
+   * Activate lens on ANY card during drag (all themes).
+   */
+  function _splashActivateLens(drag) {
     var ghost = drag.ghostEl;
     if (!ghost) return;
-    // Activate lens glow ring
     var lensEl = ghost.querySelector('.porthole-lens-overlay');
     if (lensEl) lensEl.classList.add('lens-active');
-    // Flicker suit symbol off
     var suitEl = ghost.querySelector('.coin-suit-large');
     if (suitEl) {
       suitEl.classList.remove('suit-flicker-in', 'suit-dimmed');
@@ -150,42 +148,61 @@ const SplashScreen = (() => {
     }
   }
 
-  function _splashUpdateTrace(ghost) {
-    if (typeof ConstellationTracer === 'undefined' || !ConstellationTracer.isEnabled()) return;
+  /**
+   * Begin constellation tracing (gold lens / ♣ only).
+   */
+  function _splashStartTrace(drag) {
+    if (!_isSplashGoldLens(drag.index)) return;
+    if (typeof ConstellationTracer === 'undefined') return;
+    ConstellationTracer.beginSession();
+  }
+
+  /**
+   * Update lens velocity for ANY dragged card + feed constellation tracer if gold.
+   */
+  function _splashUpdateLens(ghost) {
     var portholeCanvas = ghost.querySelector('.starfield-window');
     var lensEl = portholeCanvas || ghost;
     var lr = lensEl.getBoundingClientRect();
     var cx = lr.left + lr.width / 2;
     var cy = lr.top + lr.height / 2;
-    ConstellationTracer.updateCursor(cx, cy);
+
+    // Feed constellation tracer (gold lens only)
+    if (typeof ConstellationTracer !== 'undefined' && ConstellationTracer.isEnabled()) {
+      ConstellationTracer.updateCursor(cx, cy);
+    }
 
     var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
-    var state = ConstellationTracer.getState();
     if (lensOverlay) {
-      if (state === 'hasNode' || state === 'tethered') {
-        lensOverlay.classList.add('lens-tracing');
-      } else {
-        lensOverlay.classList.remove('lens-tracing');
+      // Tracing class (gold lens only)
+      if (typeof ConstellationTracer !== 'undefined' && ConstellationTracer.isEnabled()) {
+        var state = ConstellationTracer.getState();
+        if (state === 'hasNode' || state === 'tethered') {
+          lensOverlay.classList.add('lens-tracing');
+        } else {
+          lensOverlay.classList.remove('lens-tracing');
+        }
+        if (state !== _splashPrevTracerState && (state === 'hasNode' || state === 'tethered')) {
+          lensOverlay.classList.remove('ring-pulse');
+          void lensOverlay.offsetWidth;
+          lensOverlay.classList.add('ring-pulse');
+          setTimeout(function () { if (lensOverlay) lensOverlay.classList.remove('ring-pulse'); }, 420);
+        }
+        _splashPrevTracerState = state;
       }
-      // Ring pulse on state transitions
-      if (state !== _splashPrevTracerState && (state === 'hasNode' || state === 'tethered')) {
-        lensOverlay.classList.remove('ring-pulse');
-        void lensOverlay.offsetWidth;
-        lensOverlay.classList.add('ring-pulse');
-        setTimeout(function () { if (lensOverlay) lensOverlay.classList.remove('ring-pulse'); }, 420);
-      }
-      // Drag velocity → ring brightness via CSS custom property
+
+      // Drag velocity → ring brightness (ALL cards)
       var dx = cx - _splashPrevCX, dy = cy - _splashPrevCY;
       var speed = Math.sqrt(dx * dx + dy * dy);
       lensOverlay.style.setProperty('--ring-vel', (1.0 + Math.min(0.35, speed / 85)).toFixed(2));
     }
-    _splashPrevCX = cx; _splashPrevCY = cy; _splashPrevTracerState = state;
+    _splashPrevCX = cx; _splashPrevCY = cy;
   }
 
-  function _splashEndTrace() {
-    if (typeof ConstellationTracer === 'undefined') return;
-    if (ConstellationTracer.isEnabled()) ConstellationTracer.endSession();
-    // Flicker suit back on source card
+  /**
+   * Deactivate lens + end constellation tracing on drag end.
+   */
+  function _splashDeactivateLens() {
     if (_dragState && _dragState.cardEl) {
       var suitEl = _dragState.cardEl.querySelector('.coin-suit-large');
       if (suitEl) {
@@ -194,6 +211,11 @@ const SplashScreen = (() => {
         setTimeout(function () { if (suitEl) suitEl.classList.remove('suit-flicker-in'); }, 220);
       }
     }
+  }
+
+  function _splashEndTrace() {
+    if (typeof ConstellationTracer === 'undefined') return;
+    if (ConstellationTracer.isEnabled()) ConstellationTracer.endSession();
   }
 
   // ── Drag-to-Reorder (ported from nch-overlay) ──────────────
@@ -1271,7 +1293,8 @@ const SplashScreen = (() => {
       });
     }
 
-    // Phase 8: Begin constellation tracing if gold lens card
+    // Phase 8: Activate lens on ANY card + constellation tracing on gold
+    _splashActivateLens(_dragState);
     _splashStartTrace(_dragState);
 
     // Sound
@@ -1308,7 +1331,7 @@ const SplashScreen = (() => {
     _splashUpdateDropGap(ev.clientX, ev.clientY);
 
     // Phase 8: Update constellation tracer cursor + ring glow
-    _splashUpdateTrace(_dragState.ghostEl);
+    _splashUpdateLens(_dragState.ghostEl);
   }
 
   // ── Edge-of-screen detection for drag-to-select ─────────
@@ -1324,6 +1347,7 @@ const SplashScreen = (() => {
   function _endCardDrag(ev) {
     if (!_dragState || _dragState.phase !== 'dragging') return;
     // Phase 8: End constellation tracing
+    _splashDeactivateLens();
     _splashEndTrace();
     _dragState.phase = 'ending';
 
