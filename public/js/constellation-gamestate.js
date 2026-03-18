@@ -84,6 +84,29 @@
       }
     });
 
+    // Bridge: update the visible currency counter on any page that has one
+    document.addEventListener('currency-updated', function (e) {
+      var total = (e.detail && e.detail.currency) || _state.currency;
+      var wholeCoins = Math.floor(total);
+      // Terminal page: UIControls has an animated ticker
+      if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+        UIControls.updateCurrency(wholeCoins);
+      } else {
+        // Other pages: direct DOM update on #currency-value
+        var el = document.getElementById('currency-value');
+        if (el) el.textContent = String(wholeCoins).padStart(8, '0');
+      }
+    });
+
+    // Set initial display from loaded state
+    var initCoins = Math.floor(_state.currency);
+    if (typeof UIControls !== 'undefined' && UIControls.updateCurrency) {
+      UIControls.updateCurrency(initCoins);
+    } else {
+      var initEl = document.getElementById('currency-value');
+      if (initEl && initCoins > 0) initEl.textContent = String(initCoins).padStart(8, '0');
+    }
+
     console.log('[ConstellationGamestate] Initialized — solved:',
                 _state.solvedIds.length, 'currency:', _state.currency,
                 'foreverPixels:', _state.foreverPixels.length);
