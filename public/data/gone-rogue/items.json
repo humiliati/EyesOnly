@@ -1689,5 +1689,30 @@
       "camo"
     ],
     "description": "Large cardboard camouflage. Better when you take your time."
+  },
+  {
+    "id": "ITM-203",
+    "name": "Baseplate Compass",
+    "emoji": "🧭",
+    "type": "equipment",
+    "subtype": "navigation",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "accessory",
+    "compass": true,
+    "effects": [
+      {
+        "type": "compass_widget",
+        "mode": "always"
+      }
+    ],
+    "synergyTags": [
+      "navigation",
+      "telescope",
+      "exploration",
+      "compass"
+    ],
+    "description": "A precision navigational instrument. Points to true north. Reveals the compass widget on all pages."
   }
 ]

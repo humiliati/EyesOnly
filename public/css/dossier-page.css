@@ -379,10 +379,6 @@
   justify-content: center;
   padding: 13px 44px;
   min-width: 160px;
-  /* Defensive: no fixed dimensions, no circle, no aspect-ratio */
-  width: auto;
-  height: auto;
-  aspect-ratio: unset;
   border-radius: 8px;
   border: 2px solid var(--theme-primary, #33ff33);
   background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
@@ -901,14 +897,6 @@
     padding: 20px 16px 24px;
   }
 
-  .porthole-btn {
-    width: 110px;
-    height: 110px;
-  }
-
-  .porthole-btn-label {
-    font-size: 11px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -924,15 +912,6 @@
   /* Reduce margin line on very small screens */
   .dossier-paper {
     background-position-x: 0, 24px, 0;
-  }
-
-  .porthole-btn {
-    width: 90px;
-    height: 90px;
-  }
-
-  .porthole-btn-label {
-    font-size: 9px;
   }
 }
 

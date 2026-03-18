@@ -12,22 +12,36 @@ A persistent compass widget overlay that appears on all public-facing pages (`in
 
 ## Item Definition
 
-### Compass Item (ITM-XXX)
+### Baseplate Compass (ITM-203)
+
+> **Note**: Multiple items can have `compass: true`. The widget appears if **any** equipped item has this property.
 
 ```json
 {
-  "id": "ITM-2XX",
-  "name": "Compass",
+  "id": "ITM-203",
+  "name": "Baseplate Compass",
   "emoji": "🧭",
   "type": "equipment",
   "subtype": "navigation",
   "rarity": "rare",
   "equipSlot": "accessory",
-  "description": "A precision navigational instrument. Points to true north.",
+  "compass": true,
+  "description": "A precision navigational instrument. Points to true north. Reveals the compass widget on all pages.",
   "effects": [
-    { "type": "compass-widget", "mode": "always" }
+    { "type": "compass_widget", "mode": "always" }
   ],
-  "synergyTags": ["navigation", "telescope", "exploration"]
+  "synergyTags": ["navigation", "telescope", "exploration", "compass"]
+}
+```
+
+### Future Compass Items
+
+Other items can also enable the compass widget by adding `"compass": true`:
+
+| Item ID | Name | Description |
+|---------|------|-------------|
+| ITM-203 | Baseplate Compass | Basic compass (this implementation) |
+| ITM-2XX | [Future] | Advanced compass variants |
 }
 ```
 
@@ -140,13 +154,13 @@ localStorage.setItem('compass_widget_position', JSON.stringify({
 
 ---
 
-## Files to Create
+## Files Created ✅
 
-| File | Purpose |
-|------|---------|
-| `public/js/compass-widget.js` | Core widget logic, orientation tracking |
-| `public/css/compass-widget.css` | Minimized sprite, expanded overlay styles |
-| `public/data/items.json` | Add compass item definition |
+| File | Status | Purpose |
+|------|--------|---------|
+| `public/js/compass-widget.js` | ✅ Built | Core widget logic, orientation tracking, telescope broadcast |
+| `public/css/compass-widget.css` | ✅ Built | Minimized sprite, expanded steampunk overlay styles |
+| `public/data/gone-rogue/items.json` | ✅ Updated | Added ITM-203 Baseplate Compass with `compass: true` |
 
 ---
 

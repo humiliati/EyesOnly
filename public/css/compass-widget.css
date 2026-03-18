@@ -1,0 +1,386 @@
+/* ═════════════════════════════════════════════════════════════════
+   COMPASS WIDGET — Styles
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────── */
+/* MINIMIZED WIDGET                                                */
+/* ───────────────────────────────────────────────────────────────── */
+
+.compass-widget-minimized {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.compass-widget-minimized:hover {
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.compass-widget-minimized:active {
+  transform: scale(0.95);
+}
+
+/* Outer ring */
+.compass-mini-outer {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  border: 2px solid #555;
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 2px 4px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Inner circle */
+.compass-mini-inner {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 30% 30%, #f5f5f5, #c0c0c0);
+  border-radius: 50%;
+  border: 1px solid #888;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Needle */
+.compass-mini-needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 24px;
+  margin-left: -1px;
+  margin-top: -12px;
+  background: linear-gradient(to bottom, #ff4444 50%, #ffffff 50%);
+  transform-origin: center center;
+  transition: transform 0.3s ease-out;
+  border-radius: 1px;
+}
+
+/* N label */
+.compass-mini-label {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 8px;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 0 0 2px rgba(255, 68, 68, 0.5);
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* EXPANDED OVERLAY                                                */
+/* ───────────────────────────────────────────────────────────────── */
+
+.compass-widget-expanded {
+  width: 320px;
+}
+
+.compass-frame {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  border: 3px solid #8b7355;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 
+    0 0 30px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 60px rgba(139, 115, 85, 0.3);
+}
+
+/* Brass bezel */
+.compass-bezel {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 15px;
+  background: linear-gradient(135deg, #d4af37 0%, #8b7355 50%, #d4af37 100%);
+  border-radius: 50%;
+  padding: 8px;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+/* Glass dome */
+.compass-dome {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.2), transparent 60%),
+              radial-gradient(circle, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+/* Needle container */
+.compass-needle-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 160px;
+  margin-left: -2px;
+  margin-top: -80px;
+  transition: transform 0.2s ease-out;
+}
+
+/* North pointer (red) */
+.compass-needle-north {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 80px solid #cc3333;
+  transform: translateX(-4px);
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+
+/* South pointer (white) */
+.compass-needle-south {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 80px solid #f0f0f0;
+  transform: translateX(-4px);
+  filter: drop-shadow(0 -2px 3px rgba(0,0,0,0.5));
+}
+
+/* Center pivot */
+.compass-pivot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  background: radial-gradient(circle at 30% 30%, #ffd700, #8b7355);
+  border-radius: 50%;
+  border: 2px solid #5a4a3a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  z-index: 10;
+}
+
+/* Cardinal directions */
+.compass-cardinals {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.compass-cardinal {
+  position: absolute;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.cardinal-n {
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ff6666;
+}
+
+.cardinal-e {
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #88ccff;
+}
+
+.cardinal-s {
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #88ccff;
+}
+
+.cardinal-w {
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #88ccff;
+}
+
+/* Digital readout */
+.compass-readout {
+  text-align: center;
+  margin-bottom: 15px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.readout-heading {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 18px;
+  color: #33ff33;
+  text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
+}
+
+.readout-label {
+  color: #888;
+  font-size: 12px;
+  margin-right: 5px;
+}
+
+.readout-value {
+  min-width: 40px;
+  display: inline-block;
+}
+
+/* Control buttons */
+.compass-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.compass-btn {
+  flex: 1;
+  padding: 10px 15px;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #ccc;
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.compass-btn:hover {
+  background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+  border-color: #777;
+  color: #fff;
+}
+
+.compass-btn:active {
+  transform: scale(0.98);
+}
+
+.compass-btn#compass-telescope {
+  background: linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%);
+  border-color: #33ff33;
+  color: #33ff33;
+}
+
+.compass-btn#compass-telescope:hover {
+  background: linear-gradient(180deg, #3a4a3a 0%, #2a3a2a 100%);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.3);
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* THEME INTEGRATION                                               */
+/* ───────────────────────────────────────────────────────────────── */
+
+body[data-theme="phosphor"] .readout-heading {
+  color: #33ff33;
+  text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
+}
+
+body[data-theme="amber"] .readout-heading {
+  color: #ffb000;
+  text-shadow: 0 0 10px rgba(255, 176, 0, 0.5);
+}
+
+body[data-theme="silver"] .readout-heading {
+  color: #b0c4de;
+  text-shadow: 0 0 10px rgba(176, 196, 222, 0.5);
+}
+
+body[data-theme="panther"] .readout-heading {
+  color: #ff3090;
+  text-shadow: 0 0 10px rgba(255, 48, 144, 0.5);
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* DESKTOP MODE INDICATOR                                         */
+/* ───────────────────────────────────────────────────────────────── */
+
+.compass-desktop-notice {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* ANIMATIONS                                                      */
+/* ───────────────────────────────────────────────────────────────── */
+
+@keyframes compass-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(139, 115, 85, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(139, 115, 85, 0.6); }
+}
+
+.compass-bezel {
+  animation: compass-pulse 4s ease-in-out infinite;
+}
+
+/* Needle swing animation when first acquiring heading */
+@keyframes needle-swing {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  75% { transform: rotate(-15deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.compass-needle-container.acquiring {
+  animation: needle-swing 1s ease-in-out;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* MOBILE RESPONSIVE                                               */
+/* ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .compass-widget-expanded {
+    width: 280px;
+  }
+
+  .compass-bezel {
+    width: 160px;
+    height: 160px;
+  }
+
+  .compass-needle-container {
+    height: 130px;
+    margin-top: -65px;
+  }
+
+  .compass-btn {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+}
