@@ -559,6 +559,9 @@ Phase 8.5 ships the visual feedback infrastructure that Phase 9 builds on:
 - ✅ Progressive transparency: card chrome (headers, info, buttons) fades as nodes are tethered (0 → 40% opacity), snaps back to opaque when constellation resolves and new level stars populate
 - ✅ Procedural generation: infinite shapes after designed templates exhausted
 
+**Shipped in Phase 9 (early):**
+- ✅ Satellite scrubber (`satellite-scrubber.js`): Silver spade lens mechanic. Slow-drifting satellites in starfield rendered via postRenderHook. Silver card drag activates orbital gravity well (adapted from cosmic particle system in satellite-scrubber-roadmap.md). Gentle swipe nudges satellites off-path; vigorous slash (speed > 8px/frame) destroys with twirl animation + coin burst. Hydra mechanic: each destroyed satellite spawns 2 replacements. Diminishing returns: 6 → 5 → 3 → 1 → 0.04 → 0.01 coins per generation. Tether collision API for constellation tracer interference. Wired into nch-overlay drag flow (_startSatelliteScrub, _endSatelliteScrub, cursor feed).
+
 **Phase 9 polish adds per-lens visual feedback:**
 
 | Feedback Type | Gold Lens (♣) | Silver Lens (♠) | Phosphor Lens (♥) | Panther Lens (♦) |

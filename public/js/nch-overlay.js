@@ -122,6 +122,11 @@ var NchOverlay = (function () {
     return mission && mission.suitClass === 'suit-club';
   }
 
+  function _isSilverLensCard(cardIndex) {
+    var mission = MISSIONS[cardIndex];
+    return mission && mission.suitClass === 'suit-spade';
+  }
+
   /**
    * Activate the porthole lens effect on ANY card during drag.
    * Each card has its own lens technology (silver=aperture, blue=glow,
@@ -183,6 +188,20 @@ var NchOverlay = (function () {
     ConstellationTracer.beginSession();
   }
 
+  /**
+   * Start satellite scrubber during silver card drag.
+   */
+  function _startSatelliteScrub(drag) {
+    if (!_isSilverLensCard(drag.index)) return;
+    if (typeof SatelliteScrubber === 'undefined') return;
+    SatelliteScrubber.beginSession();
+  }
+
+  function _endSatelliteScrub() {
+    if (typeof SatelliteScrubber === 'undefined') return;
+    SatelliteScrubber.endSession();
+  }
+
   // Track previous cursor for drag velocity calculation
   var _prevCursorX = 0;
   var _prevCursorY = 0;
@@ -202,6 +221,11 @@ var NchOverlay = (function () {
     // Feed constellation tracer (gold lens only)
     if (typeof ConstellationTracer !== 'undefined' && ConstellationTracer.isEnabled()) {
       ConstellationTracer.updateCursor(cx, cy);
+    }
+
+    // Feed satellite scrubber (silver lens)
+    if (typeof SatelliteScrubber !== 'undefined') {
+      SatelliteScrubber.updateCursor(cx, cy);
     }
 
     var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
@@ -1109,6 +1133,9 @@ var NchOverlay = (function () {
     // Phase 8: Begin constellation tracing if this is the gold lens (♣ club) card
     _startConstellationTrace(drag);
 
+    // Phase 9: Begin satellite scrubbing if this is the silver lens (♠ spade) card
+    _startSatelliteScrub(drag);
+
     // ── Placeholder (mirrors splash-screen's _createDragPlaceholder) ──
     var cs = window.getComputedStyle(cardEl);
     var placeholder = document.createElement('div');
@@ -1257,9 +1284,10 @@ var NchOverlay = (function () {
     }
     _clearCardRevealContent();
 
-    // Phase 8: Deactivate lens + end constellation tracing
+    // Phase 8/9: Deactivate lens + end constellation tracing + satellite scrub
     _deactivateLens();
     _endConstellationTrace();
+    _endSatelliteScrub();
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;
@@ -1696,6 +1724,8 @@ var NchOverlay = (function () {
       if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
       if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
       if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
+      // Phase 9: Satellite scrubber (silver lens mechanic)
+      if (typeof SatelliteScrubber !== 'undefined') SatelliteScrubber.init();
 
       setInterval(_pollMode, 500);
 
