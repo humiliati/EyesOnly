@@ -202,11 +202,27 @@
 /* ---- 3. MOBILE LAYOUT: Header + Torso + CRT + Footer ---- */
 
 @media (max-width: 768px) {
-  /* Strip all paper/folder styling on mobile */
+  /* ---- Mobile: fixed viewport frame, CRT scrolls internally ---- */
+
+  /* Full viewport column layout: header + torso + CRT + footer */
+  body {
+    overflow: hidden !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .games-v2-nav { flex-shrink: 0; }
+
   .games-v2-desk {
     background: var(--bg, #0a0a0a) !important;
     padding: 0 !important;
-    min-height: auto !important;
+    min-height: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .games-v2-folder {
@@ -216,57 +232,98 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     max-width: none !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .dossier-folder-tab { display: none !important; }
 
   .games-v2-paper {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     background: none !important;
     padding: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     color: inherit !important;
+    flex: 1;
+    overflow: hidden;
   }
 
   /* Hide desktop sticky note nav */
   .games-v2-postit-nav { display: none; }
 
-  /* Monitor wrapper is transparent on mobile */
+  /* Monitor wrapper fills remaining space */
   .games-v2-monitor {
     background: none;
     padding: 0;
     box-shadow: none;
     border-radius: 0;
     transform: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  /* CRT fills viewport on mobile */
+  /* CRT fills the monitor wrapper, scrolls internally */
   .games-v2-monitor #crt-screen {
     position: relative !important;
-    height: auto !important;
-    min-height: calc(100vh - 120px);
-    min-height: calc(100dvh - 120px);
+    height: 100% !important;
+    flex: 1;
     padding: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
-  /* Hide internal CRT header on mobile too — wooden nav replaces it */
+  .games-v2-monitor #crt-frame {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .games-v2-monitor #monitor-shell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .games-v2-monitor .games-log-frame {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* THIS is the only thing that scrolls */
+  .games-v2-monitor .games-content {
+    flex: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Hide internal CRT header/footer on mobile — replaced by wooden nav + rolodex */
   .games-v2-monitor #mok-header { display: none; }
-  /* Keep footer on mobile (inside CRT) */
   .games-v2-monitor .games-footer-strip { display: none; }
 
   /* ---- Paper torso: 2-row grid of category buttons ---- */
-  .games-v2-torso {
+  .games-v2-paper > .games-v2-torso {
     position: relative;
     z-index: 20;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 4px 6px;
     padding: 6px 8px;
     background: var(--postit-bg, rgba(255, 248, 200, 0.92));
     border-bottom: 2px solid rgba(0,0,0,0.08);
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .games-v2-torso-btn {
@@ -416,15 +473,25 @@
   display: block;
 }
 
-/* ---- 6. Kill CRT barrel distortion overlay (designed for fixed fullscreen) ---- */
+/* ---- 6. Contain CRT effects inside the monitor (don't leak to torso/footer) ---- */
 .games-v2-monitor #crt-screen::before,
 .games-v2-monitor #crt-screen::after {
   display: none !important;
 }
 
-/* Also suppress the vignette and phosphor glow on mobile where CRT is inset */
-.games-v2-monitor #vignette {
+/* Force all CRT overlay layers to stay inside the monitor, not cover the page */
+.games-v2-monitor #vignette,
+.games-v2-monitor #phosphor-glow,
+.games-v2-monitor #scanlines {
+  position: absolute !important;
   border-radius: 8px;
+}
+
+/* The rolodex footer must sit above any CRT bleed, never scroll */
+.games-v2-rolodex {
+  position: relative;
+  z-index: 50;
+  flex-shrink: 0;
 }
 
 /* ---- 7. Abbreviator override: no ellipsis anywhere ---- */
