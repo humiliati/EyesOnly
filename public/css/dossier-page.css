@@ -381,7 +381,8 @@
   /* Solid themed face — the "closed" state */
   background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
   cursor: pointer;
-  overflow: hidden;
+  /* NO overflow: hidden — sparkles must spill out beyond the frame */
+  overflow: visible;
   box-shadow:
     0 0 0 0 transparent,
     0 2px 8px rgba(0, 0, 0, 0.15);
@@ -390,7 +391,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ---- Starfield canvas — hidden behind opaque face ---- */
+/* ---- Starfield canvas — clipped to button shape, hidden by default ---- */
 .porthole-btn .starfield-window {
   position: absolute;
   inset: 0;
@@ -401,6 +402,8 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.35s ease;
+  /* Clip the starfield to the button rect (since parent is overflow: visible) */
+  clip-path: inset(0 round 6px);
 }
 
 /* ---- Label text ---- */
