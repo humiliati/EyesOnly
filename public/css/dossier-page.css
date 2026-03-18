@@ -586,6 +586,27 @@
 .porthole-btn-sm .sparkle { font-size: 8px !important; }
 .porthole-btn-sm .sparkle-3 { font-size: 12px !important; }
 
+/* Full-width form submit variant */
+.porthole-btn-wide {
+  display: flex;
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 12px;
+}
+
+.porthole-btn-wide .porthole-btn-label {
+  font-size: 16px;
+}
+
+/* Disabled / loading state for submit buttons */
+.porthole-btn[disabled],
+.porthole-btn.is-loading {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  animation: none;
+}
+
 
 /* ============================================================
    8. PORTHOLE LENS TECHNOLOGY FRAME

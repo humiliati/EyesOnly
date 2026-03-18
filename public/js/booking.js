@@ -192,14 +192,26 @@
   }
 
   function setButtonLoading(btn, loading, originalText) {
+    var label = btn.querySelector('.porthole-btn-label');
     if (loading) {
       btn.disabled = true;
       btn.classList.add('is-loading');
-      btn.textContent = 'Processing\u2026';
+      if (label) {
+        label.setAttribute('data-original', label.innerHTML);
+        label.textContent = 'Processing\u2026';
+      } else {
+        btn.textContent = 'Processing\u2026';
+      }
     } else {
       btn.disabled = false;
       btn.classList.remove('is-loading');
-      btn.textContent = originalText;
+      if (label) {
+        var orig = label.getAttribute('data-original');
+        if (orig) label.innerHTML = orig;
+        else label.textContent = originalText;
+      } else {
+        btn.textContent = originalText;
+      }
     }
   }
 
@@ -406,7 +418,7 @@
   /* ---- Book buttons on scenario cards → scroll to form ---- */
 
   function bindBookButtons() {
-    var buttons = document.querySelectorAll('.scenario-book-btn');
+    var buttons = document.querySelectorAll('.porthole-btn[data-scenario]');
     buttons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         var scenario = btn.getAttribute('data-scenario');

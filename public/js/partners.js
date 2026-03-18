@@ -74,7 +74,7 @@
   }
 
   function bindActionCards() {
-    var buttons = document.querySelectorAll('.action-card-btn');
+    var buttons = document.querySelectorAll('.porthole-btn[data-form]');
     buttons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         var formType = btn.getAttribute('data-form');
@@ -174,17 +174,27 @@
   }
 
   function setButtonLoading(btn, loading, originalText) {
+    var label = btn.querySelector('.porthole-btn-label');
     if (loading) {
       btn.disabled = true;
-      btn.dataset.origText = btn.textContent;
-      btn.textContent = 'Submitting\u2026';
-      btn.style.opacity = '0.6';
-      btn.style.pointerEvents = 'none';
+      btn.classList.add('is-loading');
+      if (label) {
+        label.setAttribute('data-original', label.innerHTML);
+        label.textContent = 'Submitting\u2026';
+      } else {
+        btn.dataset.origText = btn.textContent;
+        btn.textContent = 'Submitting\u2026';
+      }
     } else {
       btn.disabled = false;
-      btn.textContent = originalText || btn.dataset.origText || 'Submit';
-      btn.style.opacity = '';
-      btn.style.pointerEvents = '';
+      btn.classList.remove('is-loading');
+      if (label) {
+        var orig = label.getAttribute('data-original');
+        if (orig) label.innerHTML = orig;
+        else label.textContent = originalText || 'Submit';
+      } else {
+        btn.textContent = originalText || btn.dataset.origText || 'Submit';
+      }
     }
   }
 
