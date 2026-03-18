@@ -404,20 +404,44 @@
   text-decoration: none;
 }
 
+.porthole-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Blowout transition — starfield glow expands on hover */
+@keyframes porthole-blowout {
+  0%   { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
+                      0 0 20px var(--porthole-btn-glow, rgba(51,255,51,0.25)),
+                      0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5); }
+  50%  { box-shadow: 0 0 0 5px rgba(90,80,56,0.5), 0 0 0 7px rgba(50,44,30,0.4),
+                      0 0 40px var(--porthole-btn-glow, rgba(51,255,51,0.45)),
+                      0 0 80px var(--porthole-btn-glow, rgba(51,255,51,0.15)),
+                      0 8px 28px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.3); }
+  100% { box-shadow: 0 0 0 4px rgba(90,80,56,0.5), 0 0 0 6px rgba(50,44,30,0.4),
+                      0 0 30px var(--porthole-btn-glow, rgba(51,255,51,0.35)),
+                      0 0 60px var(--porthole-btn-glow, rgba(51,255,51,0.12)),
+                      0 6px 24px rgba(0,0,0,0.5), inset 0 0 16px rgba(0,0,0,0.4); }
+}
+
 .porthole-btn:hover {
-  box-shadow:
-    0 0 0 4px rgba(90, 80, 56, 0.5),
-    0 0 0 6px rgba(50, 44, 30, 0.4),
-    0 0 30px var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
-    0 0 60px var(--porthole-btn-glow, rgba(51, 255, 51, 0.12)),
-    0 6px 24px rgba(0, 0, 0, 0.5),
-    inset 0 0 16px rgba(0, 0, 0, 0.4),
-    inset 0 2px 0 rgba(180, 160, 100, 0.12);
+  animation: porthole-blowout 0.5s ease-out forwards;
   transform: translateY(-3px) scale(1.03);
 }
 
-.porthole-btn:active {
-  transform: translateY(0) scale(0.98);
+/* Idle pulse — subtle breathing glow */
+@keyframes porthole-idle-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
+                          0 0 18px var(--porthole-btn-glow, rgba(51,255,51,0.22)),
+                          0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5),
+                          inset 0 2px 0 rgba(180,160,100,0.08); }
+  50%      { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
+                          0 0 28px var(--porthole-btn-glow, rgba(51,255,51,0.32)),
+                          0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5),
+                          inset 0 2px 0 rgba(180,160,100,0.08); }
+}
+
+.porthole-btn:not(:hover) {
+  animation: porthole-idle-pulse 3s ease-in-out infinite;
 }
 
 /* Starfield canvas inside the porthole button */

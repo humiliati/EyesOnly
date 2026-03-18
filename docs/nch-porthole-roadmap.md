@@ -925,12 +925,85 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 10 — Procedural Generation, Cascades & Forever Sky | 🔧 ~65% shipped (procgen, cascades, forever sky enhancements, currency bridge). Remaining: advanced generator, grand constellation, star destroyer. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
+| 13 — TELESCOPE Mode (AR Constellation Tracker) | ⭐ Spec complete | Phase 8 + Device API |
 
-**Next up:** Phase 10 (cascades + forever sky damage) → Phase 11 (volatility + gambling) → Phase 12 (trick glasses).
+**Next up:** Phase 10 (cascades + forever sky damage) → Phase 11 (volatility + gambling) → Phase 12 (trick glasses) → **Phase 13 (TELESCOPE AR)**
 
 
 
 
+
+---
+
+## Phase 13: TELESCOPE Mode — AR Constellation Tracker ⭐
+
+> **Spec:** `docs/TELESCOPE_ROADMAP.md`
+
+A standalone `/telescope.html` page that turns the phone into an augmented reality window for finding and connecting real constellations in the night sky.
+
+### Core Concept
+- **AR-like experience**: Phone orientation (compass/gyroscope) controls viewport into celestial coordinates
+- **Real constellations**: Big Dipper (Ursa Major), North Star (Polaris), and more
+- **Panther lens**: Special "blow up" effect that expands Polaris dramatically
+- **Constellation stringing**: Trace stars by aiming phone at the sky
+
+### Technical Architecture
+
+**Device Orientation API**
+```javascript
+// Request compass/gyroscope access (iOS requires permission)
+if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+  const permission = await DeviceOrientationEvent.requestPermission();
+}
+window.addEventListener('deviceorientation', handleOrientation);
+```
+
+**Desktop Fallback**
+- Mouse position simulates pointing direction
+- Click-and-drag to "sweep" the sky
+- Visual indicator: "Desktop Mode — Drag to aim"
+
+### Celestial Coordinates
+
+Real star positions in RA/Dec, converted to Azimuth/Altitude based on user location:
+```javascript
+const REAL_STARS = {
+  'dubhe': { ra: 165.93, dec: 61.75, name: 'Dubhe', mag: 1.8 },   // Big Dipper
+  'merak': { ra: 165.46, dec: 56.38, name: 'Merak', mag: 2.4 },
+  'polaris': { ra: 37.95, dec: 89.26, name: 'Polaris', mag: 2.0 }, // North Star
+  // ... more stars
+};
+```
+
+### Panther Lens — "Blow Up" Polaris
+
+When panther lens targets the North Star:
+- Star expands 8x with pulsing pink glow
+- Shows "NORTH STAR" label
+- Triggers reward (first time only)
+- Visual: dramatic zoom effect unlike normal lens
+
+### Constellation Tracing
+
+As user aims phone:
+1. Track which stars are in crosshair
+2. Draw path lines between visited stars
+3. Validate against known constellation patterns
+4. Award rewards on completion
+
+### Deliverables
+| File | Purpose |
+|------|---------|
+| `public/telescope.html` | Standalone AR telescope page |
+| `public/js/telescope.js` | Orientation + star rendering |
+| `public/css/telescope.css` | HUD, lens effects |
+| `public/data/real-stars.json` | Celestial coordinates |
+
+### Integration Points
+- Reuses `starfield.js` for simulated sky rendering
+- Lenses from NCH widget (same joker stack)
+- Constellation validation from `constellations.json`
+- Progress saved to localStorage
 
 ---
 

@@ -295,7 +295,12 @@ a:hover { text-decoration: underline; }
   font-size: 12px;
   color: var(--paper-text-dim, #5a5040);
   line-height: 1.55;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+/* Center porthole buttons inside action cards */
+.action-card .porthole-btn {
+  margin: 0 auto;
 }
 
 /* Button on post-it */
