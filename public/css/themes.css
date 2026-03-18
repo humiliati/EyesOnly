@@ -103,6 +103,7 @@
   --postit-shadow:          rgba(0, 0, 0, 0.18);
   --field-glow-paper:       rgba(51, 255, 51, 0.12);
   --porthole-btn-glow:      rgba(51, 255, 51, 0.25);
+  --porthole-btn-contrast-glow: rgba(255, 100, 40, 0.55);
 }
 
 
@@ -173,6 +174,7 @@ body[data-theme="phosphor"],
   --postit-bg:              rgba(220, 255, 220, 0.88);
   --field-glow-paper:       rgba(51, 255, 51, 0.15);
   --porthole-btn-glow:      rgba(51, 255, 51, 0.30);
+  --porthole-btn-contrast-glow: rgba(255, 100, 40, 0.55);
 }
 
 
@@ -243,6 +245,7 @@ body[data-theme="silver"],
   --postit-bg:              rgba(210, 225, 250, 0.88);
   --field-glow-paper:       rgba(176, 196, 222, 0.15);
   --porthole-btn-glow:      rgba(176, 196, 222, 0.30);
+  --porthole-btn-contrast-glow: rgba(255, 180, 40, 0.55);
 }
 
 
@@ -313,6 +316,7 @@ body[data-theme="amber"],
   --postit-bg:              rgba(255, 245, 210, 0.90);
   --field-glow-paper:       rgba(255, 176, 0, 0.15);
   --porthole-btn-glow:      rgba(255, 176, 0, 0.30);
+  --porthole-btn-contrast-glow: rgba(0, 220, 200, 0.55);
 }
 
 
@@ -384,6 +388,7 @@ body[data-theme="panther"],
   --postit-bg:              rgba(255, 220, 240, 0.88);
   --field-glow-paper:       rgba(255, 48, 144, 0.12);
   --porthole-btn-glow:      rgba(255, 48, 144, 0.25);
+  --porthole-btn-contrast-glow: rgba(0, 229, 204, 0.60);
 }
 
 

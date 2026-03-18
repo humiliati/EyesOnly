@@ -370,25 +370,25 @@
    ============================================================ */
 
 /* ============================================================
-   BASE — Sleek, wide, low-profile button with neon glow halo
+   BASE — Wide, low-profile CTA with contrast neon glow halo
    ============================================================ */
 .porthole-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* SLEEK: thin vertical, generous horizontal */
-  padding: 7px 36px;
-  border-radius: 6px;
+  padding: 13px 44px;
+  min-width: 160px;
+  border-radius: 8px;
   border: 2px solid var(--theme-primary, #33ff33);
   background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
   cursor: pointer;
   overflow: visible;
-  /* ── IDLE GLOW — big dramatic neon halo bleeding onto paper ── */
+  /* CONTRAST glow — complementary hue, pops against paper */
   box-shadow:
-    0 0 8px  var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
-    0 0 24px var(--porthole-btn-glow, rgba(51, 255, 51, 0.18)),
-    0 0 48px var(--porthole-btn-glow, rgba(51, 255, 51, 0.08));
+    0 0 8px  var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.55)),
+    0 0 24px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.30)),
+    0 0 48px color-mix(in srgb, var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.2)) 50%, transparent);
   transition: all 0.35s cubic-bezier(0.05, 0.83, 0.43, 0.96);
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
@@ -408,20 +408,19 @@
   clip-path: inset(0 round 6px);
 }
 
-/* ---- Label — BIG, BOLD, SHADOWED ---- */
+/* ---- Label — BIG, BOLD, SHADOWED for legibility ---- */
 .porthole-btn-label {
   position: relative;
   z-index: 3;
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 18px;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--paper-heading, #1a1610);
   text-align: center;
   line-height: 1;
   pointer-events: none;
-  /* Shadow for legibility on any background */
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
@@ -436,7 +435,7 @@
   transition: opacity 0.3s ease;
 }
 
-/* ---- CSS sparkles (hidden, burst on porthole activation) ---- */
+/* ---- CSS sparkles ---- */
 .porthole-btn .sparkle {
   position: absolute;
   z-index: 10;
@@ -461,19 +460,19 @@
 .porthole-btn .sparkle-5 { top: 5%;  right: 20%; font-size: 12px; }
 .porthole-btn .sparkle-6 { bottom: 15%; left: 8%; font-size: 5px; }
 
-/* ── IDLE GLOW BREATHING — neon halo pulses gently ── */
+/* ── IDLE GLOW BREATHING — contrast halo pulses ── */
 @keyframes porthole-glow-breathe {
   0%, 100% {
     box-shadow:
-      0 0 8px  var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
-      0 0 24px var(--porthole-btn-glow, rgba(51, 255, 51, 0.18)),
-      0 0 48px var(--porthole-btn-glow, rgba(51, 255, 51, 0.08));
+      0 0 8px  var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.55)),
+      0 0 24px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.30)),
+      0 0 48px color-mix(in srgb, var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.2)) 50%, transparent);
   }
   50% {
     box-shadow:
-      0 0 12px var(--porthole-btn-glow, rgba(51, 255, 51, 0.45)),
-      0 0 32px var(--porthole-btn-glow, rgba(51, 255, 51, 0.25)),
-      0 0 64px var(--porthole-btn-glow, rgba(51, 255, 51, 0.12));
+      0 0 14px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.65)),
+      0 0 36px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.40)),
+      0 0 72px color-mix(in srgb, var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.3)) 50%, transparent);
   }
 }
 
@@ -489,10 +488,9 @@
 .porthole-btn:focus-visible {
   background: transparent;
   border-color: var(--theme-primary, #33ff33);
-  /* Glow SHRINKS inward — dramatic contrast from big idle halo */
   box-shadow:
     0 0 0 1px var(--theme-primary, #33ff33),
-    0 0 6px var(--porthole-btn-glow, rgba(51, 255, 51, 0.3)),
+    0 0 10px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.5)),
     inset 0 0 16px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
@@ -516,7 +514,6 @@
   opacity: 0.8;
 }
 
-/* Sparkles burst out */
 .porthole-btn:hover .sparkle,
 .porthole-btn:focus-visible .sparkle {
   opacity: 1;
@@ -536,7 +533,6 @@
 .porthole-btn:hover .sparkle-6,
 .porthole-btn:focus-visible .sparkle-6 { bottom: -8%; left: -20%; transform: scale(0.8) rotate(45deg); }
 
-/* Stagger sparkle timing */
 .porthole-btn .sparkle-1 { transition-delay: 0s; }
 .porthole-btn .sparkle-2 { transition-delay: 0.04s; }
 .porthole-btn .sparkle-3 { transition-delay: 0.08s; }
@@ -545,13 +541,13 @@
 .porthole-btn .sparkle-6 { transition-delay: 0.1s; }
 
 
-/* ---- Press / active — tight snap ---- */
+/* ---- Press / active ---- */
 .porthole-btn:active {
   transform: translateY(1px) scale(0.97);
   transition-duration: 0.08s;
   box-shadow:
     0 0 0 1px var(--theme-primary, #33ff33),
-    0 0 4px var(--porthole-btn-glow, rgba(51, 255, 51, 0.3)),
+    0 0 4px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.3)),
     inset 0 0 20px rgba(0, 0, 0, 0.6);
 }
 
@@ -560,17 +556,18 @@
    VARIANTS
    ============================================================ */
 
-/* Action card inline buttons — same font, just slightly less padding */
+/* Action card inline — same font, slightly tighter */
 .porthole-btn-sm {
-  padding: 6px 28px;
+  padding: 11px 36px;
+  min-width: 140px;
 }
 
-/* Full-width form submit — stretches to container */
+/* Full-width form submit */
 .porthole-btn-wide {
   display: flex;
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 32px;
+  padding: 14px 44px;
   margin-top: 12px;
 }
 
@@ -581,7 +578,27 @@
   cursor: not-allowed;
   pointer-events: none;
   animation: none;
-  box-shadow: 0 0 4px var(--porthole-btn-glow, rgba(51, 255, 51, 0.1));
+  box-shadow: 0 0 4px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.1));
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .porthole-btn {
+    padding: 13px 32px;
+    min-width: unset;
+  }
+  .porthole-btn-label {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .porthole-btn {
+    padding: 12px 24px;
+  }
+  .porthole-btn-label {
+    font-size: 13px;
+  }
 }
 
 
