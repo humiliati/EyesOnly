@@ -1,0 +1,436 @@
+/* ============================================================
+   GAMES HYBRID LAYOUT — Paper Dossier + CRT Monitor
+   ============================================================
+   Desktop: Desk surface > manila folder > paper + CRT monitor
+            Sticky notes on left = category nav
+            CRT inset = existing games content (no header/footer inside)
+            Rolodex footer at bottom of page
+
+   Mobile:  Wooden header bar (eo-nav)
+            Paper torso (horizontal sticky note strip)
+            CRT body (games content)
+            Rolodex footer
+
+   Imports alongside: crt.css, themes.css, dossier-page.css, games.css
+   ============================================================ */
+
+
+/* ---- 1. WOODEN HEADER (reuses eo-nav from booking.css patterns) ---- */
+
+.games-v2-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: linear-gradient(180deg, #2e2820 0%, #221e16 50%, #1a160e 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  box-shadow:
+    inset 0 1px 0 rgba(180, 160, 100, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.games-v2-nav-brand {
+  font-size: 15px;
+  font-weight: bold;
+  color: rgba(220, 200, 140, 0.9);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(60, 50, 25, 0.8);
+  font-family: var(--theme-font-display, Georgia, serif);
+  text-decoration: none;
+}
+
+.games-v2-nav-links { display: flex; gap: 16px; flex-wrap: wrap; }
+
+.games-v2-nav-link {
+  font-size: 11px;
+  color: rgba(180, 160, 100, 0.55);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.games-v2-nav-link:hover { color: rgba(220, 200, 140, 0.9); }
+.games-v2-nav-link.active { color: var(--theme-primary, #33ff33); }
+
+
+/* ---- 2. DESKTOP LAYOUT: Paper + Monitor grid ---- */
+
+@media (min-width: 769px) {
+  .games-v2-desk {
+    /* Inherits desk surface texture */
+    min-height: calc(100vh - 44px);
+    padding: 24px;
+  }
+
+  .games-v2-folder {
+    max-width: 1200px;
+    margin: 0 auto;
+    /* Widen folder for desktop to fit monitor + nav side by side */
+  }
+
+  .games-v2-paper {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+    /* Paper background from dossier-page.css .dossier-paper */
+    padding: 20px 20px 20px 16px;
+  }
+
+  /* Sticky note nav — left column */
+  .games-v2-postit-nav {
+    position: sticky;
+    top: 60px;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-right: 16px;
+    z-index: 5;
+  }
+
+  .games-v2-postit-nav .postit {
+    padding: 14px 12px 16px;
+    cursor: default;
+  }
+
+  .games-v2-postit-nav .postit-label {
+    font-family: var(--theme-font-display, Georgia, serif);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--paper-heading, #1a1610);
+    margin-bottom: 8px;
+    opacity: 0.6;
+  }
+
+  .games-v2-nav-item {
+    display: block;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--paper-text, #2a2418);
+    text-decoration: none;
+    padding: 3px 0;
+    cursor: pointer;
+    transition: color 0.15s;
+    border-left: 2px solid transparent;
+    padding-left: 6px;
+  }
+
+  .games-v2-nav-item:hover {
+    color: var(--paper-heading, #1a1610);
+  }
+
+  .games-v2-nav-item.active {
+    color: var(--paper-heading, #1a1610);
+    border-left-color: var(--theme-primary, #33ff33);
+    font-weight: bold;
+  }
+
+  .games-v2-nav-stat {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: var(--paper-text-dim, #5a5040);
+    padding: 2px 0;
+  }
+
+  .games-v2-nav-designer {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--paper-text-dim, #5a5040);
+    text-decoration: none;
+  }
+  .games-v2-nav-designer:hover { color: var(--paper-heading, #1a1610); }
+
+  /* CRT Monitor frame — sits on the paper */
+  .games-v2-monitor {
+    position: relative;
+    z-index: 2;
+    background:
+      linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #111 100%);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow:
+      0 6px 24px rgba(0,0,0,0.5),
+      0 2px 8px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.04),
+      inset 0 -1px 0 rgba(0,0,0,0.4);
+    /* Slight tilt for desk feel */
+    transform: perspective(1200px) rotateX(1deg);
+  }
+
+  /* CRT screen inside the bezel */
+  .games-v2-monitor #crt-screen {
+    position: relative !important;
+    height: auto !important;
+    min-height: 70vh;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 0 !important;
+  }
+
+  /* Hide the internal CRT header/footer on desktop — page has its own */
+  .games-v2-monitor #mok-header { display: none; }
+  .games-v2-monitor .games-footer-strip { display: none; }
+
+  /* The monitor shell fills the bezel */
+  .games-v2-monitor #monitor-shell {
+    display: block;
+  }
+
+  .games-v2-monitor #crt-frame {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* Mobile torso hidden on desktop */
+  .games-v2-torso { display: none; }
+}
+
+
+/* ---- 3. MOBILE LAYOUT: Header + Torso + CRT + Footer ---- */
+
+@media (max-width: 768px) {
+  /* Strip all paper/folder styling on mobile */
+  .games-v2-desk {
+    background: var(--bg, #0a0a0a) !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  .games-v2-folder {
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: none !important;
+  }
+
+  .dossier-folder-tab { display: none !important; }
+
+  .games-v2-paper {
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: inherit !important;
+  }
+
+  /* Hide desktop sticky note nav */
+  .games-v2-postit-nav { display: none; }
+
+  /* Monitor wrapper is transparent on mobile */
+  .games-v2-monitor {
+    background: none;
+    padding: 0;
+    box-shadow: none;
+    border-radius: 0;
+    transform: none;
+  }
+
+  /* CRT fills viewport on mobile */
+  .games-v2-monitor #crt-screen {
+    position: relative !important;
+    height: auto !important;
+    min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px);
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide internal CRT header on mobile too — wooden nav replaces it */
+  .games-v2-monitor #mok-header { display: none; }
+  /* Keep footer on mobile (inside CRT) */
+  .games-v2-monitor .games-footer-strip { display: none; }
+
+  /* ---- Paper torso: horizontal sticky note strip ---- */
+  .games-v2-torso {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--postit-bg, rgba(255, 248, 200, 0.92));
+    border-bottom: 2px solid rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+
+  .games-v2-torso::-webkit-scrollbar { display: none; }
+
+  .games-v2-torso-btn {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--paper-text, #2a2418);
+    background: rgba(255,255,255,0.4);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  .games-v2-torso-btn:active,
+  .games-v2-torso-btn.active {
+    background: rgba(0,0,0,0.08);
+    font-weight: bold;
+  }
+
+  .games-v2-nav-link { font-size: 10px; }
+  .games-v2-nav { padding: 8px 12px; }
+  .games-v2-nav-brand { font-size: 12px; letter-spacing: 0.15em; }
+}
+
+
+/* ---- 4. ROLODEX FOOTER ---- */
+
+.games-v2-rolodex {
+  position: relative;
+  background:
+    /* Stacked paper edges */
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 252, 240, 0.95) 0px,
+      rgba(255, 252, 240, 0.95) 3px,
+      rgba(220, 210, 190, 0.4) 3px,
+      rgba(220, 210, 190, 0.4) 4px
+    ),
+    var(--paper-bg, #f5f0e6);
+  border-top: 3px solid;
+  border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
+  box-shadow:
+    inset 0 4px 8px rgba(0,0,0,0.08),
+    0 -2px 8px rgba(0,0,0,0.2);
+  padding: 12px 20px;
+  z-index: 10;
+}
+
+/* Top edge: fanned paper cards peeking out */
+.games-v2-rolodex::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 10%;
+  right: 10%;
+  height: 8px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--paper-bg, #f5f0e6) 0px,
+      var(--paper-bg, #f5f0e6) 60px,
+      transparent 60px,
+      transparent 62px
+    );
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+}
+
+.games-v2-rolodex-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: 'Courier New', monospace;
+  color: var(--paper-text, #2a2418);
+}
+
+.games-v2-rolodex-brand {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.games-v2-rolodex-items {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.games-v2-rolodex-tab {
+  position: relative;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--paper-text-dim, #5a5040);
+  text-decoration: none;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.5);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.games-v2-rolodex-tab:hover {
+  background: rgba(255,255,255,0.8);
+  color: var(--paper-heading, #1a1610);
+}
+
+.games-v2-rolodex-clock {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  opacity: 0.5;
+}
+
+/* ---- 5. Tooltip anchored to rolodex ---- */
+
+.games-v2-rolodex-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 8px 14px;
+  background: var(--paper-bg, #f5f0e6);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--paper-text, #2a2418);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.games-v2-rolodex-tab:hover .games-v2-rolodex-tooltip {
+  display: block;
+}
+
+/* ---- 6. Abbreviator override: no ellipsis anywhere ---- */
+.games-v2-nav-link,
+.games-v2-torso-btn,
+.games-v2-rolodex-tab {
+  text-overflow: clip;
+  overflow: hidden;
+}
+
+
+/* ---- 7. Theme integration ---- */
+
+/* All themes already define --paper-*, --folder-*, --desk-* --postit-*
+   in themes.css. The hybrid layout reads them automatically.
+   These are just fallback safety nets. */
+
+body[data-theme] .games-v2-rolodex {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--paper-bg, #f5f0e6) 95%, white) 0px,
+      color-mix(in srgb, var(--paper-bg, #f5f0e6) 95%, white) 3px,
+      color-mix(in srgb, var(--paper-bg, #f5f0e6) 80%, #000) 3px,
+      color-mix(in srgb, var(--paper-bg, #f5f0e6) 80%, #000) 4px
+    ),
+    var(--paper-bg, #f5f0e6);
+}

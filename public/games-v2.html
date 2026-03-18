@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="FIELD KIT — Puzzles, decryption keys, and reconnaissance toys.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // FIELD KIT</title>
+
+  <link rel="stylesheet" href="css/crt.css?v=20260314e">
+  <link rel="stylesheet" href="css/themes.css?v=20260314a">
+  <link rel="stylesheet" href="css/dossier-page.css?v=20260318c">
+  <link rel="stylesheet" href="css/games.css?v=20260314e">
+  <link rel="stylesheet" href="css/games-hybrid.css?v=20260318a">
+  <link rel="stylesheet" href="css/reveal-zone.css?v=20260316a">
+  <link rel="stylesheet" href="css/nch-overlay.css?v=20260316b">
+  <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
+  <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════ WOODEN HEADER (desk nav bar) ═══════ -->
+  <nav class="games-v2-nav">
+    <a href="/" class="games-v2-nav-brand">EYES ONLY</a>
+    <div class="games-v2-nav-links">
+      <a href="/booking.html" class="games-v2-nav-link">&#9824; BKNG</a>
+      <a href="/partners.html" class="games-v2-nav-link">&#9829; PRTNRS</a>
+      <a href="/contact.html" class="games-v2-nav-link">&#9827; CNTCT</a>
+      <a href="/games-v2.html" class="games-v2-nav-link active">&#9830; ARCD</a>
+    </div>
+  </nav>
+
+  <!-- ═══════ DESK SURFACE ═══════ -->
+  <div class="dossier-desk games-v2-desk">
+    <div class="dossier-folder games-v2-folder">
+      <div class="dossier-folder-tab">Field Kit</div>
+      <div class="dossier-paper games-v2-paper">
+
+        <!-- ═══════ LEFT: Sticky note nav (desktop only) ═══════ -->
+        <aside class="games-v2-postit-nav">
+          <div class="postit games-v2-nav-postit">
+            <div class="postit-label">OPERATIONS</div>
+            <a class="games-v2-nav-item" data-target="row-decryption">&#9670; DCRYPTN</a>
+            <a class="games-v2-nav-item" data-target="row-puzzles">&#9670; PZZLS</a>
+            <a class="games-v2-nav-item" data-target="row-qr-field-ops">&#9670; QR OPS</a>
+            <a class="games-v2-nav-item" data-target="row-arcade">&#9670; ARCD</a>
+          </div>
+          <div class="postit games-v2-nav-postit">
+            <div class="postit-label">CAMPAIGNS</div>
+            <a class="games-v2-nav-item" data-target="row-street-chronicles">&#9670; STR-CHR</a>
+            <a class="games-v2-nav-item" data-target="row-gone-rogue">&#9670; GN RGE</a>
+          </div>
+          <div class="postit games-v2-nav-postit">
+            <div class="postit-label">STATUS</div>
+            <div class="games-v2-nav-stat" id="nav-stat-qr">3 QR LV</div>
+            <div class="games-v2-nav-stat" id="nav-stat-arcade">6 ARCD</div>
+            <a href="/puzzle-designer" class="games-v2-nav-designer">&#9881; DSGNR</a>
+          </div>
+        </aside>
+
+        <!-- ═══════ MOBILE: Paper torso (horizontal nav strip) ═══════ -->
+        <div class="games-v2-torso">
+          <button class="games-v2-torso-btn" data-target="row-decryption">DCRYPTN</button>
+          <button class="games-v2-torso-btn" data-target="row-puzzles">PZZLS</button>
+          <button class="games-v2-torso-btn" data-target="row-qr-field-ops">QR OPS</button>
+          <button class="games-v2-torso-btn" data-target="row-arcade">ARCD</button>
+          <button class="games-v2-torso-btn" data-target="row-street-chronicles">STR-CHR</button>
+          <button class="games-v2-torso-btn" data-target="row-gone-rogue">GN RGE</button>
+        </div>
+
+        <!-- ═══════ CRT MONITOR (bezel frame wrapping the games content) ═══════ -->
+        <div class="games-v2-monitor">
+          <div id="crt-screen">
+
+            <!-- CRT Effect Layers -->
+            <div id="phosphor-glow"></div>
+            <div id="scanlines"></div>
+            <div id="vignette"></div>
+
+            <div id="crt-frame">
+              <!-- Internal header kept in DOM for backward compat but hidden by CSS -->
+              <header id="mok-header" class="monitor-header">
+                <a href="/" class="mok-header-copy" style="text-decoration:none;color:inherit;">
+                  <div class="mok-header-title">EyesOnly Spy Games:</div>
+                  <div class="mok-header-sub"><span id="actor-name-display">Field Kit</span></div>
+                </a>
+                <nav class="mok-header-nav" aria-label="Quick links"></nav>
+                <div class="mok-header-right">
+                  <div class="mok-header-item-stack" id="active-item-slot" title="Active Item">
+                    <div id="active-item-display" class="active-item-display">
+                      <span class="empty-slot-indicator">&middot;</span>
+                    </div>
+                    <div id="currency-display" class="currency-display" title="Cryptos">
+                      <span class="currency-symbol">&cent;</span>
+                      <span id="currency-value" class="currency-value">00000000</span>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div id="monitor-shell">
+                <div class="log-frame games-log-frame" id="games-log-frame">
+
+          <!-- Scanline overlay for inner screen feel -->
+          <div class="games-scanlines"></div>
+
+          <!-- Scrollable content area -->
+          <div class="games-content" id="games-content">
+
+            <!-- ═══════════════ DECRYPTION ITEMS (default expanded) ═══════════════ -->
+            <div class="games-row" id="row-decryption">
+              <button class="games-row-header" data-target="decryption-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
+                <span class="games-row-label">DECRYPTION ITEMS</span>
+                <span class="games-row-count">INVENTORY</span>
+                <span class="games-row-status">PERSISTENT</span>
+              </button>
+              <div class="games-row-body games-row-body-open" id="decryption-body">
+                <div class="games-inventory-scroll" id="decryption-scroll">
+                <div class="games-inventory-grid" id="decryption-inventory">
+                  <div class="games-inv-slot" data-slot="0" data-item="magnifying-glass">
+                    <div class="games-inv-slot-inner games-inv-occupied">
+                      <span class="games-inv-item-icon">&#128270;</span>
+                      <span class="games-inv-slot-label">MAGNIFIER</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="1">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">02</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="2">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">03</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="3">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">04</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="4">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">05</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="5">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">06</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="6">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">07</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="7">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">08</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="8">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">09</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="9">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">10</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="10">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">11</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="11">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">12</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="12">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">13</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot" data-slot="13">
+                    <div class="games-inv-slot-inner games-inv-empty">
+                      <span class="games-inv-slot-num">14</span>
+                      <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                </div>
+                </div><!-- /games-inventory-scroll -->
+              </div>
+            </div>
+
+            <!-- ═══════════════ PUZZLES ═══════════════ -->
+            <div class="games-row" id="row-puzzles">
+              <button class="games-row-header" data-target="puzzles-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">PUZZLES</span>
+                <span class="games-row-count">4 ITEMS</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="puzzles-body">
+                <!-- Decoder Ring — interactive pigpen cipher wheel -->
+                <div class="games-decoder-ring-wrap" id="decoder-ring-wrap">
+                  <div class="games-decoder-header">
+                    <span class="games-decoder-header-label">DECODER RING</span>
+                    <span class="games-decoder-header-status" id="decoder-ring-status">STANDBY</span>
+                  </div>
+                  <div class="games-decoder-ring" id="decoder-ring">
+                    <canvas id="decoder-ring-canvas" width="240" height="240"></canvas>
+                  </div>
+                  <div class="games-decoder-output">
+                    <span class="games-decoder-output-label">DECODE:</span>
+                    <span class="games-decoder-output-pair" id="decoder-output-pair">— &rarr; —</span>
+                  </div>
+                  <div class="games-decoder-hint" id="decoder-ring-hint">Equip a decryption item to activate</div>
+                </div>
+
+                <div class="games-item games-item-playable" data-puzzle="dead-drop-cipher" data-sound="ui-01">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Dead Drop Cipher</div>
+                    <div class="games-item-desc">Decode the intercepted message using the field manual key table. QR-activated at Sandpoint waypoints.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">NARRATIVE</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Surveillance Grid</div>
+                    <div class="games-item-desc">Pattern-matching recon puzzle. Identify the anomaly in the surveillance feed before time runs out.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-timed">TIMED</span>
+                </div>
+                <div class="games-item">
+                  <span class="games-item-icon">&#9641;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Asset Extraction Map</div>
+                    <div class="games-item-desc">Navigate the extraction route using only compass bearings and landmark descriptions. Field-deployable.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">FIELD</span>
+                </div>
+                <div class="games-item games-item-locked">
+                  <span class="games-item-icon">&#9632;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">[REDACTED]</div>
+                    <div class="games-item-desc">Requires CLEARANCE LEVEL 2. Complete a live scenario to unlock.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-locked">LOCKED</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ QR FIELD OPS (QR-activated puzzles) ═══════════════ -->
+            <div class="games-row" id="row-qr-field-ops">
+              <button class="games-row-header" data-target="qr-field-ops-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">QR FIELD OPS</span>
+                <span class="games-row-count">3 MISSIONS</span>
+                <span class="games-row-status">QR-LINKED</span>
+              </button>
+              <div class="games-row-body" id="qr-field-ops-body">
+                <div class="games-item games-item-playable" data-puzzle="qr-cipher" data-sound="ui-01">
+                  <span class="games-item-icon">&#9678;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Field Cipher Wheel</div>
+                    <div class="games-item-desc">Rotate the cipher wheel to decode an intercepted transmission. QR-activated at field waypoints.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">CIPHER</span>
+                </div>
+                <div class="games-item games-item-playable" data-puzzle="qr-jigsaw" data-sound="ui-01">
+                  <span class="games-item-icon">&#9638;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Surveillance Recon</div>
+                    <div class="games-item-desc">Reassemble a scrambled intelligence grid to recover surveillance data. Slide tiles to solve.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-timed">VISUAL</span>
+                </div>
+                <div class="games-item games-item-playable" data-puzzle="qr-riddle" data-sound="ui-01">
+                  <span class="games-item-icon">&#9733;</span>
+                  <div class="games-item-info">
+                    <div class="games-item-name">Intel Riddles</div>
+                    <div class="games-item-desc">Decode a series of field intelligence riddles. Three intercepts to crack — hints available.</div>
+                  </div>
+                  <span class="games-item-tag games-tag-narrative">RIDDLE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ ARCADE ═══════════════ -->
+            <div class="games-row" id="row-arcade">
+              <button class="games-row-header" data-target="arcade-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">ARCADE</span>
+                <span class="games-row-count">6 GAMES</span>
+                <span class="games-row-status">AVAILABLE</span>
+              </button>
+              <div class="games-row-body" id="arcade-body">
+                <div class="games-arcade-grid">
+                  <button class="games-arcade-tile" data-minigame="ski-free" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9975;</span>
+                    <span class="games-arcade-title">SKI FREE</span>
+                    <span class="games-arcade-desc">Downhill dodge</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="jezzball" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9673;</span>
+                    <span class="games-arcade-title">JEZZBALL</span>
+                    <span class="games-arcade-desc">Trap the balls</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="frogger" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9752;</span>
+                    <span class="games-arcade-title">FROGGER</span>
+                    <span class="games-arcade-desc">Cross the road</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="snake" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9783;</span>
+                    <span class="games-arcade-title">SNAKE</span>
+                    <span class="games-arcade-desc">Eat &amp; grow</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="minesweeper" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9881;</span>
+                    <span class="games-arcade-title">MINESWEEPER</span>
+                    <span class="games-arcade-desc">Clear the grid</span>
+                  </button>
+                  <button class="games-arcade-tile" data-minigame="breakout" data-sound="ui-01">
+                    <span class="games-arcade-icon">&#9654;</span>
+                    <span class="games-arcade-title">BREAKOUT</span>
+                    <span class="games-arcade-desc">Smash bricks</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ STREET-CHRONICLES ═══════════════ -->
+            <div class="games-row" id="row-street-chronicles">
+              <button class="games-row-header" data-target="street-chronicles-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">STREET-CHRONICLES</span>
+                <span class="games-row-count">CAMPAIGN</span>
+                <span class="games-row-status">READY</span>
+              </button>
+              <div class="games-row-body" id="street-chronicles-body">
+                <div class="games-launcher">
+                  <div class="games-launcher-banner">
+                    <div class="games-launcher-title">Street-Chronicles</div>
+                    <div class="games-launcher-sub">Turn-based tactical card combat on the streets of Sandpoint.</div>
+                  </div>
+                  <div class="games-launcher-details">
+                    <div class="games-launcher-detail"><span class="games-detail-key">MODE</span><span class="games-detail-val">Campaign / Encounters</span></div>
+                    <div class="games-launcher-detail"><span class="games-detail-key">STATUS</span><span class="games-detail-val" id="str-status">No active run</span></div>
+                  </div>
+                  <button class="games-launch-btn" id="launch-street-chronicles" data-sound="ui-04">
+                    <span class="games-launch-icon">&#9654;</span>
+                    <span class="games-launch-text">LAUNCH STREET-CHRONICLES</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ GONE-ROGUE ═══════════════ -->
+            <div class="games-row" id="row-gone-rogue">
+              <button class="games-row-header" data-target="gone-rogue-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">GONE-ROGUE</span>
+                <span class="games-row-count">ROGUELIKE</span>
+                <span class="games-row-status">READY</span>
+              </button>
+              <div class="games-row-body" id="gone-rogue-body">
+                <div class="games-launcher">
+                  <div class="games-launcher-banner">
+                    <div class="games-launcher-title">Gone Rogue</div>
+                    <div class="games-launcher-sub">Procedural stealth roguelike. Seeded runs, tiered difficulty, persistent unlocks.</div>
+                  </div>
+                  <div class="games-launcher-details">
+                    <div class="games-launcher-detail"><span class="games-detail-key">TIERS</span><span class="games-detail-val">Trailhead &middot; Black Ops &middot; Burn Notice</span></div>
+                    <div class="games-launcher-detail"><span class="games-detail-key">SEED</span><span class="games-detail-val games-seed-display" id="rogue-seed">RANDOM</span></div>
+                  </div>
+                  <div class="games-seed-row">
+                    <label class="games-seed-label" for="rogue-seed-input">SEED:</label>
+                    <input type="text" class="games-seed-input" id="rogue-seed-input"
+                           placeholder="adjective-noun-number" autocomplete="off" spellcheck="false">
+                    <button class="games-seed-randomize" id="rogue-seed-randomize" type="button" title="Randomize seed">&#10227;</button>
+                  </div>
+                  <button class="games-launch-btn games-launch-rogue" id="launch-gone-rogue" data-sound="ui-04">
+                    <span class="games-launch-icon">&#9654;</span>
+                    <span class="games-launch-text">LAUNCH GONE-ROGUE</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /games-content -->
+
+          <!-- Bottom status bar -->
+          <div class="games-footer-strip">
+            <span class="games-footer-sig">EYES ONLY // FIELD KIT v1.0</span>
+            <span class="games-footer-time" id="games-clock">00:00:00</span>
+          </div>
+
+        </div><!-- /games-log-frame -->
+      </div><!-- /monitor-shell -->
+    </div><!-- /crt-frame -->
+  </div><!-- /crt-screen -->
+        </div><!-- /games-v2-monitor -->
+
+      </div><!-- /dossier-paper games-v2-paper -->
+    </div><!-- /dossier-folder games-v2-folder -->
+  </div><!-- /dossier-desk games-v2-desk -->
+
+  <!-- ═══════ ROLODEX FOOTER ═══════ -->
+  <footer class="games-v2-rolodex">
+    <div class="games-v2-rolodex-content">
+      <span class="games-v2-rolodex-brand">EYES ONLY // FLD KT v1.0</span>
+      <div class="games-v2-rolodex-items">
+        <a href="/booking.html" class="games-v2-rolodex-tab">
+          &#9824; BKNG
+          <span class="games-v2-rolodex-tooltip">Book a Mission</span>
+        </a>
+        <a href="/partners.html" class="games-v2-rolodex-tab">
+          &#9829; PRTNRS
+          <span class="games-v2-rolodex-tooltip">Partner Sign-Up</span>
+        </a>
+        <a href="/contact.html" class="games-v2-rolodex-tab">
+          &#9827; CNTCT
+          <span class="games-v2-rolodex-tooltip">Contact Us</span>
+        </a>
+        <a href="/puzzle-designer" class="games-v2-rolodex-tab">
+          &#9881; DSGNR
+          <span class="games-v2-rolodex-tooltip">Puzzle Designer Portal</span>
+        </a>
+      </div>
+      <span class="games-v2-rolodex-clock" id="games-clock">00:00:00</span>
+    </div>
+  </footer>
+
+  <script src="js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
+
+  <!-- Shared item renderer (abbreviateName, resolve, etc.) -->
+  <script src="js/shared-item-renderer.js"></script>
+
+  <!-- Account inventory (seeds default items on first visit) -->
+  <script src="js/account-inventory.js"></script>
+  <!-- Compass widget: orientation overlay (requires account-inventory) -->
+  <script src="js/compass-widget.js?v=20260318a"></script>
+
+  <!-- Starfield for porthole magnifying glass drag -->
+  <script src="js/starfield.js"></script>
+
+  <!-- Phase 8: Constellation tracing subsystems -->
+  <script src="js/lens-state.js?v=20260317e"></script>
+  <script src="js/suit-node-renderer.js?v=20260317a"></script>
+  <script src="js/constellation-gamestate.js?v=20260317b"></script>
+  <script src="js/constellation-rewards.js?v=20260317a"></script>
+  <script src="js/constellation-tracer.js?v=20260317a"></script>
+  <script src="js/constellation-validator.js?v=20260317c"></script>
+  <script src="js/suit-transformer.js?v=20260317d"></script>
+  <script src="js/satellite-scrubber.js?v=20260317d"></script>
+  <script src="js/constellation-generator.js?v=20260317e"></script>
+  <script src="js/constellation-procgen.js?v=20260317c"></script>
+  <script src="js/star-destroyer.js?v=20260317e"></script>
+  <script src="js/constellation-cascade.js?v=20260317e"></script>
+  <script src="js/constellation-loader.js?v=20260317a"></script>
+  <!-- NCH Overlay — porthole capsule + coin-card fan (Phase 5: lens source for reveals) -->
+  <script src="js/audio-mini-widget.js"></script>
+  <script src="js/nch-overlay.js?v=20260316d"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof NchOverlay !== 'undefined') {
+        NchOverlay.init({ autoStarfield: true });
+      }
+      if (typeof CompassWidget !== 'undefined') {
+        CompassWidget.init();
+      }
+    });
+  </script>
+
+  <!-- Cross-page puzzle state (Phase 7) — must load before reveal-grid -->
+  <script src="js/puzzle-state.js?v=20260316b"></script>
+
+  <!-- Reveal grid + magnifying glass drag interaction -->
+  <script src="js/reveal-grid.js?v=20260316b"></script>
+  <script src="js/magnifying-glass-drag.js?v=20260316b"></script>
+
+  <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
+  <script src="js/item-popup.js"></script>
+
+  <!-- Audio system for SFX -->
+  <script src="js/audio-system.js?v=20260309d"></script>
+
+  <!-- Arcade minigames -->
+  <script src="js/minigames/ski-free.js"></script>
+  <script src="js/minigames/jezzball.js"></script>
+  <script src="js/minigames/frogger.js"></script>
+  <script src="js/minigames/snake.js"></script>
+  <script src="js/minigames/minesweeper.js"></script>
+  <script src="js/minigames/breakout.js"></script>
+  <script src="js/minigame-modal.js"></script>
+
+  <!-- Puzzle popup system + puzzles -->
+  <script src="js/puzzle-popup.js"></script>
+  <script src="js/puzzles/dead-drop-cipher.js"></script>
+
+  <!-- QR Field Ops puzzle scripts (must load AFTER puzzle-popup.js) -->
+  <script src="js/puzzles/qr-cipher-wheel.js"></script>
+  <script src="js/puzzles/qr-jigsaw.js"></script>
+  <script src="js/puzzles/qr-riddle.js"></script>
+
+  <!-- Dynamic loader for designer-portal puzzles (fetches from /api/puzzles/live) -->
+  <script src="js/puzzles/qr-custom.js"></script>
+
+  <!-- QR hash-route auto-opener (must load AFTER puzzle scripts register) -->
+  <script src="js/qr-router.js"></script>
+
+  <!-- Hybrid layout: sticky note nav + torso button controller -->
+  <script src="js/games-nav.js"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- Inventory scroll: remove fade mask once user scrolls ---- */
+    var invScroll = document.getElementById('decryption-scroll');
+    if (invScroll) {
+      invScroll.addEventListener('scroll', function () {
+        if (invScroll.scrollLeft > 4) {
+          invScroll.classList.add('scroll-active');
+        } else {
+          invScroll.classList.remove('scroll-active');
+        }
+      }, { passive: true });
+    }
+
+    /* ---- Clock ---- */
+    function tickClock() {
+      var el = document.getElementById('games-clock');
+      if (!el) return;
+      var d = new Date();
+      el.textContent =
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0') + ':' +
+        String(d.getSeconds()).padStart(2, '0');
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    /* ---- Expandable rows with localStorage persistence ---- */
+    var EXPAND_KEY = 'eyesonly_games_expanded';
+
+    function getSavedExpanded() {
+      try {
+        var raw = localStorage.getItem(EXPAND_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    }
+
+    function saveExpanded() {
+      try {
+        var state = {};
+        document.querySelectorAll('.games-row-header').forEach(function (btn) {
+          var id = btn.getAttribute('data-target');
+          state[id] = btn.getAttribute('aria-expanded') === 'true';
+        });
+        localStorage.setItem(EXPAND_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    /* Restore saved expand state (decryption defaults to open) */
+    var saved = getSavedExpanded();
+    if (saved) {
+      document.querySelectorAll('.games-row-header').forEach(function (btn) {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+        var shouldOpen = saved[targetId];
+        if (shouldOpen === undefined && targetId === 'decryption-body') shouldOpen = true;
+        if (shouldOpen) {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        } else {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        }
+      });
+    }
+
+    var headers = document.querySelectorAll('.games-row-header');
+    headers.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        } else {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        }
+
+        saveExpanded();
+
+        // SFX
+        if (window.AudioSystem && AudioSystem.playSFX) {
+          AudioSystem.playSFX('ui-04');
+        }
+      });
+    });
+
+    /* ---- Launchers ---- */
+    var launchStr = document.getElementById('launch-street-chronicles');
+    if (launchStr) {
+      launchStr.addEventListener('click', function () {
+        window.location.href = '/#street-chronicles';
+      });
+    }
+
+    var launchRogue = document.getElementById('launch-gone-rogue');
+    if (launchRogue) {
+      launchRogue.addEventListener('click', function () {
+        var seedInput = document.getElementById('rogue-seed-input');
+        var seed = seedInput ? seedInput.value.trim() : '';
+        var url = seed ? '/?rogue=1&seed=' + encodeURIComponent(seed) : '/?rogue=1';
+        window.location.href = url;
+      });
+    }
+
+    /* ---- Seed randomize ---- */
+    var adjectives = ['silent', 'crimson', 'frozen', 'phantom', 'hollow', 'steel', 'velvet', 'shadow', 'iron', 'cobalt'];
+    var nouns = ['falcon', 'viper', 'ghost', 'raven', 'sphinx', 'dagger', 'cipher', 'storm', 'wolf', 'ember'];
+    var randomizeBtn = document.getElementById('rogue-seed-randomize');
+    if (randomizeBtn) {
+      randomizeBtn.addEventListener('click', function () {
+        var adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        var noun = nouns[Math.floor(Math.random() * nouns.length)];
+        var num = Math.floor(Math.random() * 999) + 1;
+        var seedInput = document.getElementById('rogue-seed-input');
+        if (seedInput) seedInput.value = adj + '-' + noun + '-' + num;
+        var display = document.getElementById('rogue-seed');
+        if (display) display.textContent = seedInput.value;
+        if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+      });
+    }
+
+    /* ---- Data-sound delegate ---- */
+    document.addEventListener('click', function (e) {
+      var target = e.target.closest('[data-sound]');
+      if (target && window.AudioSystem && AudioSystem.playSFX) {
+        AudioSystem.playSFX(target.getAttribute('data-sound'));
+      }
+    });
+
+    /* ---- Arcade tile launchers ---- */
+    document.querySelectorAll('.games-arcade-tile[data-minigame]').forEach(function (tile) {
+      tile.addEventListener('click', function () {
+        var key = tile.getAttribute('data-minigame');
+        if (window.MinigameModal) MinigameModal.open(key);
+      });
+    });
+
+    /* ---- Puzzle popup binding ---- */
+    (function initPuzzles() {
+      if (typeof PuzzlePopup === 'undefined') return;
+      var content = document.getElementById('games-content');
+      if (content) {
+        PuzzlePopup.bind(content);
+      }
+    })();
+
+    /* ---- Populate decryption inventory from AccountInventory ---- */
+    (function populateInventory() {
+      if (typeof AccountInventory === 'undefined') return;
+
+      var items = AccountInventory.init();
+      var grid = document.getElementById('decryption-inventory');
+      if (!grid) return;
+
+      var SLOT_COUNT = 14;
+      var slots = grid.querySelectorAll('.games-inv-slot');
+
+      // Abbreviator helper — uses SharedItemRenderer if available, else truncate
+      var abbrev = (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName)
+        ? function (n) { return SharedItemRenderer.abbreviateName(n, 10).toUpperCase(); }
+        : function (n) { return (n || '').substring(0, 10).toUpperCase(); };
+
+      // Map account items to slots
+      items.forEach(function (item, idx) {
+        if (idx >= SLOT_COUNT || idx >= slots.length) return;
+        var slot = slots[idx];
+        var emoji = (item.meta && item.meta.emoji) || '📦';
+        var label = (item.meta && item.meta.name) || item.id;
+        // Canonical item-key mapping: ITM IDs → data-item keys used by popup/drag systems
+        var ITEM_KEY_MAP = {
+          'ITM-200': 'magnifying-glass',
+          'ITM-201': 'cypher-note-2',
+          'ITM-202': 'decoder-ring'
+        };
+        var itemKey = ITEM_KEY_MAP[item.id] || item.id.toLowerCase();
+
+        slot.setAttribute('data-item', itemKey);
+        slot.setAttribute('data-item-id', item.id);
+
+        // Magnifying glass: prevent browser native drag (HTML attribute + CSS together)
+        if (itemKey === 'magnifying-glass') {
+          slot.setAttribute('draggable', 'false');
+        }
+
+        var inner = slot.querySelector('.games-inv-slot-inner');
+        if (inner) {
+          inner.className = 'games-inv-slot-inner games-inv-occupied';
+          inner.innerHTML =
+            '<span class="games-inv-item-icon"' +
+            (itemKey === 'magnifying-glass' ? ' draggable="false"' : '') +
+            '>' + emoji + '</span>' +
+            '<span class="games-inv-slot-label">' + abbrev(label) + '</span>';
+        }
+      });
+    })();
+
+    /* ---- Initialize magnifying glass drag + starfield ---- */
+    (function initMagDrag() {
+      if (typeof MagnifyingGlassDrag === 'undefined') return;
+
+      // Init drag FIRST — must always succeed, starfield is optional eye-candy
+      var content = document.getElementById('games-content');
+      if (content) {
+        MagnifyingGlassDrag.init(content);
+      }
+
+      // Init starfield for porthole rendering (non-fatal if it fails)
+      try {
+        if (typeof EyesOnlyStarfield !== 'undefined' && !EyesOnlyStarfield.isRunning()) {
+          EyesOnlyStarfield.init();
+        }
+      } catch (err) {
+        console.warn('[FIELD KIT] Starfield init failed (porthole will render without stars):', err);
+      }
+    })();
+
+    /* ---- Register item popups ---- */
+    (function initItemPopups() {
+      if (typeof ItemPopup === 'undefined') return;
+
+      // Cypher Note #2 (pigpen cipher key — grid N-V)
+      ItemPopup.register('cypher-note-2', {
+        emoji: '\uD83D\uDCDC',
+        title: 'CYPHER NOTE #2',
+        imageSrc: '/assets/Images/Items/Cypher_Notes0-3/Cypher_Note_2.png',
+        imageAlt: 'Pigpen cipher key — grid N through V',
+        description: 'A torn page from the field manual. The pigpen cipher grid for letters N through V. Find the remaining 3 pages to complete the key.',
+        itemId: 'ITM-201'
+      });
+
+      // Bind popup clicks to the games content area
+      var content = document.getElementById('games-content');
+      if (content) {
+        ItemPopup.bind(content);
+      }
+    })();
+
+    /* ---- Reveal Grid: hidden items beneath the page (Phase 5) ---- */
+    /* ARCHITECTURE:
+     * - Zones are declared via JSON, managed by RevealGrid module.
+     * - Lens sources (magnifying glass, coin-card portholes) call
+     *   RevealGrid.beginLensSession / updateLens / endLensSession.
+     * - Overlap detection, slide-in animation, lock-in threshold,
+     *   and release actions are all handled by reveal-grid.js.
+     * - This replaces the old hardcoded data-mag-reveal collision system.
+     */
+    (function initRevealGrid() {
+      if (typeof RevealGrid === 'undefined') return;
+
+      // Helper: populate an inventory slot when an item is deposited
+      function depositToSlot(zone) {
+        var c = zone.content || {};
+        var grid = document.getElementById('decryption-inventory');
+        if (!grid) return;
+        var slots = grid.querySelectorAll('.games-inv-slot');
+        var slot = null;
+        for (var i = 0; i < slots.length; i++) {
+          if (!slots[i].getAttribute('data-item')) { slot = slots[i]; break; }
+        }
+        if (!slot) return;
+
+        slot.setAttribute('data-item', c.itemKey || zone.id);
+        slot.setAttribute('data-item-id', c.itemId || zone.id);
+        slot.classList.add('mag-revealed');
+
+        var inner = slot.querySelector('.games-inv-slot-inner');
+        if (inner) {
+          inner.className = 'games-inv-slot-inner games-inv-occupied';
+          var label = c.label || zone.id;
+          var abbrLabel = (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName)
+            ? SharedItemRenderer.abbreviateName(label, 10).toUpperCase()
+            : label.substring(0, 10).toUpperCase();
+          inner.innerHTML =
+            '<span class="games-inv-item-icon">' + (c.emoji || '❓') + '</span>' +
+            '<span class="games-inv-slot-label">' + abbrLabel + '</span>';
+        }
+
+        // Clean up old data-mag-reveal zone (backwards compat)
+        var oldZone = document.querySelector('[data-mag-reveal="' + zone.id + '"]');
+        if (oldZone) {
+          oldZone.removeAttribute('data-mag-reveal');
+          oldZone.classList.remove('mag-reveal-active');
+        }
+      }
+
+      // Restore previously revealed items on page load
+      function restoreRevealed(zones) {
+        zones.forEach(function (zone) {
+          if (!RevealGrid.isRevealed(zone.id)) return;
+          if (!zone.oneShot) return;
+          var c = zone.content || {};
+          var stillExists = typeof AccountInventory !== 'undefined' &&
+            AccountInventory.hasItem(c.itemId || zone.id);
+          if (stillExists) {
+            var alreadyInGrid = document.querySelector(
+              '.games-inv-slot[data-item="' + (c.itemKey || zone.id) + '"]'
+            );
+            if (!alreadyInGrid) {
+              depositToSlot(zone);
+            }
+            // Clean up old detection zone either way
+            var oldZone = document.querySelector('[data-mag-reveal="' + zone.id + '"]');
+            if (oldZone) {
+              oldZone.removeAttribute('data-mag-reveal');
+              oldZone.classList.remove('mag-reveal-active');
+            }
+          }
+        });
+      }
+
+      // Zone definitions loaded from /data/reveal-zones-games.json
+      // (externalized for designer editing via portal; inline fallback below)
+      var _FALLBACK_ZONES = [
+        { id: 'cypher-note-2', type: 'item', anchor: { selector: '[data-slot="2"]', offset: [0,0] }, size: [120,120], content: { emoji: '\uD83D\uDCDC', itemId: 'ITM-201', itemKey: 'cypher-note-2', label: 'CYPHER NOTE', meta: { name: 'Cypher Note', emoji: '\uD83D\uDCDC', type: 'equipment', subtype: 'investigation', rarity: 'uncommon', platformItem: true, noteIndex: 2 } }, reveal: { enter: 'slide', lockThreshold: 0.75, lockAnimation: 'pulse-glow', onRelease: 'deposit-to-inventory' }, tier: 'SEMI_HIDDEN', oneShot: true, palette: 'phosphor' },
+        { id: 'qr-arcade-secret', type: 'qr', anchor: { selector: '#row-arcade', offset: [200,50] }, size: [100,100], content: { qrData: 'https://eyesonly.game/secret/arcade-01', fgColor: '#33ff33', bgColor: 'transparent' }, reveal: { enter: 'fade', lockThreshold: 0.6, lockAnimation: 'scan-line', onRelease: 'persist-found' }, tier: 'CONCEALED', oneShot: false, palette: 'phosphor' },
+        { id: 'briefing-rogue', type: 'video', anchor: { selector: '#row-gone-rogue', offset: [-30,80] }, size: [200,150], content: { src: '/media/secret-briefing.webm', autoplay: true, loop: false }, reveal: { enter: 'slide', lockThreshold: 0.8, lockAnimation: 'border-glow', onRelease: 'pause-and-persist' }, tier: 'HIDDEN', oneShot: false, palette: 'panther' }
+      ];
+
+      function _initRevealGrid(zones) {
+        RevealGrid.init({
+          zones: zones,
+          onDeposit: function (zone) { depositToSlot(zone); }
+        });
+        restoreRevealed(zones);
+      }
+
+      // Try loading from external JSON; fall back to inline array
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/data/reveal-zones-games.json?v=20260317a', true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            var zones = data.zones || _FALLBACK_ZONES;
+            console.log('[games.html] Loaded ' + zones.length + ' zones from reveal-zones-games.json');
+            _initRevealGrid(zones);
+            return;
+          } catch (e) {
+            console.warn('[games.html] Failed to parse zones JSON, using fallback:', e);
+          }
+        }
+        _initRevealGrid(_FALLBACK_ZONES);
+      };
+      xhr.send();
+
+      // Initialize cross-page puzzle state (Phase 7)
+      if (typeof PuzzleState !== 'undefined') {
+        PuzzleState.init();
+      }
+
+    })();
+
+    /* ---- Equip toggle: click inventory items to equip/unequip ---- */
+    (function initEquipToggle() {
+      var EQUIP_KEY = 'eyesonly_equipped_item';
+      var activeDisplay = document.getElementById('active-item-display');
+      var activeSlot = document.getElementById('active-item-slot');
+      var decoderStatus = document.getElementById('decoder-ring-status');
+      var decoderHint = document.getElementById('decoder-ring-hint');
+      var decoderCanvas = document.getElementById('decoder-ring-canvas');
+
+      function getEquipped() {
+        try { return JSON.parse(localStorage.getItem(EQUIP_KEY)); } catch (_) { return null; }
+      }
+
+      function saveEquipped(data) {
+        try {
+          if (data) localStorage.setItem(EQUIP_KEY, JSON.stringify(data));
+          else localStorage.removeItem(EQUIP_KEY);
+        } catch (_) {}
+      }
+
+      function updateDisplay(data) {
+        if (!activeDisplay) return;
+        if (data) {
+          activeDisplay.innerHTML = '<span class="active-item-emoji">' + (data.emoji || '📦') + '</span>';
+          activeDisplay.classList.add('has-item');
+          activeDisplay.classList.add('equip-flash');
+          setTimeout(function () { activeDisplay.classList.remove('equip-flash'); }, 450);
+        } else {
+          activeDisplay.innerHTML = '<span class="empty-slot-indicator">&middot;</span>';
+          activeDisplay.classList.remove('has-item');
+        }
+        // Update decoder ring state
+        updateDecoderState(data);
+      }
+
+      function updateDecoderState(equipped) {
+        var isDecoder = equipped && equipped.subtype === 'decryption';
+        if (decoderStatus) {
+          decoderStatus.textContent = isDecoder ? 'ACTIVE' : 'STANDBY';
+          decoderStatus.className = 'games-decoder-header-status' + (isDecoder ? ' decoder-active' : '');
+        }
+        if (decoderHint) {
+          decoderHint.style.display = isDecoder ? 'none' : '';
+        }
+        if (decoderCanvas) {
+          decoderCanvas.style.opacity = isDecoder ? '1' : '0.25';
+          decoderCanvas.style.pointerEvents = isDecoder ? 'auto' : 'none';
+        }
+        // Auto-expand/highlight puzzles category when decoder ring equipped
+        togglePuzzlesExpand(isDecoder);
+        // Dispatch event so decoder ring module can react
+        try {
+          document.dispatchEvent(new CustomEvent('decoder-ring-state', {
+            detail: { active: isDecoder, equipped: equipped }
+          }));
+        } catch (_) {}
+      }
+
+      // Auto-expand puzzles row when decoder ring is active
+      function togglePuzzlesExpand(shouldExpand) {
+        var puzzleBtn = document.querySelector('.games-row-header[data-target="puzzles-body"]');
+        var puzzleBody = document.getElementById('puzzles-body');
+        var puzzleRow = document.getElementById('row-puzzles');
+        if (!puzzleBtn || !puzzleBody) return;
+
+        if (shouldExpand) {
+          // Expand if not already open
+          if (puzzleBtn.getAttribute('aria-expanded') !== 'true') {
+            puzzleBtn.setAttribute('aria-expanded', 'true');
+            puzzleBody.classList.add('games-row-body-open');
+            puzzleBtn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+          }
+          // Highlight
+          if (puzzleRow) puzzleRow.classList.add('games-row-decoder-active');
+        } else {
+          if (puzzleRow) puzzleRow.classList.remove('games-row-decoder-active');
+          // Don't auto-collapse — let user keep it open if they want
+        }
+      }
+
+      // Highlight currently equipped slot
+      function highlightEquipped(itemId) {
+        var grid = document.getElementById('decryption-inventory');
+        if (!grid) return;
+        grid.querySelectorAll('.games-inv-slot').forEach(function (s) {
+          s.classList.remove('games-inv-equipped');
+        });
+        if (itemId) {
+          var match = grid.querySelector('.games-inv-slot[data-item-id="' + itemId + '"]');
+          if (match) match.classList.add('games-inv-equipped');
+        }
+      }
+
+      // Restore equipped state on load
+      var current = getEquipped();
+      if (current) {
+        // Verify item still exists
+        if (typeof AccountInventory !== 'undefined' && AccountInventory.hasItem(current.id)) {
+          updateDisplay(current);
+          highlightEquipped(current.id);
+        } else {
+          saveEquipped(null);
+        }
+      }
+
+      // Click inventory slot → equip/unequip toggle
+      var content = document.getElementById('games-content');
+      if (content) {
+        content.addEventListener('click', function (e) {
+          // Skip if drag is active
+          if (window.MagnifyingGlassDrag && MagnifyingGlassDrag.isDragging()) return;
+          // Skip if an item popup is open
+          if (window.ItemPopup && ItemPopup.isOpen()) return;
+
+          var slot = e.target.closest('.games-inv-slot[data-item-id]');
+          if (!slot) return;
+
+          var itemId = slot.getAttribute('data-item-id');
+          var itemKey = slot.getAttribute('data-item');
+
+          // Magnifying glass has its own drag behavior; don't equip on click
+          if (itemKey === 'magnifying-glass') return;
+
+          // If popup is registered for this item, let item-popup handle it
+          if (window.ItemPopup && ItemPopup.isRegistered(itemKey)) return;
+
+          // Toggle equip
+          var equipped = getEquipped();
+          if (equipped && equipped.id === itemId) {
+            // Unequip
+            saveEquipped(null);
+            updateDisplay(null);
+            highlightEquipped(null);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+          } else {
+            // Equip: fetch item from AccountInventory
+            var item = (typeof AccountInventory !== 'undefined') ? AccountInventory.getItem(itemId) : null;
+            if (!item) return;
+            var data = {
+              id: item.id,
+              emoji: (item.meta && item.meta.emoji) || '📦',
+              name: (item.meta && item.meta.name) || item.id,
+              subtype: (item.meta && item.meta.subtype) || '',
+              type: (item.meta && item.meta.type) || ''
+            };
+            saveEquipped(data);
+            updateDisplay(data);
+            highlightEquipped(itemId);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-04');
+          }
+        });
+      }
+
+      // Click active item slot → unequip
+      if (activeSlot) {
+        activeSlot.addEventListener('click', function () {
+          var equipped = getEquipped();
+          if (equipped) {
+            saveEquipped(null);
+            updateDisplay(null);
+            highlightEquipped(null);
+            if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-01');
+          }
+        });
+      }
+
+      // Expose for decoder ring module
+      window.GamesEquip = {
+        getEquipped: getEquipped,
+        updateDecoderState: updateDecoderState
+      };
+    })();
+
+    /* ---- Interactive Decoder Ring (pigpen cipher wheel) ---- */
+    (function initDecoderRing() {
+      var canvas = document.getElementById('decoder-ring-canvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var outputPair = document.getElementById('decoder-output-pair');
+
+      var W = canvas.width;
+      var H = canvas.height;
+      var CX = W / 2;
+      var CY = H / 2;
+
+      // Two concentric alphabet rings
+      var OUTER_R = 105;
+      var INNER_R = 70;
+      var OUTER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      var INNER_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+      var outerRotation = 0;            // radians — outer ring offset
+      var innerRotation = Math.PI / 26; // radians — inner ring offset (default shifted by half-letter)
+
+      var dragging = null; // 'outer' | 'inner' | null
+      var dragStartAngle = 0;
+      var dragStartRotation = 0;
+
+      // Default: Caesar-13 (ROT13) offset
+      innerRotation = (13 / 26) * Math.PI * 2;
+
+      function getAngle(x, y) {
+        return Math.atan2(y - CY, x - CX);
+      }
+
+      function getDist(x, y) {
+        return Math.sqrt((x - CX) * (x - CX) + (y - CY) * (y - CY));
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Get theme color
+        var style = getComputedStyle(document.body);
+        var phosphor = style.getPropertyValue('--phosphor').trim() || '#1cff9b';
+        var phosphorDim = style.getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
+
+        // Outer ring background
+        ctx.beginPath();
+        ctx.arc(CX, CY, OUTER_R, 0, Math.PI * 2);
+        ctx.arc(CX, CY, INNER_R + 12, 0, Math.PI * 2, true);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fill();
+
+        // Inner ring background
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 10, 0, Math.PI * 2);
+        ctx.arc(CX, CY, 25, 0, Math.PI * 2, true);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fill();
+
+        // Outer ring border
+        ctx.beginPath();
+        ctx.arc(CX, CY, OUTER_R, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Inner ring border
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 12, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(CX, CY, INNER_R + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Center hub
+        ctx.beginPath();
+        ctx.arc(CX, CY, 25, 0, Math.PI * 2);
+        ctx.strokeStyle = phosphorDim;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Draw outer letters
+        var step = (Math.PI * 2) / 26;
+        ctx.font = 'bold 12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (var i = 0; i < 26; i++) {
+          var angle = outerRotation + i * step - Math.PI / 2;
+          var lx = CX + Math.cos(angle) * (OUTER_R - 14);
+          var ly = CY + Math.sin(angle) * (OUTER_R - 14);
+
+          // Highlight top letter
+          var topIdx = Math.round((-outerRotation / step + 26) % 26) % 26;
+          ctx.fillStyle = (i === topIdx) ? phosphor : phosphorDim;
+          ctx.fillText(OUTER_LETTERS[i], lx, ly);
+
+          // Tick marks
+          var tx1 = CX + Math.cos(angle) * OUTER_R;
+          var ty1 = CY + Math.sin(angle) * OUTER_R;
+          var tx2 = CX + Math.cos(angle) * (OUTER_R - 4);
+          var ty2 = CY + Math.sin(angle) * (OUTER_R - 4);
+          ctx.beginPath();
+          ctx.moveTo(tx1, ty1);
+          ctx.lineTo(tx2, ty2);
+          ctx.strokeStyle = phosphorDim;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+
+        // Draw inner letters
+        ctx.font = 'bold 10px "Courier New", monospace';
+        for (var j = 0; j < 26; j++) {
+          var angle2 = innerRotation + j * step - Math.PI / 2;
+          var lx2 = CX + Math.cos(angle2) * (INNER_R - 4);
+          var ly2 = CY + Math.sin(angle2) * (INNER_R - 4);
+
+          var topIdx2 = Math.round((-innerRotation / step + 26) % 26) % 26;
+          ctx.fillStyle = (j === topIdx2) ? phosphor : phosphorDim;
+          ctx.fillText(INNER_LETTERS[j], lx2, ly2);
+        }
+
+        // Top indicator arrow
+        ctx.beginPath();
+        ctx.moveTo(CX, CY - OUTER_R - 6);
+        ctx.lineTo(CX - 5, CY - OUTER_R - 12);
+        ctx.lineTo(CX + 5, CY - OUTER_R - 12);
+        ctx.closePath();
+        ctx.fillStyle = phosphor;
+        ctx.fill();
+
+        // Update decode output
+        updateOutput();
+      }
+
+      function updateOutput() {
+        if (!outputPair) return;
+        var step = (Math.PI * 2) / 26;
+        var outerIdx = Math.round((-outerRotation / step + 26) % 26) % 26;
+        var innerIdx = Math.round((-innerRotation / step + 26) % 26) % 26;
+        outputPair.textContent = OUTER_LETTERS[outerIdx] + ' \u2192 ' + INNER_LETTERS[innerIdx];
+      }
+
+      // Pointer events
+      function getPointerPos(e) {
+        var rect = canvas.getBoundingClientRect();
+        var scaleX = W / rect.width;
+        var scaleY = H / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      canvas.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var p = getPointerPos(e);
+        var dist = getDist(p.x, p.y);
+        if (dist > INNER_R + 11 && dist <= OUTER_R + 5) {
+          dragging = 'outer';
+          dragStartAngle = getAngle(p.x, p.y);
+          dragStartRotation = outerRotation;
+          canvas.setPointerCapture(e.pointerId);
+        } else if (dist > 25 && dist <= INNER_R + 11) {
+          dragging = 'inner';
+          dragStartAngle = getAngle(p.x, p.y);
+          dragStartRotation = innerRotation;
+          canvas.setPointerCapture(e.pointerId);
+        }
+      });
+
+      canvas.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        e.preventDefault();
+        var p = getPointerPos(e);
+        var currentAngle = getAngle(p.x, p.y);
+        var delta = currentAngle - dragStartAngle;
+
+        if (dragging === 'outer') {
+          outerRotation = dragStartRotation + delta;
+        } else {
+          innerRotation = dragStartRotation + delta;
+        }
+        draw();
+      });
+
+      canvas.addEventListener('pointerup', function () { dragging = null; });
+      canvas.addEventListener('pointercancel', function () { dragging = null; });
+
+      // Listen for theme changes to redraw
+      document.addEventListener('themeChanged', function () { draw(); });
+
+      // Initial draw
+      draw();
+
+      // Listen for decoder activation state
+      document.addEventListener('decoder-ring-state', function () { draw(); });
+    })();
+
+  })();
+  </script>
+
+</body>
+</html>
