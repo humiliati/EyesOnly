@@ -499,6 +499,17 @@
 
     if (detailsForm) detailsForm.addEventListener('submit', handleBookingSubmit);
     if (waiverForm)  waiverForm.addEventListener('submit', handleWaiverSubmit);
+
+    // Post-it note hover SFX (deal_card 15-17 random)
+    var postits = document.querySelectorAll('.postit');
+    postits.forEach(function (el) {
+      el.addEventListener('mouseenter', function () {
+        if (typeof AudioSystem !== 'undefined') {
+          var n = 15 + Math.floor(Math.random() * 3);
+          AudioSystem.play('deal_card_' + n, { volume: 0.3 });
+        }
+      });
+    });
   }
 
   if (document.readyState === 'loading') {

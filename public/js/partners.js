@@ -29,6 +29,24 @@
         if (!isOpen) {
           item.classList.add('faq-open');
           btn.setAttribute('aria-expanded', 'true');
+          // SFX: deal card 14 on expand
+          if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.play('deal_card_14', { volume: 0.45 });
+          }
+        }
+      });
+    });
+  }
+
+  /* ---- Post-it note hover SFX (deal_card 15-17 random) ---- */
+
+  function bindPostitHoverSounds() {
+    var postits = document.querySelectorAll('.postit, .action-card');
+    postits.forEach(function (el) {
+      el.addEventListener('mouseenter', function () {
+        if (typeof AudioSystem !== 'undefined') {
+          var n = 15 + Math.floor(Math.random() * 3); // 15, 16, or 17
+          AudioSystem.play('deal_card_' + n, { volume: 0.3 });
         }
       });
     });
@@ -316,6 +334,7 @@
     bindFormCloseButtons();
     bindFormSubmissions();
     bindNavScroll();
+    bindPostitHoverSounds();
   }
 
   if (document.readyState === 'loading') {
