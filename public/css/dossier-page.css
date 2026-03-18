@@ -375,7 +375,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 14px 32px;
+  padding: 10px 22px;
   border-radius: 8px;
   border: 2.5px solid color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #5a5038);
   /* Solid themed face — the "closed" state */
@@ -411,9 +411,9 @@
   position: relative;
   z-index: 3;
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--paper-heading, #1a1610);
   text-align: center;
@@ -424,11 +424,11 @@
 
 .porthole-btn-label small {
   display: block;
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.06em;
   opacity: 0.55;
-  margin-top: 5px;
+  margin-top: 4px;
   transition: opacity 0.3s ease;
 }
 
@@ -573,13 +573,14 @@
 
 /* Smaller inline variant (action card buttons) */
 .porthole-btn-sm {
-  padding: 11px 22px;
+  padding: 8px 18px;
   border-radius: 6px;
 }
 
 .porthole-btn-sm .porthole-btn-label {
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
 }
 
 .porthole-btn-sm .sparkle { font-size: 8px !important; }
