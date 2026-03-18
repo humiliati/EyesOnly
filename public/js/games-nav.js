@@ -38,16 +38,59 @@
     });
   });
 
-  // ---- Mobile: torso buttons ----
+  // ---- Mobile: torso porthole buttons ----
   document.querySelectorAll('.games-v2-torso-btn[data-target]').forEach(function (btn) {
+    // Init starfield canvas
+    var canvas = btn.querySelector('.torso-starfield');
+    if (canvas) initTorsoStarfield(canvas);
+
     btn.addEventListener('click', function () {
       scrollToRow(btn.getAttribute('data-target'));
 
       // Update active state
-      document.querySelectorAll('.games-v2-torso-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.games-v2-torso-btn').forEach(function (b) { b.classList.remove('active', 'porthole-open'); });
       btn.classList.add('active');
+
+      // Porthole flash: open for 600ms then close
+      btn.classList.add('porthole-open');
+      setTimeout(function () { btn.classList.remove('porthole-open'); }, 600);
     });
   });
+
+  // ---- Tiny starfield for torso porthole effect ----
+  function initTorsoStarfield(canvas) {
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var w = canvas.width;
+    var h = canvas.height;
+    var stars = [];
+    for (var i = 0; i < 30; i++) {
+      stars.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.2 + 0.3,
+        a: Math.random() * 0.7 + 0.3,
+        speed: Math.random() * 0.3 + 0.1
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#060808';
+      ctx.fillRect(0, 0, w, h);
+      for (var j = 0; j < stars.length; j++) {
+        var s = stars[j];
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + s.a + ')';
+        ctx.fill();
+        s.x -= s.speed;
+        if (s.x < 0) { s.x = w; s.y = Math.random() * h; }
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
 
   // ---- Scroll-spy: track which section is in view ----
   var navItems = document.querySelectorAll('.games-v2-nav-item[data-target]');

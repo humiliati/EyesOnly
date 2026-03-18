@@ -92,6 +92,7 @@
     flex-direction: column;
     overflow: hidden;
     padding: 16px;
+    min-height: 0 !important; /* Override dossier-page.css min-height: 100dvh */
   }
 
   .games-v2-folder {
@@ -238,6 +239,10 @@
     overflow-x: hidden !important;
   }
 
+  /* Full nav text on desktop */
+  .games-v2-nav-link .nav-full { display: inline; }
+  .games-v2-nav-link .nav-abbr { display: none; }
+
   /* Mobile torso hidden on desktop */
   .games-v2-torso { display: none; }
 }
@@ -256,8 +261,12 @@
 
   .games-v2-nav { flex-shrink: 0; padding: 8px 14px; }
   .games-v2-nav-brand { font-size: 14px; letter-spacing: 0.15em; }
-  .games-v2-nav-links { gap: 10px; }
-  .games-v2-nav-link { font-size: 11px; }
+  .games-v2-nav-links { gap: 8px; }
+  .games-v2-nav-link { font-size: 10px; }
+
+  /* Abbreviate nav links on mobile — hide full text, show data-abbr */
+  .games-v2-nav-link .nav-full { display: none; }
+  .games-v2-nav-link .nav-abbr { display: inline; }
 
   .games-v2-desk {
     background: var(--bg, #0a0a0a) !important;
@@ -364,7 +373,7 @@
     flex-shrink: 0;
   }
 
-  /* Torso buttons: mini porthole style with breathing glow */
+  /* Torso buttons: porthole-style with subtle glow + starfield on tap */
   .games-v2-torso-btn {
     position: relative;
     padding: 8px 4px;
@@ -375,37 +384,83 @@
     text-transform: uppercase;
     color: var(--paper-heading, #1a1610);
     text-shadow: 0 1px 0 rgba(255,255,255,0.3);
-    background: color-mix(in srgb, var(--theme-primary, #33ff33) 14%, rgba(212, 200, 160, 0.9));
-    border: 1.5px solid var(--theme-primary, #33ff33);
+    background: color-mix(in srgb, var(--theme-primary, #33ff33) 12%, rgba(212, 200, 160, 0.9));
+    border: 1.5px solid color-mix(in srgb, var(--theme-primary, #33ff33) 60%, rgba(100, 90, 60, 0.5));
     border-radius: 5px;
     cursor: pointer;
     white-space: nowrap;
     text-align: center;
     text-overflow: clip;
     overflow: hidden;
-    /* Breathing glow */
+    /* Subtle shadow with thin glow ring — not overpowering */
     box-shadow:
-      0 0 6px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.45)),
-      0 0 16px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.2));
-    animation: porthole-glow-breathe 3s ease-in-out infinite;
-    transition: all 0.2s ease;
+      0 2px 4px rgba(0, 0, 0, 0.15),
+      0 0 3px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.2));
+    animation: torso-glow-breathe 4s ease-in-out infinite;
+    transition: all 0.25s ease;
     -webkit-tap-highlight-color: transparent;
   }
 
-  .games-v2-torso-btn:active {
-    transform: scale(0.95);
+  @keyframes torso-glow-breathe {
+    0%, 100% {
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.15),
+        0 0 3px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.2));
+    }
+    50% {
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.15),
+        0 0 6px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.3));
+    }
+  }
+
+  /* Porthole mode: on tap, background dissolves, starfield visible */
+  .games-v2-torso-btn:active,
+  .games-v2-torso-btn.porthole-open {
+    background: transparent;
+    color: #fff;
+    text-shadow:
+      0 0 6px var(--theme-primary-glow, rgba(51, 255, 51, 0.4)),
+      0 1px 2px rgba(0, 0, 0, 0.8);
+    border-color: var(--theme-primary, #33ff33);
     animation: none;
     box-shadow:
       0 0 0 1px var(--theme-primary, #33ff33),
-      0 0 4px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.3)),
-      inset 0 0 12px rgba(0,0,0,0.3);
+      inset 0 0 10px rgba(0, 0, 0, 0.5);
+    transform: scale(0.97);
     transition-duration: 0.08s;
   }
 
+  /* Starfield canvas inside torso button (injected by games-nav.js) */
+  .games-v2-torso-btn .torso-starfield {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: #060808;
+  }
+
+  .games-v2-torso-btn:active .torso-starfield,
+  .games-v2-torso-btn.porthole-open .torso-starfield {
+    opacity: 1;
+  }
+
+  /* Button label above starfield */
+  .games-v2-torso-btn .torso-label {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+
   .games-v2-torso-btn.active {
-    background: color-mix(in srgb, var(--theme-primary, #33ff33) 22%, rgba(212, 200, 160, 0.95));
+    background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, rgba(212, 200, 160, 0.95));
     font-weight: 900;
-    border-width: 2px;
+    border-color: var(--theme-primary, #33ff33);
   }
 }
 
