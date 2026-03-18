@@ -432,14 +432,6 @@
     </div><!-- /crt-frame -->
   </div><!-- /crt-screen -->
 
-  <!-- QR Field Ops puzzle scripts -->
-  <script src="js/puzzles/qr-cipher-wheel.js"></script>
-  <script src="js/puzzles/qr-jigsaw.js"></script>
-  <script src="js/puzzles/qr-riddle.js"></script>
-
-  <!-- QR hash-route auto-opener (must load AFTER puzzle scripts register) -->
-  <script src="js/qr-router.js"></script>
-
   <script src="js/theme-widget.js"></script>
   <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
 
@@ -507,6 +499,14 @@
   <!-- Puzzle popup system + puzzles -->
   <script src="js/puzzle-popup.js"></script>
   <script src="js/puzzles/dead-drop-cipher.js"></script>
+
+  <!-- QR Field Ops puzzle scripts (must load AFTER puzzle-popup.js) -->
+  <script src="js/puzzles/qr-cipher-wheel.js"></script>
+  <script src="js/puzzles/qr-jigsaw.js"></script>
+  <script src="js/puzzles/qr-riddle.js"></script>
+
+  <!-- QR hash-route auto-opener (must load AFTER puzzle scripts register) -->
+  <script src="js/qr-router.js"></script>
 
   <script>
   (function () {

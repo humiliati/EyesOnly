@@ -6,10 +6,8 @@
  *   flapsandseals.com/games.html#jigsaw
  *   flapsandseals.com/games.html#riddle
  *
- * This script reads the hash fragment, waits for the page to initialize,
- * then auto-opens the corresponding puzzle via PuzzlePopup.
- *
- * Also expands the PUZZLES row and scrolls it into view for context.
+ * This script reads the hash fragment, waits for PuzzlePopup AND the
+ * target puzzle to register, then auto-opens the puzzle popup.
  *
  * Hash → PuzzlePopup key mapping:
  *   #cipher  → 'qr-cipher'
@@ -43,7 +41,6 @@
       if (chevron) chevron.innerHTML = '&#9662;';
     }
 
-    // Also expand the QR field ops row if it exists
     var qrBtn = document.querySelector('#row-qr-field-ops .games-row-header');
     var qrBody = document.getElementById('qr-field-ops-body');
     if (qrBtn && qrBody && !qrBody.classList.contains('games-row-body-open')) {
@@ -62,20 +59,38 @@
     }
   }
 
-  function openPuzzle(puzzleKey) {
-    if (typeof PuzzlePopup === 'undefined') {
-      console.warn('[QR-Router] PuzzlePopup not available');
-      return;
-    }
+  /**
+   * Try to open the puzzle. If PuzzlePopup isn't ready or the puzzle
+   * hasn't registered yet, returns false so the caller can retry.
+   */
+  function tryOpenPuzzle(puzzleKey) {
+    if (typeof PuzzlePopup === 'undefined') return false;
+    if (PuzzlePopup.isOpen()) return false;
+
+    // Attempt open — if the puzzle is registered, isOpen() will become true
+    PuzzlePopup.open(puzzleKey);
+    return PuzzlePopup.isOpen();
+  }
+
+  function openPuzzleWithRetry(puzzleKey) {
+    console.log('[QR-Router] QR route detected: → ' + puzzleKey);
 
     expandPuzzlesRow();
+    scrollToQRSection();
 
-    // Small delay to let row expand animate, then open puzzle
-    setTimeout(function () {
-      scrollToQRSection();
-      PuzzlePopup.open(puzzleKey);
-      console.log('[QR-Router] Opened puzzle: ' + puzzleKey);
-    }, 400);
+    // Poll until PuzzlePopup AND the target puzzle are ready (up to 8s)
+    var attempts = 0;
+    var maxAttempts = 80; // 80 × 100ms = 8 seconds
+    var poller = setInterval(function () {
+      attempts++;
+      if (tryOpenPuzzle(puzzleKey)) {
+        clearInterval(poller);
+        console.log('[QR-Router] Opened puzzle: ' + puzzleKey + ' (attempt ' + attempts + ')');
+      } else if (attempts >= maxAttempts) {
+        clearInterval(poller);
+        console.warn('[QR-Router] Gave up opening puzzle: ' + puzzleKey + ' after ' + attempts + ' attempts');
+      }
+    }, 100);
   }
 
   function init() {
@@ -88,28 +103,24 @@
       return;
     }
 
-    console.log('[QR-Router] QR route detected: #' + route + ' → ' + puzzleKey);
-
-    // Wait for DOM + PuzzlePopup to be ready
+    // Wait for DOM ready, then start trying to open
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
-        // Additional delay for puzzle scripts to register
-        setTimeout(function () { openPuzzle(puzzleKey); }, 600);
+        openPuzzleWithRetry(puzzleKey);
       });
     } else {
-      setTimeout(function () { openPuzzle(puzzleKey); }, 600);
+      openPuzzleWithRetry(puzzleKey);
     }
   }
 
-  // Also handle hash changes for in-page navigation
+  // Handle hash changes for in-page navigation
   window.addEventListener('hashchange', function () {
     var route = getHashRoute();
     if (route && ROUTE_MAP[route]) {
-      openPuzzle(ROUTE_MAP[route]);
+      openPuzzleWithRetry(ROUTE_MAP[route]);
     }
   });
 
-  // Run on load
   init();
 
 })();

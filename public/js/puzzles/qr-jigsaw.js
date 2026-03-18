@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  if (typeof PuzzlePopup === 'undefined') return;
+  function _register() {
 
   var SOLVED_KEY = 'eyesonly_qr_jigsaw_solved';
   var GRID_SIZE = 4; // 4x4 grid = 15 tiles + 1 empty
@@ -185,5 +185,20 @@
       } catch (_) {}
     }
   });
+  } // end _register
+
+  if (typeof PuzzlePopup !== 'undefined') {
+    _register();
+  } else {
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof PuzzlePopup !== 'undefined') _register();
+    });
+    var _attempts = 0;
+    var _poll = setInterval(function () {
+      _attempts++;
+      if (typeof PuzzlePopup !== 'undefined') { clearInterval(_poll); _register(); }
+      else if (_attempts > 50) { clearInterval(_poll); }
+    }, 100);
+  }
 
 })();
