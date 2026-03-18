@@ -1634,11 +1634,18 @@ const SplashScreen = (() => {
     if (!splashEl) return;
     _disposeStarfield();
     Card3D.dispose();
+    // Stop splash background videos
     splashEl.querySelectorAll('video').forEach(v => {
       v.pause();
       v.removeAttribute('src');
       v.load();
     });
+    // Stop splash atmosphere music so it doesn't persist into the terminal/debrief
+    try {
+      if (typeof AudioSystem !== 'undefined' && AudioSystem.stopMusic) {
+        AudioSystem.stopMusic();
+      }
+    } catch (_) {}
     splashEl.classList.add('splash-hidden');
     setTimeout(() => {
       if (splashEl) { splashEl.remove(); splashEl = null; }

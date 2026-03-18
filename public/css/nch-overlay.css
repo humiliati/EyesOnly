@@ -501,80 +501,68 @@
 /* ════════════════════════════════════════════════════════
    SILVER / ♠ — Fine Glass Aperture Lens
    ════════════════════════════════════════════════════════
-   Clean, precise, mechanical. A traditional camera-lens
-   feel with fine concentric ring lines and a subtle iris
-   blade pattern. Appears when card starts dragging as if
-   the aperture is opening. */
+   Clean, precise, mechanical. Multiple fine concentric ring
+   lines via stacked box-shadows — no pseudo-elements
+   (clipped by overflow:hidden on .coin-artwork).
+   Per PORTHOLE_PUZZLE_TOOLKIT §3: box-shadow only. */
 
 .porthole-lens-overlay.lens-silver {
-  border-color: rgba(176, 196, 222, 0.25);
-  /* Multiple fine concentric ring lines — like machined glass */
+  border: 1px solid rgba(200, 215, 235, 0.45);
   box-shadow:
-    inset 0 0 1px rgba(200, 215, 235, 0.40),
-    inset 0 0 3px rgba(176, 196, 222, 0.15),
-    0 0 1px rgba(200, 215, 235, 0.35),
-    0 0 4px rgba(176, 196, 222, 0.12);
+    /* Fine inner rings — like machined glass lines */
+    inset 0 0 1px  rgba(220, 230, 245, 0.50),
+    inset 0 0 4px  rgba(200, 215, 235, 0.25),
+    inset 0 0 8px  rgba(176, 196, 222, 0.12),
+    /* Outer crisp ring line */
+    0 0 1px  rgba(220, 230, 245, 0.50),
+    0 0 3px  rgba(200, 215, 235, 0.30),
+    0 0 8px  rgba(176, 196, 222, 0.15);
 }
 
-/* Aperture iris pseudo-element — fine radial lines at the rim */
-.porthole-lens-overlay.lens-silver::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(
-    from 0deg,
-    rgba(200, 215, 235, 0.08) 0deg,
-    transparent 2deg,
-    transparent 15deg
-  );
-  mask-image: radial-gradient(circle, transparent 85%, black 92%, black 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 85%, black 92%, black 100%);
-  opacity: 0;
-  transition: opacity 0.4s ease-out;
-}
-
-/* Iris opens when active */
-.porthole-lens-overlay.lens-silver.lens-active::before {
-  opacity: 1;
-  animation: silver-iris-open 0.5s ease-out forwards;
-}
-
-@keyframes silver-iris-open {
-  0%   { transform: scale(0.92) rotate(0deg);   opacity: 0; }
-  60%  { transform: scale(1.0)  rotate(12deg);  opacity: 1; }
-  100% { transform: scale(1.0)  rotate(8deg);   opacity: 0.7; }
-}
-
-/* Gentle breathe — very subtle, mechanical precision feel */
 .porthole-lens-overlay.lens-silver.lens-active {
   animation: silver-breathe 4s ease-in-out infinite;
 }
 
 @keyframes silver-breathe {
-  0%   { opacity: 0.6;  filter: brightness(calc(0.95 * var(--ring-vel))); }
-  50%  { opacity: 0.85; filter: brightness(calc(1.05 * var(--ring-vel))); }
-  100% { opacity: 0.6;  filter: brightness(calc(0.95 * var(--ring-vel))); }
+  0%   { opacity: 0.55;
+         box-shadow: inset 0 0 1px rgba(220,230,245,0.50), inset 0 0 4px rgba(200,215,235,0.25),
+                     inset 0 0 8px rgba(176,196,222,0.12), 0 0 1px rgba(220,230,245,0.50),
+                     0 0 3px rgba(200,215,235,0.30), 0 0 8px rgba(176,196,222,0.15); }
+  50%  { opacity: 0.9;
+         box-shadow: inset 0 0 2px rgba(220,230,245,0.60), inset 0 0 6px rgba(200,215,235,0.35),
+                     inset 0 0 12px rgba(176,196,222,0.18), 0 0 2px rgba(220,230,245,0.60),
+                     0 0 5px rgba(200,215,235,0.40), 0 0 12px rgba(176,196,222,0.20); }
+  100% { opacity: 0.55;
+         box-shadow: inset 0 0 1px rgba(220,230,245,0.50), inset 0 0 4px rgba(200,215,235,0.25),
+                     inset 0 0 8px rgba(176,196,222,0.12), 0 0 1px rgba(220,230,245,0.50),
+                     0 0 3px rgba(200,215,235,0.30), 0 0 8px rgba(176,196,222,0.15); }
 }
 
-/* Tracing: slightly faster, still precise */
 .porthole-lens-overlay.lens-silver.lens-active.lens-tracing {
   animation: silver-trace 2.5s ease-in-out infinite;
 }
 
 @keyframes silver-trace {
-  0%   { opacity: 0.7;  filter: brightness(calc(1.0 * var(--ring-vel))); }
-  50%  { opacity: 1.0;  filter: brightness(calc(1.15 * var(--ring-vel))); }
-  100% { opacity: 0.7;  filter: brightness(calc(1.0 * var(--ring-vel))); }
+  0%   { opacity: 0.65;
+         box-shadow: inset 0 0 2px rgba(220,230,245,0.55), inset 0 0 5px rgba(200,215,235,0.30),
+                     inset 0 0 10px rgba(176,196,222,0.15), 0 0 2px rgba(220,230,245,0.55),
+                     0 0 4px rgba(200,215,235,0.35), 0 0 10px rgba(176,196,222,0.18); }
+  50%  { opacity: 1.0;
+         box-shadow: inset 0 0 3px rgba(220,230,245,0.70), inset 0 0 8px rgba(200,215,235,0.40),
+                     inset 0 0 14px rgba(176,196,222,0.22), 0 0 3px rgba(220,230,245,0.70),
+                     0 0 7px rgba(200,215,235,0.48), 0 0 16px rgba(176,196,222,0.25); }
+  100% { opacity: 0.65;
+         box-shadow: inset 0 0 2px rgba(220,230,245,0.55), inset 0 0 5px rgba(200,215,235,0.30),
+                     inset 0 0 10px rgba(176,196,222,0.15), 0 0 2px rgba(220,230,245,0.55),
+                     0 0 4px rgba(200,215,235,0.35), 0 0 10px rgba(176,196,222,0.18); }
 }
 
 
 /* ════════════════════════════════════════════════════════
    AMBER / ♣ — Warm Neon Glow Ring (Gold Lens)
    ════════════════════════════════════════════════════════
-   The original approach — warm complementary blue ring with
-   multi-layer box-shadow. Larger pulse, more dramatic than
-   silver. This is the primary constellation tracing lens. */
+   Warm complementary blue ring with multi-layer box-shadow.
+   Larger pulse, more dramatic. Primary constellation lens. */
 
 .porthole-lens-overlay.lens-blue {
   border-color: rgba(80, 140, 255, 0.4);
@@ -591,13 +579,13 @@
 }
 
 @keyframes blue-breathe {
-  0%   { opacity: 0.7;  filter: brightness(calc(0.9 * var(--ring-vel)));
+  0%   { opacity: 0.7;
          box-shadow: inset 0 0 12px rgba(80,140,255,0.28), inset 0 0 28px rgba(60,120,220,0.12),
                      0 0 10px rgba(80,140,255,0.35), 0 0 24px rgba(60,120,220,0.18), 0 0 50px rgba(40,80,180,0.08); }
-  50%  { opacity: 1.0;  filter: brightness(calc(1.15 * var(--ring-vel)));
+  50%  { opacity: 1.0;
          box-shadow: inset 0 0 16px rgba(80,140,255,0.35), inset 0 0 32px rgba(60,120,220,0.18),
                      0 0 14px rgba(80,140,255,0.42), 0 0 32px rgba(60,120,220,0.22), 0 0 60px rgba(40,80,180,0.12); }
-  100% { opacity: 0.7;  filter: brightness(calc(0.9 * var(--ring-vel)));
+  100% { opacity: 0.7;
          box-shadow: inset 0 0 12px rgba(80,140,255,0.28), inset 0 0 28px rgba(60,120,220,0.12),
                      0 0 10px rgba(80,140,255,0.35), 0 0 24px rgba(60,120,220,0.18), 0 0 50px rgba(40,80,180,0.08); }
 }
@@ -607,151 +595,144 @@
 }
 
 @keyframes blue-trace {
-  0%   { opacity: 0.75; filter: brightness(calc(1.0 * var(--ring-vel))); }
-  50%  { opacity: 1.0;  filter: brightness(calc(1.35 * var(--ring-vel))); }
-  100% { opacity: 0.75; filter: brightness(calc(1.0 * var(--ring-vel))); }
+  0%   { opacity: 0.75;
+         box-shadow: inset 0 0 14px rgba(80,140,255,0.32), inset 0 0 30px rgba(60,120,220,0.15),
+                     0 0 12px rgba(80,140,255,0.38), 0 0 28px rgba(60,120,220,0.20), 0 0 55px rgba(40,80,180,0.10); }
+  50%  { opacity: 1.0;
+         box-shadow: inset 0 0 20px rgba(80,140,255,0.42), inset 0 0 36px rgba(60,120,220,0.22),
+                     0 0 18px rgba(80,140,255,0.50), 0 0 38px rgba(60,120,220,0.28), 0 0 70px rgba(40,80,180,0.15); }
+  100% { opacity: 0.75;
+         box-shadow: inset 0 0 14px rgba(80,140,255,0.32), inset 0 0 30px rgba(60,120,220,0.15),
+                     0 0 12px rgba(80,140,255,0.38), 0 0 28px rgba(60,120,220,0.20), 0 0 55px rgba(40,80,180,0.10); }
 }
 
 
 /* ════════════════════════════════════════════════════════
-   PHOSPHOR / ♥ — Vortex Pull (Black Hole Pass-Through)
+   PHOSPHOR / ♥ — Vortex Pull (Black Hole)
    ════════════════════════════════════════════════════════
-   Concentric rings that collapse inward like a gravitational
-   pull, in warm green-phosphor theme colors. Suggests the
-   porthole is pulling light through from another dimension.
-   Adapted from polite-earwig-72 (uiverse.io). */
+   Animated inset box-shadow that pulses inward, creating
+   the illusion of concentric rings collapsing toward center.
+   No pseudo-elements — pure box-shadow animation.
+   Green phosphor (#33ff33) at moderate opacity. */
 
 .porthole-lens-overlay.lens-amber {
-  border-color: rgba(51, 255, 51, 0.20);
+  border: 1.5px solid rgba(51, 255, 51, 0.30);
   box-shadow:
-    inset 0 0 8px rgba(51, 255, 51, 0.15),
-    0 0 6px rgba(51, 255, 51, 0.20);
-}
-
-/* Vortex rings — 3 concentric pseudo-circles that pulse inward */
-.porthole-lens-overlay.lens-amber::before {
-  content: '';
-  position: absolute;
-  inset: 8%;
-  border-radius: 50%;
-  border: 1px solid rgba(51, 255, 51, 0.12);
-  box-shadow:
-    0 0 8px rgba(51, 255, 51, 0.15),
-    inset 0 0 12px rgba(51, 255, 51, 0.08);
-  opacity: 0;
-  animation: none;
-}
-
-.porthole-lens-overlay.lens-amber::after {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  border: 1px solid rgba(51, 255, 51, 0.10);
-  box-shadow: 0 0 6px rgba(51, 255, 51, 0.10);
-  opacity: 0;
-  animation: none;
-}
-
-.porthole-lens-overlay.lens-amber.lens-active::before {
-  opacity: 1;
-  animation: vortex-ring-outer 3s ease-in-out infinite;
-}
-
-.porthole-lens-overlay.lens-amber.lens-active::after {
-  opacity: 1;
-  animation: vortex-ring-inner 3s ease-in-out infinite 0.4s;
-}
-
-@keyframes vortex-ring-outer {
-  0%   { transform: scale(1.15); opacity: 0;
-         box-shadow: 0 0 16px rgba(51,255,51,0.25), inset 0 0 20px rgba(51,255,51,0.12); }
-  40%  { transform: scale(1.0);  opacity: 0.7;
-         box-shadow: 0 0 10px rgba(51,255,51,0.18), inset 0 0 14px rgba(51,255,51,0.08); }
-  100% { transform: scale(0.85); opacity: 0;
-         box-shadow: 0 0 4px rgba(51,255,51,0.06), inset 0 0 6px rgba(51,255,51,0.03); }
-}
-
-@keyframes vortex-ring-inner {
-  0%   { transform: scale(1.2);  opacity: 0;
-         box-shadow: 0 0 12px rgba(51,255,51,0.20); }
-  50%  { transform: scale(1.0);  opacity: 0.6;
-         box-shadow: 0 0 8px rgba(51,255,51,0.15); }
-  100% { transform: scale(0.7);  opacity: 0;
-         box-shadow: 0 0 2px rgba(51,255,51,0.04); }
+    inset 0 0 6px  rgba(51, 255, 51, 0.20),
+    inset 0 0 14px rgba(51, 255, 51, 0.10),
+    0 0 6px  rgba(51, 255, 51, 0.25),
+    0 0 14px rgba(51, 255, 51, 0.12);
 }
 
 .porthole-lens-overlay.lens-amber.lens-active {
-  animation: phosphor-breathe 3s ease-in-out infinite;
+  animation: vortex-pull 2.5s ease-in-out infinite;
 }
 
-@keyframes phosphor-breathe {
-  0%   { opacity: 0.65; filter: brightness(calc(0.9 * var(--ring-vel))); }
-  50%  { opacity: 1.0;  filter: brightness(calc(1.1 * var(--ring-vel))); }
-  100% { opacity: 0.65; filter: brightness(calc(0.9 * var(--ring-vel))); }
+@keyframes vortex-pull {
+  0%   { opacity: 0.6;
+         border-color: rgba(51, 255, 51, 0.30);
+         box-shadow: inset 0 0 6px rgba(51,255,51,0.20), inset 0 0 14px rgba(51,255,51,0.10),
+                     0 0 6px rgba(51,255,51,0.25), 0 0 14px rgba(51,255,51,0.12); }
+  35%  { opacity: 1.0;
+         border-color: rgba(51, 255, 51, 0.50);
+         box-shadow: inset 0 0 12px rgba(51,255,51,0.35), inset 0 0 24px rgba(51,255,51,0.18),
+                     inset 0 0 40px rgba(51,255,51,0.06),
+                     0 0 8px rgba(51,255,51,0.35), 0 0 20px rgba(51,255,51,0.18); }
+  70%  { opacity: 0.8;
+         border-color: rgba(51, 255, 51, 0.20);
+         box-shadow: inset 0 0 20px rgba(51,255,51,0.28), inset 0 0 36px rgba(51,255,51,0.12),
+                     inset 0 0 50px rgba(51,255,51,0.04),
+                     0 0 4px rgba(51,255,51,0.15), 0 0 10px rgba(51,255,51,0.08); }
+  100% { opacity: 0.6;
+         border-color: rgba(51, 255, 51, 0.30);
+         box-shadow: inset 0 0 6px rgba(51,255,51,0.20), inset 0 0 14px rgba(51,255,51,0.10),
+                     0 0 6px rgba(51,255,51,0.25), 0 0 14px rgba(51,255,51,0.12); }
 }
 
 .porthole-lens-overlay.lens-amber.lens-active.lens-tracing {
-  animation: phosphor-trace 2s ease-in-out infinite;
+  animation: vortex-trace 1.6s ease-in-out infinite;
 }
 
-@keyframes phosphor-trace {
-  0%   { opacity: 0.7;  filter: brightness(calc(1.0 * var(--ring-vel))); }
-  50%  { opacity: 1.0;  filter: brightness(calc(1.25 * var(--ring-vel))); }
-  100% { opacity: 0.7;  filter: brightness(calc(1.0 * var(--ring-vel))); }
+@keyframes vortex-trace {
+  0%   { opacity: 0.7;
+         box-shadow: inset 0 0 10px rgba(51,255,51,0.30), inset 0 0 20px rgba(51,255,51,0.15),
+                     0 0 8px rgba(51,255,51,0.30), 0 0 18px rgba(51,255,51,0.15); }
+  50%  { opacity: 1.0;
+         box-shadow: inset 0 0 18px rgba(51,255,51,0.45), inset 0 0 32px rgba(51,255,51,0.22),
+                     inset 0 0 48px rgba(51,255,51,0.08),
+                     0 0 12px rgba(51,255,51,0.40), 0 0 28px rgba(51,255,51,0.22); }
+  100% { opacity: 0.7;
+         box-shadow: inset 0 0 10px rgba(51,255,51,0.30), inset 0 0 20px rgba(51,255,51,0.15),
+                     0 0 8px rgba(51,255,51,0.30), 0 0 18px rgba(51,255,51,0.15); }
 }
 
 
 /* ════════════════════════════════════════════════════════
-   PANTHER / ♦ — Spinning Gradient Halo
+   PANTHER / ♦ — Spinning Neon Halo
    ════════════════════════════════════════════════════════
-   A conic gradient ring that spins continuously and cycles
-   through all theme hues. The most energetic, cyberpunk
-   lens. Adapted from lovely-fox-17 (uiverse.io). */
+   Rotating border + multi-color box-shadow that cycles hues.
+   No mask-image, no conic-gradient background (both cause
+   stacking context issues inside overflow:hidden artwork).
+   Uses border-color animation + box-shadow color shifts. */
 
 .porthole-lens-overlay.lens-pink {
-  /* Conic gradient at the rim only (transparent center) */
-  border: none;
-  background: conic-gradient(
-    from 0deg,
-    rgba(255, 48, 144, 0.45),
-    rgba(160, 32, 240, 0.35),
-    rgba(0, 200, 255, 0.30),
-    rgba(51, 255, 51, 0.25),
-    rgba(255, 176, 0, 0.30),
-    rgba(255, 48, 144, 0.45)
-  );
-  /* Mask: only show the gradient at the outer rim (ring shape) */
-  mask-image: radial-gradient(circle, transparent 80%, black 88%, black 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 80%, black 88%, black 100%);
+  border: 2px solid rgba(255, 48, 144, 0.50);
   box-shadow:
-    0 0 10px rgba(255, 48, 144, 0.20),
-    0 0 25px rgba(160, 32, 240, 0.10);
-  filter: blur(0.5px);
+    inset 0 0 10px rgba(255, 48, 144, 0.25),
+    inset 0 0 24px rgba(160, 32, 240, 0.10),
+    0 0 8px  rgba(255, 48, 144, 0.35),
+    0 0 20px rgba(160, 32, 240, 0.18),
+    0 0 40px rgba(0, 200, 255, 0.06);
 }
 
 .porthole-lens-overlay.lens-pink.lens-active {
-  animation: panther-spin 2.4s linear infinite, panther-hue 6s ease-in-out infinite;
+  animation: panther-cycle 3s linear infinite;
 }
 
-@keyframes panther-spin {
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-@keyframes panther-hue {
-  0%   { filter: blur(0.5px) hue-rotate(0deg)   brightness(calc(1.0 * var(--ring-vel))); }
-  50%  { filter: blur(0.5px) hue-rotate(60deg)  brightness(calc(1.15 * var(--ring-vel))); }
-  100% { filter: blur(0.5px) hue-rotate(0deg)   brightness(calc(1.0 * var(--ring-vel))); }
+@keyframes panther-cycle {
+  0%   { opacity: 0.8;
+         border-color: rgba(255, 48, 144, 0.55);
+         box-shadow: inset 0 0 10px rgba(255,48,144,0.28), inset 0 0 24px rgba(160,32,240,0.12),
+                     0 0 8px rgba(255,48,144,0.38), 0 0 22px rgba(160,32,240,0.20), 0 0 44px rgba(0,200,255,0.08); }
+  25%  { opacity: 1.0;
+         border-color: rgba(160, 32, 240, 0.55);
+         box-shadow: inset 0 0 10px rgba(160,32,240,0.28), inset 0 0 24px rgba(0,200,255,0.12),
+                     0 0 8px rgba(160,32,240,0.38), 0 0 22px rgba(0,200,255,0.20), 0 0 44px rgba(51,255,51,0.08); }
+  50%  { opacity: 0.85;
+         border-color: rgba(0, 200, 255, 0.55);
+         box-shadow: inset 0 0 10px rgba(0,200,255,0.28), inset 0 0 24px rgba(51,255,51,0.10),
+                     0 0 8px rgba(0,200,255,0.38), 0 0 22px rgba(51,255,51,0.18), 0 0 44px rgba(255,176,0,0.08); }
+  75%  { opacity: 1.0;
+         border-color: rgba(255, 176, 0, 0.55);
+         box-shadow: inset 0 0 10px rgba(255,176,0,0.28), inset 0 0 24px rgba(255,48,144,0.12),
+                     0 0 8px rgba(255,176,0,0.38), 0 0 22px rgba(255,48,144,0.20), 0 0 44px rgba(160,32,240,0.08); }
+  100% { opacity: 0.8;
+         border-color: rgba(255, 48, 144, 0.55);
+         box-shadow: inset 0 0 10px rgba(255,48,144,0.28), inset 0 0 24px rgba(160,32,240,0.12),
+                     0 0 8px rgba(255,48,144,0.38), 0 0 22px rgba(160,32,240,0.20), 0 0 44px rgba(0,200,255,0.08); }
 }
 
 .porthole-lens-overlay.lens-pink.lens-active.lens-tracing {
-  animation: panther-spin 1.4s linear infinite, panther-trace-hue 3s ease-in-out infinite;
+  animation: panther-trace-cycle 1.8s linear infinite;
 }
 
-@keyframes panther-trace-hue {
-  0%   { filter: blur(0.3px) hue-rotate(0deg)   brightness(calc(1.1 * var(--ring-vel))); }
-  50%  { filter: blur(0.3px) hue-rotate(90deg)  brightness(calc(1.4 * var(--ring-vel))); }
-  100% { filter: blur(0.3px) hue-rotate(0deg)   brightness(calc(1.1 * var(--ring-vel))); }
+@keyframes panther-trace-cycle {
+  0%   { opacity: 0.85;
+         border-color: rgba(255, 48, 144, 0.65);
+         box-shadow: inset 0 0 14px rgba(255,48,144,0.35), inset 0 0 28px rgba(160,32,240,0.16),
+                     0 0 12px rgba(255,48,144,0.45), 0 0 28px rgba(160,32,240,0.25), 0 0 50px rgba(0,200,255,0.10); }
+  33%  { opacity: 1.0;
+         border-color: rgba(160, 32, 240, 0.65);
+         box-shadow: inset 0 0 14px rgba(160,32,240,0.35), inset 0 0 28px rgba(0,200,255,0.16),
+                     0 0 12px rgba(160,32,240,0.45), 0 0 28px rgba(0,200,255,0.25), 0 0 50px rgba(51,255,51,0.10); }
+  66%  { opacity: 1.0;
+         border-color: rgba(0, 200, 255, 0.65);
+         box-shadow: inset 0 0 14px rgba(0,200,255,0.35), inset 0 0 28px rgba(255,48,144,0.16),
+                     0 0 12px rgba(0,200,255,0.45), 0 0 28px rgba(255,48,144,0.25), 0 0 50px rgba(255,176,0,0.10); }
+  100% { opacity: 0.85;
+         border-color: rgba(255, 48, 144, 0.65);
+         box-shadow: inset 0 0 14px rgba(255,48,144,0.35), inset 0 0 28px rgba(160,32,240,0.16),
+                     0 0 12px rgba(255,48,144,0.45), 0 0 28px rgba(160,32,240,0.25), 0 0 50px rgba(0,200,255,0.10); }
 }
 
 
