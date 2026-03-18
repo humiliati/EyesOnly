@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/games.css?v=20260314e">
   <link rel="stylesheet" href="css/reveal-zone.css?v=20260316a">
   <link rel="stylesheet" href="css/nch-overlay.css?v=20260316b">
+  <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
 
   <script>
@@ -406,6 +407,8 @@
 
   <!-- Account inventory (seeds default items on first visit) -->
   <script src="js/account-inventory.js"></script>
+  <!-- Compass widget: orientation overlay (requires account-inventory) -->
+  <script src="js/compass-widget.js?v=20260318a"></script>
 
   <!-- Starfield for porthole magnifying glass drag -->
   <script src="js/starfield.js"></script>
@@ -431,6 +434,9 @@
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof NchOverlay !== 'undefined') {
         NchOverlay.init({ autoStarfield: true });
+      }
+      if (typeof CompassWidget !== 'undefined') {
+        CompassWidget.init();
       }
     });
   </script>

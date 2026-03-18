@@ -32,7 +32,7 @@ var CompassWidget = (function() {
     hasOrientation: false,
     updateInterval: null,
     fastUpdateInterval: null,
-    position: { x: 20, y: 20 }
+    position: { x: 70, y: 48 }
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -96,7 +96,7 @@ var CompassWidget = (function() {
     _elements.widget = document.createElement('div');
     _elements.widget.id = 'compass-widget';
     _elements.widget.className = 'compass-widget-minimized';
-    _elements.widget.style.cssText = 'position: fixed; bottom: ' + _state.position.y + 'px; right: ' + _state.position.x + 'px; z-index: 9999;';
+    _elements.widget.style.cssText = 'position: fixed; bottom: ' + _state.position.y + 'px; right: ' + _state.position.x + 'px; z-index: 1800;';
 
     _elements.widget.innerHTML = [
       '<div class="compass-mini-outer">',
@@ -112,7 +112,7 @@ var CompassWidget = (function() {
     _elements.overlay.id = 'compass-overlay';
     _elements.overlay.className = 'compass-widget-expanded';
     _elements.overlay.hidden = true;
-    _elements.overlay.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000;';
+    _elements.overlay.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1900;';
 
     _elements.overlay.innerHTML = [
       '<div class="compass-frame">',
@@ -132,7 +132,7 @@ var CompassWidget = (function() {
           '</div>',
         '</div>',
         '<div class="compass-readout">',
-          '<span class="readout-heading"><span class="readout-label">AZ</span> <span class="readout-value" id="compass-azimuth">0</span>°</span>',
+          '<span class="compass-readout-heading"><span class="compass-readout-label">AZ</span> <span class="compass-readout-value" id="compass-azimuth">0</span>°</span>',
         '</div>',
         '<div class="compass-controls">',
           '<button class="compass-btn" id="compass-minimize">MINIMIZE</button>',
@@ -176,7 +176,9 @@ var CompassWidget = (function() {
 
     // Keyboard shortcut (C key)
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'c' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+      var tag = document.activeElement && document.activeElement.tagName;
+      var editable = document.activeElement && document.activeElement.isContentEditable;
+      if (e.key === 'c' && !e.ctrlKey && !e.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && !editable) {
         if (_state.expanded) {
           _minimize();
         } else if (_state.visible) {
@@ -252,6 +254,8 @@ var CompassWidget = (function() {
 
       if (_state.isDragging) {
         _savePosition();
+        // Delay reset so the trailing click event is still swallowed
+        setTimeout(function() { _state.isDragging = false; }, 50);
       }
     }
   }
@@ -286,7 +290,8 @@ var CompassWidget = (function() {
 
   function _enableOrientation() {
     window.addEventListener('deviceorientation', _handleOrientation);
-    _state.hasOrientation = console.log('[CompassWidget] Orientation tracking enabled');
+    _state.hasOrientation = true;
+    console.log('[CompassWidget] Orientation tracking enabled');
   }
 
   function _handleOrientation(event) {
@@ -391,13 +396,13 @@ var CompassWidget = (function() {
 
   function _savePosition() {
     try {
-      localStorage.setItem('compass_widget_position', JSON.stringify(_state.position));
+      localStorage.setItem('EYESONLY_COMPASS_POS_V1', JSON.stringify(_state.position));
     } catch (e) {}
   }
 
   function _loadPosition() {
     try {
-      var saved = localStorage.getItem('compass_widget_position');
+      var saved = localStorage.getItem('EYESONLY_COMPASS_POS_V1');
       if (saved) {
         _state.position = JSON.parse(saved);
       }

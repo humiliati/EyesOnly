@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/dossier-page.css?v=20260318c">
   <link rel="stylesheet" href="css/partners.css?v=20260317c">
   <link rel="stylesheet" href="css/nch-overlay.css?v=20260316c">
+  <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
 
   <script>
@@ -419,11 +420,15 @@
   <script src="js/constellation-loader.js?v=20260317a"></script>
   <script src="js/audio-mini-widget.js"></script>
   <script src="js/nch-overlay.js?v=20260316d"></script>
+  <!-- Account inventory + compass widget -->
+  <script src="js/account-inventory.js"></script>
+  <script src="js/compass-widget.js?v=20260318a"></script>
   <script src="js/partners.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof PuzzleState !== 'undefined') PuzzleState.init();
       if (typeof NchOverlay !== 'undefined') NchOverlay.init({ autoStarfield: true });
+      if (typeof CompassWidget !== 'undefined') CompassWidget.init();
     });
   </script>
 </body>

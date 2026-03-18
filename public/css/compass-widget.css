@@ -9,7 +9,10 @@
 .compass-widget-minimized {
   width: 40px;
   height: 40px;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   transition: transform 0.2s, opacity 0.2s;
 }
 
@@ -19,6 +22,7 @@
 }
 
 .compass-widget-minimized:active {
+  cursor: grabbing;
   transform: scale(0.95);
 }
 
@@ -232,20 +236,20 @@
   border: 1px solid #333;
 }
 
-.readout-heading {
+.compass-readout-heading {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-size: 18px;
   color: #33ff33;
   text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
 }
 
-.readout-label {
+.compass-readout-label {
   color: #888;
   font-size: 12px;
   margin-right: 5px;
 }
 
-.readout-value {
+.compass-readout-value {
   min-width: 40px;
   display: inline-block;
 }
@@ -298,22 +302,22 @@
 /* THEME INTEGRATION                                               */
 /* ───────────────────────────────────────────────────────────────── */
 
-body[data-theme="phosphor"] .readout-heading {
+body[data-theme="phosphor"] .compass-readout-heading {
   color: #33ff33;
   text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
 }
 
-body[data-theme="amber"] .readout-heading {
+body[data-theme="amber"] .compass-readout-heading {
   color: #ffb000;
   text-shadow: 0 0 10px rgba(255, 176, 0, 0.5);
 }
 
-body[data-theme="silver"] .readout-heading {
+body[data-theme="silver"] .compass-readout-heading {
   color: #b0c4de;
   text-shadow: 0 0 10px rgba(176, 196, 222, 0.5);
 }
 
-body[data-theme="panther"] .readout-heading {
+body[data-theme="panther"] .compass-readout-heading {
   color: #ff3090;
   text-shadow: 0 0 10px rgba(255, 48, 144, 0.5);
 }
@@ -365,6 +369,10 @@ body[data-theme="panther"] .readout-heading {
 /* ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
+  .compass-widget-minimized {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  }
+
   .compass-widget-expanded {
     width: 280px;
   }

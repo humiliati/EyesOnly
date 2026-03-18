@@ -55,6 +55,23 @@ var AccountInventory = (function () {
         effects: [{ type: 'activate', mode: 'decoder-ring' }],
         synergyTags: ['decryption', 'cipher', 'investigation', 'platform']
       }
+    },
+    {
+      id: 'ITM-203',
+      qty: 1,
+      meta: {
+        name: 'Baseplate Compass',
+        emoji: '🧭',
+        type: 'equipment',
+        subtype: 'navigation',
+        rarity: 'rare',
+        equipSlot: 'accessory',
+        compass: true,
+        platformItem: true,
+        description: 'A precision navigational instrument. Points to true north. Reveals the compass widget on all pages.',
+        effects: [{ type: 'compass_widget', mode: 'always' }],
+        synergyTags: ['navigation', 'telescope', 'exploration', 'compass']
+      }
     }
   ];
 

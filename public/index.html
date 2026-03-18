@@ -39,6 +39,7 @@
   <link rel="stylesheet" href="css/environmental-synergy.css?v=20260305g">
   <link rel="stylesheet" href="css/tooltip-system.css">
   <link rel="stylesheet" href="css/nch-overlay.css?v=20260316b">
+  <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
   <link rel="stylesheet" href="css/non-combat-hud.css?v=20260307g">
   <link rel="stylesheet" href="css/enemy-hand-display.css">
   <link rel="stylesheet" href="css/rogue-sidebar.css">
@@ -480,6 +481,9 @@
       if (typeof PuzzleState !== 'undefined') {
         PuzzleState.init();
       }
+      if (typeof CompassWidget !== 'undefined') {
+        CompassWidget.init();
+      }
     });
   </script>
 
@@ -504,6 +508,8 @@
 
   <!-- Account inventory: shared persistent items across pages (loads before UI) -->
   <script src="js/account-inventory.js"></script>
+  <!-- Compass widget: orientation overlay (requires account-inventory) -->
+  <script src="js/compass-widget.js?v=20260318a"></script>
   <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
   <script src="js/item-popup.js"></script>
 
