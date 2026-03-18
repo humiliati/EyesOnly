@@ -32,6 +32,7 @@ const AUDIO_DIR_MAP = {
   card_sounds: 'sfx',
   enemy_alert: 'sfx',
   new_sfx: 'sfx',
+  coin_sfx: 'sfx',
   // tolerate accidental folder name
   'new_sfx??': 'sfx',
   // video

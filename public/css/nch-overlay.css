@@ -483,6 +483,12 @@
   --ring-vel: 1;   /* JS-driven velocity brightness multiplier */
 }
 
+/* ---- Idle: very subdued hint of lens technology (no animation, minimal GPU) ---- */
+.porthole-lens-overlay.lens-idle {
+  opacity: 0.25;
+}
+
+/* ---- Active: full lens during drag ---- */
 .porthole-lens-overlay.lens-active {
   opacity: 1;
 }

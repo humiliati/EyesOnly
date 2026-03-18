@@ -1,98 +1,344 @@
 {
-  "version": 3,
-  "description": "Constellation definitions for Phase 8 gold lens tracing. Levels 1-6 are all-club (amber lens only). Levels are ordered — the gamestate tracks which are solved and serves the next unsolved level.",
+  "version": 4,
+  "description": "Constellation definitions for porthole tracing puzzles. All shapes are closed loops (validation: shape) — player must return to node 0. Difficulty tier 1 = all-club (amber lens). Tier 2 = multi-suit (future). Coordinates in safe viewport zone 0.15-0.85.",
   "constellations": [
+
+    { "_section": "═══ DIFFICULTY TIER 1 — Beginner (all ♣, amber lens only) ═══" },
+
     {
-      "id": "level-1-signal",
-      "level": 1,
+      "id": "t1-01-triangle",
       "name": "The Signal",
-      "description": "A beginner triangle — three club nodes. The first constellation every agent traces.",
-      "difficulty": "beginner",
-      "validation": "shape",
-      "angleConstraints": false,
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
       "nodes": [
-        { "id": "l1-1", "x": 0.44, "y": 0.32, "suit": "club" },
-        { "id": "l1-2", "x": 0.56, "y": 0.32, "suit": "club" },
-        { "id": "l1-3", "x": 0.50, "y": 0.48, "suit": "club" }
+        { "id": "t1-01-a", "x": 0.42, "y": 0.28, "suit": "club" },
+        { "id": "t1-01-b", "x": 0.58, "y": 0.28, "suit": "club" },
+        { "id": "t1-01-c", "x": 0.50, "y": 0.48, "suit": "club" }
       ]
     },
     {
-      "id": "level-2-chevron",
-      "level": 2,
-      "name": "The Chevron",
-      "description": "A V-shape pointing down — four nodes, trace the path end to end.",
-      "difficulty": "beginner",
-      "validation": "exact",
-      "angleConstraints": false,
+      "id": "t1-02-square",
+      "name": "The Safehouse",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
       "nodes": [
-        { "id": "l2-1", "x": 0.32, "y": 0.25, "suit": "club" },
-        { "id": "l2-2", "x": 0.44, "y": 0.45, "suit": "club" },
-        { "id": "l2-3", "x": 0.56, "y": 0.45, "suit": "club" },
-        { "id": "l2-4", "x": 0.68, "y": 0.25, "suit": "club" }
+        { "id": "t1-02-a", "x": 0.38, "y": 0.28, "suit": "club" },
+        { "id": "t1-02-b", "x": 0.62, "y": 0.28, "suit": "club" },
+        { "id": "t1-02-c", "x": 0.62, "y": 0.52, "suit": "club" },
+        { "id": "t1-02-d", "x": 0.38, "y": 0.52, "suit": "club" }
       ]
     },
     {
-      "id": "level-3-diamond",
-      "level": 3,
+      "id": "t1-03-diamond",
       "name": "The Dead Drop",
-      "description": "A diamond shape — four nodes, close the loop to complete.",
-      "difficulty": "beginner",
-      "validation": "shape",
-      "angleConstraints": false,
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
       "nodes": [
-        { "id": "l3-1", "x": 0.50, "y": 0.22, "suit": "club" },
-        { "id": "l3-2", "x": 0.62, "y": 0.40, "suit": "club" },
-        { "id": "l3-3", "x": 0.50, "y": 0.58, "suit": "club" },
-        { "id": "l3-4", "x": 0.38, "y": 0.40, "suit": "club" }
+        { "id": "t1-03-a", "x": 0.50, "y": 0.20, "suit": "club" },
+        { "id": "t1-03-b", "x": 0.65, "y": 0.40, "suit": "club" },
+        { "id": "t1-03-c", "x": 0.50, "y": 0.60, "suit": "club" },
+        { "id": "t1-03-d", "x": 0.35, "y": 0.40, "suit": "club" }
       ]
     },
     {
-      "id": "level-4-arrow",
-      "level": 4,
-      "name": "The Directive",
-      "description": "An arrow pointing right — five nodes. Trace the full path.",
-      "difficulty": "intermediate",
-      "validation": "exact",
-      "angleConstraints": false,
-      "nodes": [
-        { "id": "l4-1", "x": 0.28, "y": 0.40, "suit": "club" },
-        { "id": "l4-2", "x": 0.44, "y": 0.40, "suit": "club" },
-        { "id": "l4-3", "x": 0.60, "y": 0.26, "suit": "club" },
-        { "id": "l4-4", "x": 0.60, "y": 0.54, "suit": "club" },
-        { "id": "l4-5", "x": 0.44, "y": 0.40, "suit": "club" }
-      ]
-    },
-    {
-      "id": "level-5-pentagon",
-      "level": 5,
+      "id": "t1-04-pentagon",
       "name": "The Network",
-      "description": "A pentagon — five nodes, close the loop.",
-      "difficulty": "intermediate",
-      "validation": "shape",
-      "angleConstraints": false,
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
       "nodes": [
-        { "id": "l5-1", "x": 0.50, "y": 0.20, "suit": "club" },
-        { "id": "l5-2", "x": 0.65, "y": 0.35, "suit": "club" },
-        { "id": "l5-3", "x": 0.59, "y": 0.55, "suit": "club" },
-        { "id": "l5-4", "x": 0.41, "y": 0.55, "suit": "club" },
-        { "id": "l5-5", "x": 0.35, "y": 0.35, "suit": "club" }
+        { "id": "t1-04-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t1-04-b", "x": 0.66, "y": 0.33, "suit": "club" },
+        { "id": "t1-04-c", "x": 0.60, "y": 0.55, "suit": "club" },
+        { "id": "t1-04-d", "x": 0.40, "y": 0.55, "suit": "club" },
+        { "id": "t1-04-e", "x": 0.34, "y": 0.33, "suit": "club" }
       ]
     },
     {
-      "id": "level-6-hexagon",
-      "level": 6,
+      "id": "t1-05-hexagon",
       "name": "The Cipher Ring",
-      "description": "A hexagon — six nodes, close the loop. The final all-club constellation.",
-      "difficulty": "intermediate",
-      "validation": "shape",
-      "angleConstraints": false,
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
       "nodes": [
-        { "id": "l6-1", "x": 0.50, "y": 0.18, "suit": "club" },
-        { "id": "l6-2", "x": 0.64, "y": 0.28, "suit": "club" },
-        { "id": "l6-3", "x": 0.64, "y": 0.48, "suit": "club" },
-        { "id": "l6-4", "x": 0.50, "y": 0.58, "suit": "club" },
-        { "id": "l6-5", "x": 0.36, "y": 0.48, "suit": "club" },
-        { "id": "l6-6", "x": 0.36, "y": 0.28, "suit": "club" }
+        { "id": "t1-05-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t1-05-b", "x": 0.65, "y": 0.27, "suit": "club" },
+        { "id": "t1-05-c", "x": 0.65, "y": 0.47, "suit": "club" },
+        { "id": "t1-05-d", "x": 0.50, "y": 0.56, "suit": "club" },
+        { "id": "t1-05-e", "x": 0.35, "y": 0.47, "suit": "club" },
+        { "id": "t1-05-f", "x": 0.35, "y": 0.27, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-06-tall-triangle",
+      "name": "The Beacon",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-06-a", "x": 0.50, "y": 0.16, "suit": "club" },
+        { "id": "t1-06-b", "x": 0.62, "y": 0.58, "suit": "club" },
+        { "id": "t1-06-c", "x": 0.38, "y": 0.58, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-07-wide-diamond",
+      "name": "The Compass",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-07-a", "x": 0.50, "y": 0.22, "suit": "club" },
+        { "id": "t1-07-b", "x": 0.72, "y": 0.40, "suit": "club" },
+        { "id": "t1-07-c", "x": 0.50, "y": 0.58, "suit": "club" },
+        { "id": "t1-07-d", "x": 0.28, "y": 0.40, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-08-house",
+      "name": "The Embassy",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-08-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t1-08-b", "x": 0.65, "y": 0.34, "suit": "club" },
+        { "id": "t1-08-c", "x": 0.65, "y": 0.58, "suit": "club" },
+        { "id": "t1-08-d", "x": 0.35, "y": 0.58, "suit": "club" },
+        { "id": "t1-08-e", "x": 0.35, "y": 0.34, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-09-kite",
+      "name": "The Tail",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-09-a", "x": 0.50, "y": 0.16, "suit": "club" },
+        { "id": "t1-09-b", "x": 0.62, "y": 0.34, "suit": "club" },
+        { "id": "t1-09-c", "x": 0.50, "y": 0.62, "suit": "club" },
+        { "id": "t1-09-d", "x": 0.38, "y": 0.34, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-10-parallelogram",
+      "name": "The Slip",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-10-a", "x": 0.34, "y": 0.26, "suit": "club" },
+        { "id": "t1-10-b", "x": 0.62, "y": 0.26, "suit": "club" },
+        { "id": "t1-10-c", "x": 0.66, "y": 0.54, "suit": "club" },
+        { "id": "t1-10-d", "x": 0.38, "y": 0.54, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-11-pentagram",
+      "name": "The Sigil",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-11-a", "x": 0.50, "y": 0.16, "suit": "club" },
+        { "id": "t1-11-b", "x": 0.62, "y": 0.58, "suit": "club" },
+        { "id": "t1-11-c", "x": 0.30, "y": 0.32, "suit": "club" },
+        { "id": "t1-11-d", "x": 0.70, "y": 0.32, "suit": "club" },
+        { "id": "t1-11-e", "x": 0.38, "y": 0.58, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-12-big-dipper",
+      "name": "The Dipper",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-12-a", "x": 0.24, "y": 0.30, "suit": "club" },
+        { "id": "t1-12-b", "x": 0.32, "y": 0.22, "suit": "club" },
+        { "id": "t1-12-c", "x": 0.42, "y": 0.24, "suit": "club" },
+        { "id": "t1-12-d", "x": 0.46, "y": 0.34, "suit": "club" },
+        { "id": "t1-12-e", "x": 0.42, "y": 0.44, "suit": "club" },
+        { "id": "t1-12-f", "x": 0.32, "y": 0.42, "suit": "club" },
+        { "id": "t1-12-g", "x": 0.30, "y": 0.34, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-13-rabbit",
+      "name": "The Hare",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-13-a", "x": 0.44, "y": 0.18, "suit": "club" },
+        { "id": "t1-13-b", "x": 0.48, "y": 0.28, "suit": "club" },
+        { "id": "t1-13-c", "x": 0.56, "y": 0.18, "suit": "club" },
+        { "id": "t1-13-d", "x": 0.58, "y": 0.32, "suit": "club" },
+        { "id": "t1-13-e", "x": 0.64, "y": 0.40, "suit": "club" },
+        { "id": "t1-13-f", "x": 0.58, "y": 0.54, "suit": "club" },
+        { "id": "t1-13-g", "x": 0.42, "y": 0.54, "suit": "club" },
+        { "id": "t1-13-h", "x": 0.36, "y": 0.40, "suit": "club" },
+        { "id": "t1-13-i", "x": 0.40, "y": 0.32, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-14-arrow-up",
+      "name": "The Ascent",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-14-a", "x": 0.50, "y": 0.16, "suit": "club" },
+        { "id": "t1-14-b", "x": 0.62, "y": 0.34, "suit": "club" },
+        { "id": "t1-14-c", "x": 0.55, "y": 0.34, "suit": "club" },
+        { "id": "t1-14-d", "x": 0.55, "y": 0.58, "suit": "club" },
+        { "id": "t1-14-e", "x": 0.45, "y": 0.58, "suit": "club" },
+        { "id": "t1-14-f", "x": 0.45, "y": 0.34, "suit": "club" },
+        { "id": "t1-14-g", "x": 0.38, "y": 0.34, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-15-hourglass",
+      "name": "The Countdown",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-15-a", "x": 0.36, "y": 0.20, "suit": "club" },
+        { "id": "t1-15-b", "x": 0.64, "y": 0.20, "suit": "club" },
+        { "id": "t1-15-c", "x": 0.50, "y": 0.40, "suit": "club" },
+        { "id": "t1-15-d", "x": 0.64, "y": 0.60, "suit": "club" },
+        { "id": "t1-15-e", "x": 0.36, "y": 0.60, "suit": "club" }
+      ]
+    },
+
+    { "_section": "═══ DIFFICULTY TIER 1 — Additional shapes ═══" },
+
+    {
+      "id": "t1-16-octagon",
+      "name": "The Vault",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-16-a", "x": 0.42, "y": 0.18, "suit": "club" },
+        { "id": "t1-16-b", "x": 0.58, "y": 0.18, "suit": "club" },
+        { "id": "t1-16-c", "x": 0.68, "y": 0.30, "suit": "club" },
+        { "id": "t1-16-d", "x": 0.68, "y": 0.46, "suit": "club" },
+        { "id": "t1-16-e", "x": 0.58, "y": 0.58, "suit": "club" },
+        { "id": "t1-16-f", "x": 0.42, "y": 0.58, "suit": "club" },
+        { "id": "t1-16-g", "x": 0.32, "y": 0.46, "suit": "club" },
+        { "id": "t1-16-h", "x": 0.32, "y": 0.30, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-17-star6",
+      "name": "The Seal",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-17-a", "x": 0.50, "y": 0.16, "suit": "club" },
+        { "id": "t1-17-b", "x": 0.58, "y": 0.36, "suit": "club" },
+        { "id": "t1-17-c", "x": 0.72, "y": 0.36, "suit": "club" },
+        { "id": "t1-17-d", "x": 0.62, "y": 0.48, "suit": "club" },
+        { "id": "t1-17-e", "x": 0.66, "y": 0.62, "suit": "club" },
+        { "id": "t1-17-f", "x": 0.50, "y": 0.52, "suit": "club" },
+        { "id": "t1-17-g", "x": 0.34, "y": 0.62, "suit": "club" },
+        { "id": "t1-17-h", "x": 0.38, "y": 0.48, "suit": "club" },
+        { "id": "t1-17-i", "x": 0.28, "y": 0.36, "suit": "club" },
+        { "id": "t1-17-j", "x": 0.42, "y": 0.36, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t1-18-cross",
+      "name": "The Marker",
+      "difficulty": "beginner", "tier": 1,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t1-18-a", "x": 0.44, "y": 0.18, "suit": "club" },
+        { "id": "t1-18-b", "x": 0.56, "y": 0.18, "suit": "club" },
+        { "id": "t1-18-c", "x": 0.56, "y": 0.32, "suit": "club" },
+        { "id": "t1-18-d", "x": 0.68, "y": 0.32, "suit": "club" },
+        { "id": "t1-18-e", "x": 0.68, "y": 0.44, "suit": "club" },
+        { "id": "t1-18-f", "x": 0.56, "y": 0.44, "suit": "club" },
+        { "id": "t1-18-g", "x": 0.56, "y": 0.58, "suit": "club" },
+        { "id": "t1-18-h", "x": 0.44, "y": 0.58, "suit": "club" },
+        { "id": "t1-18-i", "x": 0.44, "y": 0.44, "suit": "club" },
+        { "id": "t1-18-j", "x": 0.32, "y": 0.44, "suit": "club" },
+        { "id": "t1-18-k", "x": 0.32, "y": 0.32, "suit": "club" },
+        { "id": "t1-18-l", "x": 0.44, "y": 0.32, "suit": "club" }
+      ]
+    },
+
+    { "_section": "═══ DIFFICULTY TIER 2 — Intermediate (multi-suit, future) ═══" },
+
+    {
+      "id": "t2-01-triangle-mixed",
+      "name": "The Intercept",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-01-a", "x": 0.40, "y": 0.50, "suit": "club" },
+        { "id": "t2-01-b", "x": 0.60, "y": 0.50, "suit": "spade" },
+        { "id": "t2-01-c", "x": 0.50, "y": 0.26, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t2-02-diamond-mixed",
+      "name": "The Clearance",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-02-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t2-02-b", "x": 0.68, "y": 0.40, "suit": "diamond" },
+        { "id": "t2-02-c", "x": 0.50, "y": 0.62, "suit": "club" },
+        { "id": "t2-02-d", "x": 0.32, "y": 0.40, "suit": "diamond" }
+      ]
+    },
+    {
+      "id": "t2-03-pentagon-mixed",
+      "name": "The Protocol",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-03-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t2-03-b", "x": 0.66, "y": 0.34, "suit": "spade" },
+        { "id": "t2-03-c", "x": 0.60, "y": 0.56, "suit": "club" },
+        { "id": "t2-03-d", "x": 0.40, "y": 0.56, "suit": "spade" },
+        { "id": "t2-03-e", "x": 0.34, "y": 0.34, "suit": "club" }
+      ]
+    },
+    {
+      "id": "t2-04-hexagon-mixed",
+      "name": "The Chamber",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-04-a", "x": 0.50, "y": 0.18, "suit": "club" },
+        { "id": "t2-04-b", "x": 0.66, "y": 0.28, "suit": "heart" },
+        { "id": "t2-04-c", "x": 0.66, "y": 0.48, "suit": "club" },
+        { "id": "t2-04-d", "x": 0.50, "y": 0.58, "suit": "heart" },
+        { "id": "t2-04-e", "x": 0.34, "y": 0.48, "suit": "club" },
+        { "id": "t2-04-f", "x": 0.34, "y": 0.28, "suit": "heart" }
+      ]
+    },
+    {
+      "id": "t2-05-star-mixed",
+      "name": "The Sigil Noir",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-05-a", "x": 0.50, "y": 0.16, "suit": "diamond" },
+        { "id": "t2-05-b", "x": 0.62, "y": 0.58, "suit": "club" },
+        { "id": "t2-05-c", "x": 0.30, "y": 0.32, "suit": "diamond" },
+        { "id": "t2-05-d", "x": 0.70, "y": 0.32, "suit": "club" },
+        { "id": "t2-05-e", "x": 0.38, "y": 0.58, "suit": "diamond" }
+      ]
+    },
+    {
+      "id": "t2-06-duck",
+      "name": "The Duck (or Rabbit?)",
+      "difficulty": "intermediate", "tier": 2,
+      "validation": "shape", "angleConstraints": false,
+      "nodes": [
+        { "id": "t2-06-a", "x": 0.28, "y": 0.36, "suit": "club" },
+        { "id": "t2-06-b", "x": 0.22, "y": 0.28, "suit": "spade" },
+        { "id": "t2-06-c", "x": 0.30, "y": 0.22, "suit": "club" },
+        { "id": "t2-06-d", "x": 0.38, "y": 0.30, "suit": "club" },
+        { "id": "t2-06-e", "x": 0.50, "y": 0.26, "suit": "spade" },
+        { "id": "t2-06-f", "x": 0.62, "y": 0.30, "suit": "club" },
+        { "id": "t2-06-g", "x": 0.68, "y": 0.40, "suit": "spade" },
+        { "id": "t2-06-h", "x": 0.62, "y": 0.50, "suit": "club" },
+        { "id": "t2-06-i", "x": 0.46, "y": 0.50, "suit": "club" },
+        { "id": "t2-06-j", "x": 0.34, "y": 0.46, "suit": "spade" }
       ]
     }
   ]

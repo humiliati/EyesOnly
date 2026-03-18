@@ -131,9 +131,10 @@ var NchOverlay = (function () {
     var ghost = drag.ghostEl;
     if (!ghost) return;
 
-    // Activate lens effect on the ghost card
+    // Activate lens effect on the ghost card (swap idle → active)
     var lensEl = ghost.querySelector('.porthole-lens-overlay');
     if (lensEl) {
+      lensEl.classList.remove('lens-idle');
       lensEl.classList.add('lens-active');
     }
 
@@ -156,6 +157,13 @@ var NchOverlay = (function () {
    */
   function _deactivateLens() {
     if (_cardDrag && _cardDrag.cardEl) {
+      // Restore lens to idle state on source card
+      var lensEl = _cardDrag.cardEl.querySelector('.porthole-lens-overlay');
+      if (lensEl) {
+        lensEl.classList.remove('lens-active');
+        lensEl.classList.add('lens-idle');
+      }
+      // Flicker suit symbol back
       var suitEl = _cardDrag.cardEl.querySelector('.coin-suit-large');
       if (suitEl) {
         suitEl.classList.remove('suit-flicker-off', 'suit-dimmed');
@@ -547,7 +555,7 @@ var NchOverlay = (function () {
           '</div>' +
           '<div class="coin-artwork" data-card-index="' + index + '">' +
             '<canvas class="starfield-window" width="200" height="200"></canvas>' +
-            '<div class="porthole-lens-overlay lens-' + _lensClassForTheme(mission.theme) + '"></div>' +
+            '<div class="porthole-lens-overlay lens-idle lens-' + _lensClassForTheme(mission.theme) + '"></div>' +
             '<div class="coin-rings"></div>' +
             '<div class="coin-suit-large ' + mission.suitClass + '">' + mission.suit + '</div>' +
           '</div>' +

@@ -72,12 +72,13 @@
       }
     });
 
-    // Listen for currency-increment events
+    // Listen for currency-increment events (from resolution animation counter)
     document.addEventListener('currency-increment', function (e) {
       var detail = e.detail || {};
       if (detail.amount) {
         _state.currency += detail.amount;
         _save();
+        _syncToAccount(detail.amount);
         _broadcastCurrency();
       }
     });
@@ -161,6 +162,18 @@
       SuitNodeRenderer._setForeverPixels(existing);
       console.log('[ConstellationGamestate] Synced', added, 'forever pixels into renderer');
     }
+  }
+
+  /**
+   * Sync constellation coins into the shared eyesonly_account.puzzleCoins
+   * so PuzzleState, terminal SCORE command, and other systems see the balance.
+   */
+  function _syncToAccount(amount) {
+    try {
+      var acct = JSON.parse(localStorage.getItem('eyesonly_account') || '{}');
+      acct.puzzleCoins = (acct.puzzleCoins || 0) + amount;
+      localStorage.setItem('eyesonly_account', JSON.stringify(acct));
+    } catch (e) {}
   }
 
   function _broadcastCurrency() {

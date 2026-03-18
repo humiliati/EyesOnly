@@ -521,6 +521,32 @@ const lensState = {
 - Silver lens: spade amplification (brightness ramp + morph animation)
 - Amber lens: heart reveal (fade-in + warmth pulse + morph animation)
 
+### Phase 9 Visual Feedback Polish (depends on Phase 8.5 feedback system)
+
+Phase 8.5 ships the visual feedback infrastructure that Phase 9 builds on:
+
+**Shipped in Phase 8.5:**
+- ✅ Angle-reject flash: red screen flicker when angle constraint fails (12 frames)
+- ✅ Resolved ghost: completed constellation shape holds as dashed white outline for 3 seconds, then fades
+- ✅ Progressive transparency: card chrome (headers, info, buttons) fades as nodes are tethered (0 → 40% opacity), snaps back to opaque when constellation resolves and new level stars populate
+- ✅ Procedural generation: infinite shapes after designed templates exhausted
+
+**Phase 9 polish adds per-lens visual feedback:**
+
+| Feedback Type | Gold Lens (♣) | Silver Lens (♠) | Phosphor Lens (♥) | Panther Lens (♦) |
+|--------------|--------------|----------------|------------------|-----------------|
+| Angle reject | Red flash on tether | Cool blue scan-line flicker | Green CRT distortion | Rainbow static burst |
+| Valid snap | Gold pulse + snap overshoot | Crisp click + lens iris tighten | Vortex ring collapse | Color cycle acceleration |
+| Shape recognize | Constellation glow surge | Precision lock indicator | Gravitational pull shimmer | Neon trail persistence |
+| Progressive fade | Card chrome fades | Card chrome + ring hatching fades | Card chrome + vortex rings intensify | Card chrome + spin speed increases |
+| Resolve hold | White dashed ghost 3s | Thin precise ghost 3s | Green pulse ghost 3s | Rainbow trail ghost 3s |
+
+**Implementation notes:**
+- Each lens's feedback uses the same infrastructure (`_angleRejectFlash`, `_resolvedGhost`, `_tetheredTransparency`) but parameterizes color/intensity based on which lens is active
+- Query lens type via the active card's theme at resolve time
+- `ConstellationTracer._renderHook` already runs per-frame — Phase 9 adds a `_lensType` state variable that gates which visual treatment to apply
+- The angle-reject flash in Phase 9 plays a per-lens SFX (silver=click, phosphor=buzz, panther=zap) in addition to the visual
+
 ### Deliverables
 
 - `suit-transformer.js` — transformation engine with hold-timer, per-suit animations, state persistence

@@ -235,13 +235,16 @@
 
   /**
    * Burn solved nodes into forever pixels.
+   * @param {string[]} nodeIds
+   * @param {number} [tier=1] — difficulty tier controls pixel size (1=1px, 2=2px+glow)
    */
-  function burnForever(nodeIds) {
+  function burnForever(nodeIds, tier) {
+    var t = tier || 1;
     nodeIds.forEach(function (id) {
       var n = getNodeById(id);
       if (!n) return;
       n.state = 'forever';
-      _foreverPixels.push({ x: n.x, y: n.y });
+      _foreverPixels.push({ x: n.x, y: n.y, tier: t });
     });
     _saveForeverPixels();
   }
@@ -283,24 +286,32 @@
     var H = hookCtx.H;
     var t = hookCtx.time;
 
-    // 1. Forever pixels — permanent bright marks from solved constellations
-    //    Rendered as 3px glow + 2px core so they're visible over starfield layers.
+    // 1. Forever pixels — permanent marks from solved constellations.
+    //    Size scales by difficulty tier: tier 1 = single pixel (subtle),
+    //    tier 2 = 2px core + small glow (requires multi-lens work to earn).
     for (var fi = 0; fi < _foreverPixels.length; fi++) {
       var fp = _foreverPixels[fi];
       var fpx = fp.x * W;
       var fpy = fp.y * H;
+      var fpTier = fp.tier || 1;
 
-      // Subtle glow halo (4px radius, warm white)
-      var fpGrad = ctx.createRadialGradient(fpx, fpy, 0, fpx, fpy, 4);
-      fpGrad.addColorStop(0, 'rgba(255,255,240,0.7)');
-      fpGrad.addColorStop(0.5, 'rgba(255,250,220,0.25)');
-      fpGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = fpGrad;
-      ctx.fillRect(fpx - 4, fpy - 4, 8, 8);
+      if (fpTier <= 1) {
+        // Tier 1: single crisp white pixel — like a real star
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(Math.round(fpx), Math.round(fpy), 1, 1);
+      } else {
+        // Tier 2+: 2px core + subtle glow halo
+        var glowR = 2 + fpTier;
+        var fpGrad = ctx.createRadialGradient(fpx, fpy, 0, fpx, fpy, glowR);
+        fpGrad.addColorStop(0, 'rgba(255,255,240,0.6)');
+        fpGrad.addColorStop(0.5, 'rgba(255,250,220,0.2)');
+        fpGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = fpGrad;
+        ctx.fillRect(fpx - glowR, fpy - glowR, glowR * 2, glowR * 2);
 
-      // Bright core (2px)
-      ctx.fillStyle = '#fffff0';
-      ctx.fillRect(Math.round(fpx) - 1, Math.round(fpy) - 1, 2, 2);
+        ctx.fillStyle = '#fffff0';
+        ctx.fillRect(Math.round(fpx) - 1, Math.round(fpy) - 1, 2, 2);
+      }
     }
 
     // 2. Active constellation nodes

@@ -766,75 +766,77 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  /* Porthole viewport: transparent center, concentric dark bands, theme glow accents */
+  /* Porthole viewport: transparent center, concentric dark bands, theme glow accents.
+     Transparent zone at 62% matches the starfield-window diameter so bands frame
+     the porthole edge cleanly without clipping the starfield canvas. */
   background:
     radial-gradient(circle at center,
-      /* Porthole */
+      /* Porthole — clear center */
       transparent 0%,
-      transparent 46%,
+      transparent 62%,
 
       /* Band 1 innermost — darkest */
-      rgba(0,0,0,0.82) 46%,
-      rgba(0,0,0,0.72) 48%,
-      rgba(0,0,0,0.62) 48%,
-      rgba(0,0,0,0.58) 50.5%,
+      rgba(0,0,0,0.82) 62%,
+      rgba(0,0,0,0.72) 64%,
+      rgba(0,0,0,0.62) 64%,
+      rgba(0,0,0,0.58) 66.5%,
 
       /* Band 2 */
-      rgba(0,0,0,0.56) 50.5%,
-      rgba(0,0,0,0.48) 52.5%,
-      rgba(0,0,0,0.40) 52.5%,
-      rgba(0,0,0,0.36) 55%,
+      rgba(0,0,0,0.56) 66.5%,
+      rgba(0,0,0,0.48) 68.5%,
+      rgba(0,0,0,0.40) 68.5%,
+      rgba(0,0,0,0.36) 71%,
 
       /* Band 3 */
-      rgba(0,0,0,0.35) 55%,
-      rgba(0,0,0,0.28) 57%,
-      rgba(0,0,0,0.22) 57%,
-      rgba(0,0,0,0.19) 59.5%,
+      rgba(0,0,0,0.35) 71%,
+      rgba(0,0,0,0.28) 73%,
+      rgba(0,0,0,0.22) 73%,
+      rgba(0,0,0,0.19) 75.5%,
 
       /* Band 4 */
-      rgba(0,0,0,0.18) 59.5%,
-      rgba(0,0,0,0.14) 61.5%,
-      rgba(0,0,0,0.09) 61.5%,
-      rgba(0,0,0,0.07) 64%,
+      rgba(0,0,0,0.18) 75.5%,
+      rgba(0,0,0,0.14) 77.5%,
+      rgba(0,0,0,0.09) 77.5%,
+      rgba(0,0,0,0.07) 80%,
 
       /* Band 5 */
-      rgba(0,0,0,0.07) 64%,
-      rgba(0,0,0,0.04) 66.5%,
-      rgba(0,0,0,0.03) 66.5%,
-      rgba(0,0,0,0.02) 68.5%,
+      rgba(0,0,0,0.07) 80%,
+      rgba(0,0,0,0.04) 82.5%,
+      rgba(0,0,0,0.03) 82.5%,
+      rgba(0,0,0,0.02) 84.5%,
 
       /* Band 6 */
-      rgba(0,0,0,0.02) 68.5%,
-      rgba(0,0,0,0.01) 70.5%,
-      rgba(0,0,0,0.004) 70.5%,
-      rgba(0,0,0,0.002) 73%,
+      rgba(0,0,0,0.02) 84.5%,
+      rgba(0,0,0,0.01) 86.5%,
+      rgba(0,0,0,0.004) 86.5%,
+      rgba(0,0,0,0.002) 89%,
 
       /* Band 7 */
-      rgba(0,0,0,0.002) 73%,
-      rgba(0,0,0,0.001) 75%,
-      transparent 75%,
-      transparent 77.5%,
+      rgba(0,0,0,0.002) 89%,
+      rgba(0,0,0,0.001) 91%,
+      transparent 91%,
+      transparent 93.5%,
 
-      /* Band 8 outermost — barely visible, card body */
-      transparent 77.5%,
+      /* Band 8 outermost */
+      transparent 93.5%,
       transparent 100%
     ),
-    /* Theme glow accent lines between bands */
+    /* Theme glow accent lines between bands (+16% offset from original) */
     radial-gradient(circle at center,
-      transparent 0%, transparent 47.5%,
-      var(--theme-primary-glow) 48%, transparent 49%,
-      transparent 52%,
-      var(--theme-primary-glow) 52.5%, transparent 53.5%,
-      transparent 56.5%,
-      var(--theme-primary-glow) 57%, transparent 58%,
-      transparent 61%,
-      var(--theme-primary-glow) 61.5%, transparent 62.5%,
-      transparent 65.5%,
-      var(--theme-primary-glow) 66%, transparent 67%,
-      transparent 70%,
-      var(--theme-primary-glow) 70.5%, transparent 71.5%,
-      transparent 74.5%,
-      var(--theme-primary-glow) 75%, transparent 76%
+      transparent 0%, transparent 63.5%,
+      var(--theme-primary-glow) 64%, transparent 65%,
+      transparent 68%,
+      var(--theme-primary-glow) 68.5%, transparent 69.5%,
+      transparent 72.5%,
+      var(--theme-primary-glow) 73%, transparent 74%,
+      transparent 77%,
+      var(--theme-primary-glow) 77.5%, transparent 78.5%,
+      transparent 81.5%,
+      var(--theme-primary-glow) 82%, transparent 83%,
+      transparent 86%,
+      var(--theme-primary-glow) 86.5%, transparent 87.5%,
+      transparent 90.5%,
+      var(--theme-primary-glow) 91%, transparent 92%
     );
 }
 
@@ -850,9 +852,9 @@
     transparent 4deg
   );
   pointer-events: none;
-  /* Only show hatching in the ring zone, not over the starfield */
-  mask-image: radial-gradient(circle, transparent 0%, transparent 30%, black 40%, black 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 0%, transparent 30%, black 40%, black 100%);
+  /* Only show hatching in the ring zone, not over the starfield (+16% offset) */
+  mask-image: radial-gradient(circle, transparent 0%, transparent 46%, black 56%, black 100%);
+  -webkit-mask-image: radial-gradient(circle, transparent 0%, transparent 46%, black 56%, black 100%);
 }
 
 
@@ -1635,19 +1637,19 @@
 }
 
 @media (max-width: 480px) {
-  /* ~15% taller coin cards (126px → 145px) */
-  .splash-dossier.coin-card { width: 92vw; height: 145px !important; }
+  /* +5% taller coin cards (145px → 152px), wider for bigger porthole */
+  .splash-dossier.coin-card { width: min(97vw, 398px); height: 152px !important; }
   .splash-dossier.coin-card:nth-child(1) { transform: perspective(800px) rotateY(0deg) rotateX(3deg) translateZ(0px); }
-  .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-10px) translateX(6px); }
-  .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-20px) translateX(12px); }
-  .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-30px) translateX(18px); }
+  .splash-dossier.coin-card:nth-child(2) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-12px) translateX(6px); }
+  .splash-dossier.coin-card:nth-child(3) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-24px) translateX(12px); }
+  .splash-dossier.coin-card:nth-child(4) { transform: perspective(800px) rotateY(-8deg) rotateX(3deg) translateY(-36px) translateX(18px); }
 
-  /* Left col slightly wider; right col significantly wider */
-  .coin-border-inner { grid-template-columns: 31% 1fr 30% !important; }
+  /* Left col grows +2% for bigger porthole; right col compensates */
+  .coin-border-inner { grid-template-columns: 33% 1fr 28% !important; }
   .coin-artwork { min-width: unset; }
   .coin-suit-large  { font-size: clamp(36px, 10vw, 46px); }
 
-  /* Larger porthole */
+  /* Larger porthole (92% of the wider artwork cell) */
   .starfield-window { width: 92% !important; }
 
   /* BOOK.NOW / JOIN.NOW — larger font (~+15%), tighter padding */

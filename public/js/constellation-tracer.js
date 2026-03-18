@@ -70,6 +70,21 @@
   // Elastic overshoot animation state
   var _snapAnim = null;       // { nodeId, startTime, x, y }
 
+  // ── Visual Feedback State ──────────────────────────────
+  // Angle-reject: brief red flicker on the tether when angle is invalid
+  var _angleRejectFlash = 0;   // countdown frames (>0 = flashing)
+
+  // Constellation ghost: after resolve, hold the completed shape for 3s
+  var _resolvedGhost = null;   // { points[], startTime, opacity }
+
+  // Progressive transparency: as nodes tether, page layers fade
+  // 0 = fully opaque (no tether), 1 = max transparency (many nodes)
+  var _tetheredTransparency = 0;
+  var _targetTransparency = 0;
+
+  // Elements to fade (cached on first use)
+  var _fadeTargets = null;
+
   // ── Angular Constraint Helpers ───────────────────────────
 
   function _angleBetween(ax, ay, bx, by) {
@@ -170,7 +185,12 @@
     _snapAnim = null;
     _highlightTarget = null;
     _highlightFrames = 0;
+    _angleRejectFlash = 0;
     _enabled = false;
+    // Reset progressive transparency
+    _targetTransparency = 0;
+    _tetheredTransparency = 0;
+    _applyProgressiveTransparency();
     console.log('[ConstellationTracer] Session ended');
   }
 
@@ -321,7 +341,8 @@
         _commitSnap(candidate, isClosing);
       }
     } else {
-      // Angle constraint failed — clear candidate, show rejection
+      // Angle constraint failed — flash the tether red briefly
+      _angleRejectFlash = 12; // frames of red flash
       if (_snapCandidate && _snapCandidate.id === candidate.id) {
         SuitNodeRenderer.resetNode(candidate.id);
       }
@@ -354,6 +375,9 @@
       x: pos.x,
       y: pos.y,
     };
+
+    // Progressive transparency: fade page layers as more nodes connect
+    _updateProgressiveTransparency();
 
     console.log('[ConstellationTracer] Connected node:', node.id,
                 'Path length:', _path.length);
@@ -401,8 +425,9 @@
     // Mark constellation solved
     SuitNodeRenderer.markConstellationSolved(resolvedConstellationId);
 
-    // Burn nodes into forever pixels
-    SuitNodeRenderer.burnForever(constellation.nodeIds);
+    // Burn nodes into forever pixels (tier scales pixel size)
+    var diffTier = constellation.difficulty === 'intermediate' ? 2 : 1;
+    SuitNodeRenderer.burnForever(constellation.nodeIds, diffTier);
 
     // ── Build screen-space point array for the resolution animation ──
     var screenPoints = [];
@@ -466,6 +491,16 @@
     console.log('[ConstellationTracer] ★ Constellation solved!',
                 resolvedConstellationId,
                 '| Yield:', coinYield, 'coins');
+
+    // ── Visual feedback: hold the resolved shape as a ghost for 3 seconds ──
+    _resolvedGhost = {
+      points: screenPoints.slice(),
+      startTime: performance.now(),
+      duration: 3000,
+    };
+
+    // Snap transparency back to opaque (new stars will repopulate)
+    _targetTransparency = 0;
 
     // Reset tracer state (keep enabled for continued dragging)
     _state = 'idle';
@@ -644,6 +679,100 @@
 
     ctx.globalAlpha = 1;
     ctx.restore();
+
+    // ── Angle-reject flash ──
+    if (_angleRejectFlash > 0) {
+      _angleRejectFlash--;
+      // Brief red flash on the entire tether area
+      if (_angleRejectFlash % 3 < 2) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 40, 30, 0.06)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+    }
+
+    // ── Resolved ghost constellation (hold 3s then fade) ──
+    if (_resolvedGhost) {
+      var ghostElapsed = performance.now() - _resolvedGhost.startTime;
+      if (ghostElapsed > _resolvedGhost.duration) {
+        _resolvedGhost = null;
+      } else {
+        var ghostFade = ghostElapsed < 2000 ? 1.0 :
+          1.0 - (ghostElapsed - 2000) / (_resolvedGhost.duration - 2000);
+        var ghostPts = _resolvedGhost.points;
+        if (ghostPts.length >= 2) {
+          ctx.save();
+          ctx.globalAlpha = ghostFade * 0.35;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 4]);
+          ctx.beginPath();
+          ctx.moveTo(ghostPts[0].x, ghostPts[0].y);
+          for (var gpi = 1; gpi < ghostPts.length; gpi++) {
+            ctx.lineTo(ghostPts[gpi].x, ghostPts[gpi].y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
+    }
+
+    // ── Progressive transparency (smooth lerp) ──
+    _tetheredTransparency += (_targetTransparency - _tetheredTransparency) * 0.08;
+    if (Math.abs(_tetheredTransparency - _targetTransparency) < 0.005) {
+      _tetheredTransparency = _targetTransparency;
+    }
+    _applyProgressiveTransparency();
+  }
+
+  // ── Progressive Transparency Helpers ───────────────────
+
+  /**
+   * Calculate target transparency from current tether progress.
+   * More nodes connected → more of the page fades → sky becomes more visible.
+   */
+  function _updateProgressiveTransparency() {
+    if (!_activeConstellation) { _targetTransparency = 0; return; }
+    var total = _activeConstellation.nodeIds ? _activeConstellation.nodeIds.length : 3;
+    // Ramp from 0 (no nodes) to 0.4 (all nodes) — never fully transparent
+    _targetTransparency = Math.min(0.4, (_path.length / total) * 0.45);
+  }
+
+  /**
+   * Apply transparency to page layers around the starfield.
+   * Uses CSS opacity on card chrome elements, NOT on the starfield itself.
+   */
+  function _applyProgressiveTransparency() {
+    if (_tetheredTransparency < 0.01) {
+      // Reset all fade targets to full opacity
+      if (_fadeTargets) {
+        for (var i = 0; i < _fadeTargets.length; i++) {
+          _fadeTargets[i].style.opacity = '';
+        }
+      }
+      return;
+    }
+
+    // Lazily cache fade target elements (card chrome that should become see-through)
+    if (!_fadeTargets) {
+      _fadeTargets = [];
+      // Fade: card headers, descriptions, borders, buttons — NOT the porthole or starfield
+      var selectors = [
+        '.coin-header', '.coin-info', '.coin-wheel-strip', '.coin-tag-strip',
+        '.coin-border-inner > .coin-corner', '.coin-book-btn',
+      ];
+      for (var s = 0; s < selectors.length; s++) {
+        var els = document.querySelectorAll(selectors[s]);
+        for (var e = 0; e < els.length; e++) _fadeTargets.push(els[e]);
+      }
+    }
+
+    var opacity = (1 - _tetheredTransparency).toFixed(3);
+    for (var j = 0; j < _fadeTargets.length; j++) {
+      _fadeTargets[j].style.opacity = opacity;
+    }
   }
 
   // ── Init / Destroy ───────────────────────────────────────

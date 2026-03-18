@@ -139,7 +139,7 @@ const SplashScreen = (() => {
     var ghost = drag.ghostEl;
     if (!ghost) return;
     var lensEl = ghost.querySelector('.porthole-lens-overlay');
-    if (lensEl) lensEl.classList.add('lens-active');
+    if (lensEl) { lensEl.classList.remove('lens-idle'); lensEl.classList.add('lens-active'); }
     var suitEl = ghost.querySelector('.coin-suit-large');
     if (suitEl) {
       suitEl.classList.remove('suit-flicker-in', 'suit-dimmed');
@@ -204,6 +204,8 @@ const SplashScreen = (() => {
    */
   function _splashDeactivateLens() {
     if (_dragState && _dragState.cardEl) {
+      var lensEl = _dragState.cardEl.querySelector('.porthole-lens-overlay');
+      if (lensEl) { lensEl.classList.remove('lens-active'); lensEl.classList.add('lens-idle'); }
       var suitEl = _dragState.cardEl.querySelector('.coin-suit-large');
       if (suitEl) {
         suitEl.classList.remove('suit-flicker-off', 'suit-dimmed');
@@ -453,7 +455,7 @@ const SplashScreen = (() => {
             </div>
             <div class="coin-artwork" data-card-index="${index}">
               <canvas class="starfield-window" width="200" height="200"></canvas>
-              <div class="porthole-lens-overlay lens-${_splashLensClass(mission.theme)}"></div>
+              <div class="porthole-lens-overlay lens-idle lens-${_splashLensClass(mission.theme)}"></div>
               <div class="coin-rings"></div>
               <div class="coin-suit-large ${mission.suitClass}">${mission.suit}</div>
             </div>
