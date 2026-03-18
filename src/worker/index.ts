@@ -18,6 +18,7 @@ import { videoRoutes } from './routes/video';
 import { mapUploadRoutes } from './routes/map-upload';
 import { bookingRoutes } from './routes/booking';
 import { partnersRoutes } from './routes/partners';
+import { puzzleDesignerRoutes } from './routes/puzzle-designer';
 import {
   listActiveScenarios,
   findStaleActors,
@@ -87,6 +88,10 @@ app.route('/api/kernel', kernelRoutes);
 // --- Booking & Partners ---
 app.route('/api/booking', bookingRoutes);
 app.route('/api/partners', partnersRoutes);
+
+// --- Puzzle Designer Portal ---
+app.route('/api/ops', puzzleDesignerRoutes);  // /api/ops/puzzles/* (auth required)
+app.route('/api/puzzles', puzzleDesignerRoutes); // /api/puzzles/live/* (public)
 
 // --- Audio: served from R2 (not static assets) ---
 app.route('/audio', audioRoutes);

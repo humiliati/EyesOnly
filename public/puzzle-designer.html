@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>EYES ONLY // PUZZLE DESIGNER</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: #111;
+      --border: #222;
+      --phosphor: #1cff9b;
+      --phosphor-dim: #1a6b4a;
+      --amber: #e0c040;
+      --red: #ff4444;
+      --blue: #4a8aff;
+      --font: 'Courier New', Courier, monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: #ccc; font-family: var(--font); font-size: 13px; }
+
+    header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 14px; letter-spacing: 0.2em; color: var(--phosphor); }
+    header .meta { font-size: 11px; color: #666; }
+    header a { color: var(--blue); text-decoration: none; }
+
+    .layout { display: grid; grid-template-columns: 340px 1fr 340px; gap: 1px; background: var(--border); min-height: calc(100vh - 40px); }
+    .col { background: var(--panel); padding: 12px; overflow-y: auto; }
+    .col-header { font-size: 11px; letter-spacing: 0.15em; color: var(--phosphor-dim); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 10px; }
+
+    /* Puzzle list */
+    .puzzle-card { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.2s; }
+    .puzzle-card:hover { border-color: var(--phosphor-dim); }
+    .puzzle-card.active { border-color: var(--phosphor); }
+    .puzzle-card-title { font-size: 12px; color: #eee; }
+    .puzzle-card-meta { font-size: 10px; color: #666; margin-top: 2px; }
+    .puzzle-card-status { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 2px; letter-spacing: 0.1em; }
+    .status-draft { background: #333; color: #888; }
+    .status-live { background: #0a3a1a; color: var(--phosphor); }
+    .status-archived { background: #2a1a0a; color: #a66; }
+
+    /* Form */
+    label { display: block; font-size: 10px; letter-spacing: 0.1em; color: var(--phosphor-dim); margin: 10px 0 3px 0; }
+    input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #ddd; font-family: var(--font); font-size: 12px; padding: 6px 8px; border-radius: 3px; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--phosphor-dim); }
+    textarea { resize: vertical; min-height: 60px; }
+    textarea.code-editor { min-height: 280px; font-size: 11px; line-height: 1.4; tab-size: 2; white-space: pre; }
+
+    .btn { display: inline-block; padding: 6px 14px; font-family: var(--font); font-size: 11px; letter-spacing: 0.1em; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; background: var(--bg); color: #ccc; }
+    .btn:hover { border-color: var(--phosphor-dim); color: #fff; }
+    .btn-primary { background: #0a2a1a; border-color: var(--phosphor-dim); color: var(--phosphor); }
+    .btn-primary:hover { background: #0a3a2a; }
+    .btn-danger { border-color: #442; color: var(--red); }
+    .btn-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+    /* QR Preview */
+    .qr-preview { background: #fff; border-radius: 6px; padding: 16px; text-align: center; margin: 10px 0; }
+    .qr-preview canvas { max-width: 100%; image-rendering: pixelated; }
+    .qr-url { font-size: 10px; color: #666; word-break: break-all; margin-top: 6px; }
+
+    /* Template section */
+    .template-box { background: var(--bg); border: 1px dashed var(--border); border-radius: 4px; padding: 10px; margin: 8px 0; }
+    .template-box pre { font-size: 10px; line-height: 1.3; color: #888; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+
+    .copy-btn { background: var(--panel); border: 1px solid var(--border); color: var(--amber); font-family: var(--font); font-size: 10px; padding: 3px 10px; cursor: pointer; border-radius: 3px; }
+    .copy-btn:hover { border-color: var(--amber); }
+
+    /* Preview pane */
+    .preview-frame { background: #000; border: 1px solid var(--border); border-radius: 4px; min-height: 300px; padding: 12px; position: relative; }
+    .preview-frame .puzzle-popup-body { all: unset; display: block; }
+
+    .chain-viz { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .chain-node { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 4px 8px; font-size: 10px; }
+    .chain-node.current { border-color: var(--phosphor); color: var(--phosphor); }
+    .chain-arrow { color: var(--phosphor-dim); font-size: 12px; }
+
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--phosphor-dim); color: #000; padding: 8px 16px; border-radius: 4px; font-size: 11px; opacity: 0; transition: opacity 0.3s; z-index: 999; }
+    .toast.show { opacity: 1; }
+
+    /* Responsive */
+    @media (max-width: 1000px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>EYES ONLY // PUZZLE DESIGNER</h1>
+  <div class="meta">
+    <a href="/games.html">VIEW LIVE FIELD KIT</a> &bull;
+    <a href="/qr-stickers.html">PRINT STICKERS</a>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: Puzzle List -->
+  <div class="col" id="col-list">
+    <div class="col-header">PUZZLE INVENTORY</div>
+    <div class="btn-row" style="margin-top:0;margin-bottom:10px;">
+      <button class="btn btn-primary" id="btn-new">+ NEW PUZZLE</button>
+      <button class="btn" id="btn-refresh">REFRESH</button>
+    </div>
+    <div id="puzzle-list">
+      <div style="color:#555;font-size:11px;padding:20px 0;text-align:center;">Loading puzzles...</div>
+    </div>
+  </div>
+
+  <!-- CENTER: Editor -->
+  <div class="col" id="col-editor">
+    <div class="col-header">PUZZLE EDITOR</div>
+    <div id="editor-empty" style="color:#555;font-size:11px;padding:40px 0;text-align:center;">
+      Select a puzzle or create a new one.
+    </div>
+    <div id="editor-form" style="display:none;">
+      <label>TITLE</label>
+      <input type="text" id="f-title" placeholder="e.g. Café Cipher Challenge">
+
+      <label>DESCRIPTION (one-liner for the field kit list)</label>
+      <input type="text" id="f-desc" placeholder="Decode the barista's secret message">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div>
+          <label>EMOJI</label>
+          <input type="text" id="f-emoji" placeholder="🔐" maxlength="4">
+        </div>
+        <div>
+          <label>TAG</label>
+          <input type="text" id="f-tag" placeholder="CIPHER">
+        </div>
+        <div>
+          <label>CHAIN ORDER</label>
+          <input type="number" id="f-order" value="0" min="0">
+        </div>
+      </div>
+
+      <label>NEXT PUZZLE (slug of next puzzle in chain, blank = end)</label>
+      <input type="text" id="f-next" placeholder="e.g. park-riddle-01">
+
+      <label>PUZZLE CODE (JavaScript — must call PuzzlePopup.register())</label>
+      <textarea class="code-editor" id="f-code" placeholder="// Your puzzle JS here...
+// Must call: PuzzlePopup.register('custom-YOUR-SLUG', { title, render, onSolve })
+// See the BLANK TEMPLATE on the right panel for a starting point."></textarea>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-save">SAVE</button>
+        <button class="btn btn-primary" id="btn-publish">PUBLISH (GO LIVE)</button>
+        <button class="btn btn-danger" id="btn-archive">ARCHIVE</button>
+      </div>
+
+      <!-- Live Preview -->
+      <label style="margin-top:16px;">LIVE PREVIEW</label>
+      <div class="preview-frame" id="preview-frame">
+        <div style="color:#555;font-size:11px;text-align:center;padding:40px 0;">Click SAVE to preview</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: QR Code + Template -->
+  <div class="col" id="col-right">
+    <div class="col-header">QR CODE &amp; TOOLS</div>
+
+    <!-- QR Code -->
+    <div id="qr-section" style="display:none;">
+      <label>QR CODE FOR PRINTING</label>
+      <div class="qr-preview" id="qr-canvas-wrap">
+        <canvas id="qr-canvas" width="280" height="280"></canvas>
+      </div>
+      <div class="qr-url" id="qr-url-display"></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-download-qr">DOWNLOAD QR (PNG)</button>
+        <button class="btn" id="btn-print-sticker">PRINT STICKER</button>
+      </div>
+
+      <!-- Chain visualization -->
+      <label style="margin-top:12px;">TREASURE HUNT CHAIN</label>
+      <div class="chain-viz" id="chain-viz"></div>
+    </div>
+
+    <!-- Blank Template -->
+    <label style="margin-top:16px;">BLANK PUZZLE TEMPLATE</label>
+    <p style="font-size:10px;color:#666;margin-bottom:6px;">
+      Copy this template and paste it into Grok, ChatGPT, or any LLM with the prompt:
+      "Make me a new variant of this puzzle about [your theme]."
+    </p>
+    <div class="template-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:10px;color:var(--phosphor-dim);">COPY-PASTEABLE TEMPLATE</span>
+        <button class="copy-btn" id="btn-copy-template">COPY</button>
+      </div>
+      <pre id="blank-template"></pre>
+    </div>
+
+    <!-- Existing puzzle export -->
+    <label style="margin-top:12px;">EXPORT EXISTING PUZZLE AS TEMPLATE</label>
+    <select id="export-select">
+      <option value="">-- Select a static puzzle --</option>
+      <option value="qr-cipher">Field Cipher Wheel</option>
+      <option value="qr-jigsaw">Surveillance Recon (Jigsaw)</option>
+      <option value="qr-riddle">Intel Riddles</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn" id="btn-export-puzzle">EXPORT AS TEMPLATE</button>
+    </div>
+    <div class="template-box" id="export-output" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:10px;color:var(--phosphor-dim);">EXPORTED SOURCE</span>
+        <button class="copy-btn" id="btn-copy-export">COPY</button>
+      </div>
+      <pre id="export-code"></pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- QR Code library (lightweight) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  var API_BASE = '/api/ops';
+  var currentSlug = null;
+  var puzzles = [];
+
+  // ---- Auth: reuse ops session token ----
+  function getToken() {
+    try { return localStorage.getItem('eyesonly_ops_token') || localStorage.getItem('eyesonly_session_token') || ''; }
+    catch (_) { return ''; }
+  }
+
+  function headers() {
+    return {
+      'Content-Type': 'application/json',
+      'X-Session-Token': getToken()
+    };
+  }
+
+  // ---- Toast ----
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(function () { el.classList.remove('show'); }, 2500);
+  }
+
+  // ---- API ----
+  function loadPuzzles() {
+    fetch(API_BASE + '/puzzles', { headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        puzzles = data.puzzles || [];
+        renderList();
+      })
+      .catch(function () {
+        document.getElementById('puzzle-list').innerHTML =
+          '<div style="color:var(--red);font-size:11px;padding:20px;text-align:center;">Failed to load. Check auth.</div>';
+      });
+  }
+
+  function savePuzzle(isNew) {
+    var body = {
+      title: document.getElementById('f-title').value,
+      description: document.getElementById('f-desc').value,
+      emoji: document.getElementById('f-emoji').value || '🔐',
+      tag: document.getElementById('f-tag').value || 'PUZZLE',
+      puzzle_js: document.getElementById('f-code').value,
+      chain_order: parseInt(document.getElementById('f-order').value) || 0,
+      next_slug: document.getElementById('f-next').value || undefined,
+    };
+
+    if (!body.title || !body.puzzle_js) {
+      toast('Title and puzzle code are required');
+      return;
+    }
+
+    var url = isNew ? API_BASE + '/puzzles' : API_BASE + '/puzzles/' + currentSlug;
+    var method = isNew ? 'POST' : 'PUT';
+
+    fetch(url, { method: method, headers: headers(), body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.puzzle) {
+          currentSlug = data.puzzle.slug;
+          toast(isNew ? 'Puzzle created!' : 'Puzzle saved!');
+          loadPuzzles();
+          showQR(data.puzzle);
+          renderPreview();
+        } else {
+          toast('Error: ' + (data.error || 'Unknown'));
+        }
+      });
+  }
+
+  function publishPuzzle() {
+    if (!currentSlug) return;
+    fetch(API_BASE + '/puzzles/' + currentSlug + '/publish', { method: 'POST', headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function () {
+        toast('Puzzle is LIVE!');
+        loadPuzzles();
+      });
+  }
+
+  function archivePuzzle() {
+    if (!currentSlug) return;
+    fetch(API_BASE + '/puzzles/' + currentSlug, { method: 'DELETE', headers: headers() })
+      .then(function () {
+        toast('Puzzle archived');
+        currentSlug = null;
+        showEditor(false);
+        loadPuzzles();
+      });
+  }
+
+  // ---- Render ----
+  function renderList() {
+    var container = document.getElementById('puzzle-list');
+    if (!puzzles.length) {
+      container.innerHTML = '<div style="color:#555;font-size:11px;padding:20px;text-align:center;">No puzzles yet. Create one!</div>';
+      return;
+    }
+
+    container.innerHTML = puzzles.map(function (p) {
+      return '<div class="puzzle-card' + (p.slug === currentSlug ? ' active' : '') + '" data-slug="' + p.slug + '">' +
+        '<div class="puzzle-card-title">' + (p.emoji || '🔐') + ' ' + escapeHtml(p.title) + '</div>' +
+        '<div class="puzzle-card-meta">' +
+          '<span class="puzzle-card-status status-' + p.status + '">' + p.status.toUpperCase() + '</span>' +
+          ' &bull; ' + p.slug +
+          (p.next_slug ? ' → ' + p.next_slug : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    container.querySelectorAll('.puzzle-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        selectPuzzle(card.getAttribute('data-slug'));
+      });
+    });
+  }
+
+  function selectPuzzle(slug) {
+    currentSlug = slug;
+    renderList();
+
+    // Fetch full puzzle with source code
+    fetch(API_BASE + '/puzzles/' + slug, { headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var p = data.puzzle;
+        if (!p) return;
+
+        document.getElementById('f-title').value = p.title || '';
+        document.getElementById('f-desc').value = p.description || '';
+        document.getElementById('f-emoji').value = p.emoji || '🔐';
+        document.getElementById('f-tag').value = p.tag || 'PUZZLE';
+        document.getElementById('f-order').value = p.chain_order || 0;
+        document.getElementById('f-next').value = p.next_slug || '';
+        document.getElementById('f-code').value = p.puzzle_js || '';
+
+        showEditor(true);
+        showQR(p);
+        renderChain(p);
+        renderPreview();
+      });
+  }
+
+  function showEditor(visible) {
+    document.getElementById('editor-empty').style.display = visible ? 'none' : '';
+    document.getElementById('editor-form').style.display = visible ? '' : 'none';
+  }
+
+  function showQR(puzzle) {
+    var section = document.getElementById('qr-section');
+    section.style.display = '';
+
+    var url = puzzle.qr_url || 'https://flapsandseals.com/games#' + puzzle.slug;
+    document.getElementById('qr-url-display').textContent = url;
+
+    // Generate QR code using qrcodejs
+    var canvasWrap = document.getElementById('qr-canvas-wrap');
+    canvasWrap.innerHTML = '';
+    try {
+      new QRCode(canvasWrap, {
+        text: url,
+        width: 256,
+        height: 256,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch (e) {
+      canvasWrap.innerHTML = '<div style="color:#666;font-size:11px;padding:20px;">QR library not loaded</div>';
+    }
+  }
+
+  function renderChain(puzzle) {
+    var viz = document.getElementById('chain-viz');
+    // Simple chain visualization
+    var nodes = [];
+    if (puzzle.prev_slug) nodes.push({ slug: puzzle.prev_slug, current: false });
+    nodes.push({ slug: puzzle.slug, current: true });
+    if (puzzle.next_slug) nodes.push({ slug: puzzle.next_slug, current: false });
+
+    viz.innerHTML = nodes.map(function (n, i) {
+      var html = '<span class="chain-node' + (n.current ? ' current' : '') + '">' + n.slug + '</span>';
+      if (i < nodes.length - 1) html += '<span class="chain-arrow">→</span>';
+      return html;
+    }).join('');
+  }
+
+  function renderPreview() {
+    var frame = document.getElementById('preview-frame');
+    var code = document.getElementById('f-code').value;
+    if (!code.trim()) {
+      frame.innerHTML = '<div style="color:#555;font-size:11px;text-align:center;padding:40px 0;">Enter puzzle code to preview</div>';
+      return;
+    }
+
+    // Create a mock PuzzlePopup for preview
+    var renderFn = null;
+    var mockPopup = {
+      register: function (key, config) {
+        renderFn = config.render;
+      },
+      solved: function () { toast('PUZZLE SOLVED (preview)'); },
+      close: function () {},
+      isOpen: function () { return false; }
+    };
+
+    try {
+      var fn = new Function('PuzzlePopup', 'PuzzleState', 'AudioSystem', code);
+      fn(mockPopup, null, null);
+
+      if (renderFn) {
+        frame.innerHTML = '';
+        renderFn(frame);
+      } else {
+        frame.innerHTML = '<div style="color:var(--amber);font-size:11px;padding:20px;">Code executed but no render function was registered. Make sure puzzle_js calls PuzzlePopup.register().</div>';
+      }
+    } catch (err) {
+      frame.innerHTML = '<pre style="color:var(--red);font-size:10px;padding:10px;white-space:pre-wrap;">' + escapeHtml(String(err)) + '</pre>';
+    }
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- Blank Template ----
+  var BLANK_TEMPLATE = [
+    '// ============================================================',
+    '// EYES ONLY — Blank Puzzle Template',
+    '// ============================================================',
+    '// INSTRUCTIONS FOR LLM (Grok, ChatGPT, Claude, etc.):',
+    '// This is a puzzle template for a spy-themed treasure hunt game.',
+    '// The puzzle appears inside a modal popup on a CRT-styled terminal.',
+    '// Modify the PUZZLE_CONFIG and the render() function to create',
+    '// your own variant. The theme is Cold War espionage.',
+    '//',
+    '// RULES:',
+    '// 1. Must call PuzzlePopup.register(PUZZLE_KEY, { title, render, onSolve })',
+    '// 2. The render(container) function receives a DOM element to build UI in',
+    '// 3. Call PuzzlePopup.solved() when the player wins',
+    '// 4. Use CSS classes: puzzle-ddc-* for consistent CRT terminal styling',
+    '// 5. Use localStorage for saving progress (prefix: eyesonly_)',
+    '// 6. Keep it mobile-friendly (players scan QR codes on phones)',
+    '// ============================================================',
+    '',
+    'var PUZZLE_KEY = "custom-" + "YOUR-SLUG-HERE";  // CHANGE THIS',
+    '',
+    'var PUZZLE_CONFIG = {',
+    '  title: "YOUR PUZZLE TITLE",          // Shown in popup header',
+    '  briefing: "MISSION BRIEFING TEXT",    // Flavor text at top',
+    '  question: "What is the answer?",      // The challenge',
+    '  answer: "ANSWER",                     // Correct answer (UPPERCASE)',
+    '  alternates: ["ALT1", "ALT2"],         // Accepted alternate answers',
+    '  hint: "Think about...",               // Optional hint text',
+    '  successMsg: "ACCESS GRANTED",         // Shown on solve',
+    '  coins: 15,                            // Reward coins',
+    '};',
+    '',
+    'var SOLVED_KEY = "eyesonly_" + PUZZLE_KEY + "_solved";',
+    '',
+    'function isSolved() {',
+    '  try { return localStorage.getItem(SOLVED_KEY) === "true"; }',
+    '  catch (_) { return false; }',
+    '}',
+    '',
+    'function render(container) {',
+    '  if (isSolved()) {',
+    '    container.innerHTML =',
+    '      \'<div class="puzzle-ddc-briefing">\' +',
+    '        \'<span class="puzzle-ddc-label">MISSION COMPLETE</span>\' +',
+    '        \'<p class="puzzle-ddc-flavor">\' + PUZZLE_CONFIG.successMsg + \'</p>\' +',
+    '      \'</div>\' +',
+    '      \'<div style="text-align:center;margin:16px 0;">\' +',
+    '        \'<span class="puzzle-ddc-success">&#10003; SOLVED</span>\' +',
+    '      \'</div>\';',
+    '    return;',
+    '  }',
+    '',
+    '  container.innerHTML =',
+    '    \'<div class="puzzle-ddc-briefing">\' +',
+    '      \'<span class="puzzle-ddc-label">\' + PUZZLE_CONFIG.briefing + \'</span>\' +',
+    '    \'</div>\' +',
+    '    \'<div class="puzzle-ddc-cipher" style="margin:12px 0;">\' +',
+    '      \'<span class="puzzle-ddc-cipher-label">CHALLENGE:</span>\' +',
+    '      \'<div class="puzzle-ddc-cipher-text">\' + PUZZLE_CONFIG.question + \'</div>\' +',
+    '    \'</div>\' +',
+    '    \'<div class="puzzle-ddc-answer">\' +',
+    '      \'<label class="puzzle-ddc-answer-label" for="puzzle-input">YOUR ANSWER:</label>\' +',
+    '      \'<input type="text" id="puzzle-input" class="puzzle-ddc-input" placeholder="Enter answer" autocomplete="off">\' +',
+    '      \'<button type="button" id="puzzle-submit" class="puzzle-ddc-submit">SUBMIT</button>\' +',
+    '    \'</div>\' +',
+    '    \'<div class="puzzle-ddc-feedback" id="puzzle-feedback"></div>\';',
+    '',
+    '  var input = container.querySelector("#puzzle-input");',
+    '  var btn = container.querySelector("#puzzle-submit");',
+    '  var feedback = container.querySelector("#puzzle-feedback");',
+    '',
+    '  function check() {',
+    '    var val = input.value.trim().toUpperCase();',
+    '    if (!val) { feedback.innerHTML = \'<span class="puzzle-ddc-error">Enter your answer.</span>\'; return; }',
+    '    var correct = val === PUZZLE_CONFIG.answer ||',
+    '      (PUZZLE_CONFIG.alternates && PUZZLE_CONFIG.alternates.indexOf(val) !== -1);',
+    '    if (correct) {',
+    '      try { localStorage.setItem(SOLVED_KEY, "true"); } catch (_) {}',
+    '      PuzzlePopup.solved();',
+    '      feedback.innerHTML = \'<span class="puzzle-ddc-success">&#10003; \' + PUZZLE_CONFIG.successMsg + \'</span>\';',
+    '      input.disabled = true;',
+    '      btn.disabled = true;',
+    '    } else {',
+    '      feedback.innerHTML = \'<span class="puzzle-ddc-error">INCORRECT — Try again.</span>\';',
+    '    }',
+    '  }',
+    '',
+    '  btn.addEventListener("click", check);',
+    '  input.addEventListener("keydown", function (e) {',
+    '    if (e.key === "Enter") { e.preventDefault(); check(); }',
+    '    e.stopPropagation();',
+    '  });',
+    '  input.addEventListener("keyup", function (e) { e.stopPropagation(); });',
+    '  setTimeout(function () { input.focus(); }, 100);',
+    '}',
+    '',
+    'PuzzlePopup.register(PUZZLE_KEY, {',
+    '  title: PUZZLE_CONFIG.title,',
+    '  render: render,',
+    '  onSolve: function () {',
+    '    try {',
+    '      var acct = JSON.parse(localStorage.getItem("eyesonly_account") || "{}");',
+    '      acct.puzzleCoins = (acct.puzzleCoins || 0) + PUZZLE_CONFIG.coins;',
+    '      localStorage.setItem("eyesonly_account", JSON.stringify(acct));',
+    '    } catch (_) {}',
+    '  }',
+    '});',
+  ].join('\n');
+
+  document.getElementById('blank-template').textContent = BLANK_TEMPLATE;
+
+  // ---- Export existing puzzle ----
+  var STATIC_PUZZLE_URLS = {
+    'qr-cipher': '/js/puzzles/qr-cipher-wheel.js',
+    'qr-jigsaw': '/js/puzzles/qr-jigsaw.js',
+    'qr-riddle': '/js/puzzles/qr-riddle.js',
+  };
+
+  document.getElementById('btn-export-puzzle').addEventListener('click', function () {
+    var key = document.getElementById('export-select').value;
+    if (!key || !STATIC_PUZZLE_URLS[key]) { toast('Select a puzzle first'); return; }
+
+    fetch(STATIC_PUZZLE_URLS[key])
+      .then(function (r) { return r.text(); })
+      .then(function (code) {
+        document.getElementById('export-code').textContent = code;
+        document.getElementById('export-output').style.display = '';
+        toast('Exported! Copy and modify.');
+      });
+  });
+
+  // ---- Event Handlers ----
+  document.getElementById('btn-new').addEventListener('click', function () {
+    currentSlug = null;
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-emoji').value = '🔐';
+    document.getElementById('f-tag').value = 'PUZZLE';
+    document.getElementById('f-order').value = '0';
+    document.getElementById('f-next').value = '';
+    document.getElementById('f-code').value = BLANK_TEMPLATE;
+    document.getElementById('qr-section').style.display = 'none';
+    showEditor(true);
+    renderList();
+    renderPreview();
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', loadPuzzles);
+  document.getElementById('btn-save').addEventListener('click', function () { savePuzzle(!currentSlug); });
+  document.getElementById('btn-publish').addEventListener('click', publishPuzzle);
+  document.getElementById('btn-archive').addEventListener('click', archivePuzzle);
+
+  document.getElementById('btn-copy-template').addEventListener('click', function () {
+    navigator.clipboard.writeText(BLANK_TEMPLATE).then(function () { toast('Template copied!'); });
+  });
+
+  document.getElementById('btn-copy-export').addEventListener('click', function () {
+    var code = document.getElementById('export-code').textContent;
+    navigator.clipboard.writeText(code).then(function () { toast('Source copied!'); });
+  });
+
+  document.getElementById('btn-download-qr').addEventListener('click', function () {
+    var img = document.querySelector('#qr-canvas-wrap img');
+    if (!img) { toast('No QR code generated'); return; }
+    var a = document.createElement('a');
+    a.href = img.src;
+    a.download = (currentSlug || 'puzzle') + '-qr.png';
+    a.click();
+    toast('QR downloaded!');
+  });
+
+  // Preview on code change (debounced)
+  var previewTimer = null;
+  document.getElementById('f-code').addEventListener('input', function () {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(renderPreview, 500);
+  });
+
+  // ---- Init ----
+  loadPuzzles();
+
+})();
+</script>
+
+</body>
+</html>

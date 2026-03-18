@@ -80,7 +80,7 @@
 
     // Poll until PuzzlePopup AND the target puzzle are ready (up to 8s)
     var attempts = 0;
-    var maxAttempts = 80; // 80 × 100ms = 8 seconds
+    var maxAttempts = 120; // 120 × 100ms = 12 seconds (designer puzzles need API fetch time)
     var poller = setInterval(function () {
       attempts++;
       if (tryOpenPuzzle(puzzleKey)) {
@@ -98,9 +98,16 @@
     if (!route) return;
 
     var puzzleKey = ROUTE_MAP[route];
+
+    // Check dynamic routes from designer-created puzzles (qr-custom.js)
+    if (!puzzleKey && typeof window.__qrRouteMap !== 'undefined' && window.__qrRouteMap[route]) {
+      puzzleKey = window.__qrRouteMap[route];
+    }
+
+    // If still unknown, try 'custom-' prefix (designer puzzles use this convention)
     if (!puzzleKey) {
-      console.log('[QR-Router] Unknown route: #' + route);
-      return;
+      puzzleKey = 'custom-' + route;
+      console.log('[QR-Router] Trying dynamic route: #' + route + ' → ' + puzzleKey);
     }
 
     // Wait for ALL scripts to load (window load), then start trying
