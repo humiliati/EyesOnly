@@ -379,6 +379,10 @@
   justify-content: center;
   padding: 13px 44px;
   min-width: 160px;
+  /* Defensive: no fixed dimensions, no circle, no aspect-ratio */
+  width: auto;
+  height: auto;
+  aspect-ratio: unset;
   border-radius: 8px;
   border: 2px solid var(--theme-primary, #33ff33);
   background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
@@ -406,6 +410,8 @@
   opacity: 0;
   transition: opacity 0.3s ease;
   clip-path: inset(0 round 6px);
+  /* Dark fallback — covers any gap the master blit doesn't reach at viewport edge */
+  background: #060808;
 }
 
 /* ---- Label — BIG, BOLD, SHADOWED for legibility ---- */
@@ -449,7 +455,8 @@
 .porthole-btn .sparkle::before {
   content: '✦';
   display: block;
-  color: var(--theme-primary, #33ff33);
+  /* Match the idle contrast glow, not the border color */
+  color: var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.9));
   font-size: inherit;
 }
 
@@ -517,7 +524,7 @@
 .porthole-btn:hover .sparkle,
 .porthole-btn:focus-visible .sparkle {
   opacity: 1;
-  filter: drop-shadow(0 0 6px var(--theme-primary, #33ff33));
+  filter: drop-shadow(0 0 6px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.8)));
 }
 
 .porthole-btn:hover .sparkle-1,
@@ -584,8 +591,11 @@
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
   .porthole-btn {
+    /* Fill available width on mobile — no narrow orphan buttons */
+    width: 100%;
     padding: 13px 32px;
     min-width: unset;
+    box-sizing: border-box;
   }
   .porthole-btn-label {
     font-size: 15px;
