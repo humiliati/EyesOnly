@@ -502,13 +502,14 @@ var NchOverlay = (function () {
       mission.suitClass + '">' + mission.suit + '</span></div>';
 
     var btnClass = mission.btnClass || '';
+    // Portal window (star-1 = live starfield canvas behind text) + 5 dot particles
     var starBurst =
-      '<div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
-      '<div class="cbtn-star cbtn-star-2"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
-      '<div class="cbtn-star cbtn-star-3"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
-      '<div class="cbtn-star cbtn-star-4"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
-      '<div class="cbtn-star cbtn-star-5"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>' +
-      '<div class="cbtn-star cbtn-star-6"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>';
+      '<div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="64" height="32"></canvas></div>' +
+      '<div class="cbtn-star cbtn-star-2"></div>' +
+      '<div class="cbtn-star cbtn-star-3"></div>' +
+      '<div class="cbtn-star cbtn-star-4"></div>' +
+      '<div class="cbtn-star cbtn-star-5"></div>' +
+      '<div class="cbtn-star cbtn-star-6"></div>';
     var midRow = '<div class="coin-mid-row">' +
       '<button class="coin-book-btn ' + btnClass + '" data-mission="' + mission.id + '" data-index="' + index + '" tabindex="-1" inputmode="none">' +
         '<span class="coin-book-label">' + mission.btnLabel + '</span>' +

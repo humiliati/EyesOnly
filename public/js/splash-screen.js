@@ -406,12 +406,12 @@ const SplashScreen = (() => {
         <div class="coin-mid-row">
           <button class="coin-book-btn ${btnExtraClass}" data-mission="${mission.id}" data-index="${index}">
             <span class="coin-book-label">${btnLabel}</span><span class="coin-book-dot">.</span><span class="coin-book-duration">${btnDuration}</span>
-            <div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
-            <div class="cbtn-star cbtn-star-2"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
-            <div class="cbtn-star cbtn-star-3"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
-            <div class="cbtn-star cbtn-star-4"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
-            <div class="cbtn-star cbtn-star-5"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
-            <div class="cbtn-star cbtn-star-6"><canvas class="cbtn-canvas starfield-window" width="32" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-1"><canvas class="cbtn-canvas starfield-window" width="64" height="32"></canvas></div>
+            <div class="cbtn-star cbtn-star-2"></div>
+            <div class="cbtn-star cbtn-star-3"></div>
+            <div class="cbtn-star cbtn-star-4"></div>
+            <div class="cbtn-star cbtn-star-5"></div>
+            <div class="cbtn-star cbtn-star-6"></div>
           </button>
         </div>`;
 
