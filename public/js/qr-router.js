@@ -103,13 +103,13 @@
       return;
     }
 
-    // Wait for DOM ready, then start trying to open
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () {
+    // Wait for ALL scripts to load (window load), then start trying
+    if (document.readyState === 'complete') {
+      openPuzzleWithRetry(puzzleKey);
+    } else {
+      window.addEventListener('load', function () {
         openPuzzleWithRetry(puzzleKey);
       });
-    } else {
-      openPuzzleWithRetry(puzzleKey);
     }
   }
 
