@@ -252,6 +252,8 @@
 
   /* ---- Paper torso: horizontal sticky note strip ---- */
   .games-v2-torso {
+    position: relative;
+    z-index: 20;
     display: flex;
     gap: 8px;
     padding: 8px 10px;
@@ -408,7 +410,18 @@
   display: block;
 }
 
-/* ---- 6. Abbreviator override: no ellipsis anywhere ---- */
+/* ---- 6. Kill CRT barrel distortion overlay (designed for fixed fullscreen) ---- */
+.games-v2-monitor #crt-screen::before,
+.games-v2-monitor #crt-screen::after {
+  display: none !important;
+}
+
+/* Also suppress the vignette and phosphor glow on mobile where CRT is inset */
+.games-v2-monitor #vignette {
+  border-radius: 8px;
+}
+
+/* ---- 7. Abbreviator override: no ellipsis anywhere ---- */
 .games-v2-nav-link,
 .games-v2-torso-btn,
 .games-v2-rolodex-tab {
