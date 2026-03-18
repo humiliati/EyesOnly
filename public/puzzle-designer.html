@@ -100,13 +100,33 @@
 <!-- Main app: hidden until authenticated -->
 <div class="layout" id="app-layout" style="display:none;">
 
-  <!-- LEFT: Puzzle List -->
+  <!-- LEFT: Puzzle List + Categories -->
   <div class="col" id="col-list">
     <div class="col-header">PUZZLE INVENTORY</div>
-    <div class="btn-row" style="margin-top:0;margin-bottom:10px;">
+    <div class="btn-row" style="margin-top:0;margin-bottom:6px;">
       <button class="btn btn-primary" id="btn-new">+ NEW PUZZLE</button>
       <button class="btn" id="btn-refresh">REFRESH</button>
     </div>
+
+    <!-- Category filter -->
+    <div style="margin-bottom:8px;">
+      <label style="margin-top:4px;">CATEGORY</label>
+      <div style="display:flex;gap:4px;">
+        <select id="category-filter" style="flex:1;">
+          <option value="">ALL CATEGORIES</option>
+        </select>
+        <button class="btn" id="btn-new-category" title="New category" style="padding:4px 8px;font-size:10px;">+</button>
+      </div>
+    </div>
+
+    <!-- Archive toggle -->
+    <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;">
+      <label style="margin:0;cursor:pointer;display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="show-archived" style="accent-color:var(--phosphor);">
+        <span style="font-size:10px;color:#666;">SHOW ARCHIVED</span>
+      </label>
+    </div>
+
     <div id="puzzle-list">
       <div style="color:#555;font-size:11px;padding:20px 0;text-align:center;">Loading puzzles...</div>
     </div>
@@ -140,8 +160,16 @@
         </div>
       </div>
 
-      <label>NEXT PUZZLE (slug of next puzzle in chain, blank = end)</label>
-      <input type="text" id="f-next" placeholder="e.g. park-riddle-01">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label>CATEGORY</label>
+          <select id="f-category"><option value="">Uncategorized</option></select>
+        </div>
+        <div>
+          <label>NEXT PUZZLE (chain)</label>
+          <input type="text" id="f-next" placeholder="e.g. park-riddle-01">
+        </div>
+      </div>
 
       <label>PUZZLE CODE (JavaScript — must call PuzzlePopup.register())</label>
       <textarea class="code-editor" id="f-code" placeholder="// Your puzzle JS here...
@@ -151,7 +179,10 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="btn-save">SAVE</button>
         <button class="btn btn-primary" id="btn-publish">PUBLISH (GO LIVE)</button>
+        <button class="btn" id="btn-duplicate">DUPLICATE</button>
+        <button class="btn" id="btn-preview-player" title="Open as player in new tab">PREVIEW ↗</button>
         <button class="btn btn-danger" id="btn-archive">ARCHIVE</button>
+        <button class="btn" id="btn-restore" style="display:none;">RESTORE TO DRAFT</button>
       </div>
 
       <!-- Live Preview -->
@@ -264,10 +295,44 @@
   var API_BASE = '/api/ops';
   var currentSlug = null;
   var puzzles = [];
+  var categories = [];
+  var showArchived = false;
+  var categoryFilter = '';
 
   // ---- Auth: use unified AuthGate ----
   function headers() {
     return AuthGate.headers();
+  }
+
+  // ---- Categories ----
+  function loadCategories() {
+    fetch(API_BASE + '/categories', { headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        categories = data.categories || [];
+        populateCategorySelects();
+      })
+      .catch(function () {});
+  }
+
+  function populateCategorySelects() {
+    var filter = document.getElementById('category-filter');
+    var formSelect = document.getElementById('f-category');
+
+    var filterHtml = '<option value="">ALL CATEGORIES</option>';
+    var formHtml = '<option value="">Uncategorized</option>';
+
+    categories.forEach(function (cat) {
+      var opt = '<option value="' + cat.slug + '">' + (cat.emoji || '📁') + ' ' + escapeHtml(cat.label) + '</option>';
+      filterHtml += opt;
+      formHtml += opt;
+    });
+
+    if (filter) filter.innerHTML = filterHtml;
+    if (formSelect) formSelect.innerHTML = formHtml;
+
+    // Restore filter
+    if (filter && categoryFilter) filter.value = categoryFilter;
   }
 
   // ---- Toast ----
@@ -280,7 +345,13 @@
 
   // ---- API ----
   function loadPuzzles() {
-    fetch(API_BASE + '/puzzles', { headers: headers() })
+    var url = API_BASE + '/puzzles';
+    var params = [];
+    if (showArchived) params.push('status=archived');
+    else if (categoryFilter) {} // filter client-side after fetch
+    if (params.length) url += '?' + params.join('&');
+
+    fetch(url, { headers: headers() })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         puzzles = data.puzzles || [];
@@ -301,6 +372,7 @@
       puzzle_js: document.getElementById('f-code').value,
       chain_order: parseInt(document.getElementById('f-order').value) || 0,
       next_slug: document.getElementById('f-next').value || undefined,
+      category_slug: document.getElementById('f-category').value || undefined,
     };
 
     if (!body.title || !body.puzzle_js) {
@@ -350,18 +422,32 @@
   // ---- Render ----
   function renderList() {
     var container = document.getElementById('puzzle-list');
-    if (!puzzles.length) {
-      container.innerHTML = '<div style="color:#555;font-size:11px;padding:20px;text-align:center;">No puzzles yet. Create one!</div>';
+
+    // Apply client-side filters
+    var filtered = puzzles;
+    if (categoryFilter) {
+      filtered = puzzles.filter(function (p) { return p.category_slug === categoryFilter; });
+    }
+
+    if (!filtered.length) {
+      var msg = showArchived ? 'No archived puzzles.' : (categoryFilter ? 'No puzzles in this category.' : 'No puzzles yet. Create one!');
+      container.innerHTML = '<div style="color:#555;font-size:11px;padding:20px;text-align:center;">' + msg + '</div>';
       return;
     }
 
-    container.innerHTML = puzzles.map(function (p) {
+    container.innerHTML = filtered.map(function (p) {
+      var catLabel = '';
+      if (p.category_slug) {
+        var cat = categories.find(function (c) { return c.slug === p.category_slug; });
+        if (cat) catLabel = ' <span style="color:#4a8aff;font-size:9px;">' + (cat.emoji || '') + cat.label + '</span>';
+      }
       return '<div class="puzzle-card' + (p.slug === currentSlug ? ' active' : '') + '" data-slug="' + p.slug + '">' +
         '<div class="puzzle-card-title">' + (p.emoji || '🔐') + ' ' + escapeHtml(p.title) + '</div>' +
         '<div class="puzzle-card-meta">' +
           '<span class="puzzle-card-status status-' + p.status + '">' + p.status.toUpperCase() + '</span>' +
           ' &bull; ' + p.slug +
           (p.next_slug ? ' → ' + p.next_slug : '') +
+          catLabel +
         '</div>' +
       '</div>';
     }).join('');
@@ -390,7 +476,13 @@
         document.getElementById('f-tag').value = p.tag || 'PUZZLE';
         document.getElementById('f-order').value = p.chain_order || 0;
         document.getElementById('f-next').value = p.next_slug || '';
+        document.getElementById('f-category').value = p.category_slug || '';
         document.getElementById('f-code').value = p.puzzle_js || '';
+
+        // Show/hide lifecycle buttons based on status
+        document.getElementById('btn-archive').style.display = (p.status === 'archived') ? 'none' : '';
+        document.getElementById('btn-restore').style.display = (p.status === 'archived') ? '' : 'none';
+        document.getElementById('btn-publish').style.display = (p.status === 'live') ? 'none' : '';
 
         showEditor(true);
         showQR(p);
@@ -624,17 +716,109 @@
     document.getElementById('f-tag').value = 'PUZZLE';
     document.getElementById('f-order').value = '0';
     document.getElementById('f-next').value = '';
+    document.getElementById('f-category').value = categoryFilter || '';
     document.getElementById('f-code').value = BLANK_TEMPLATE;
     document.getElementById('qr-section').style.display = 'none';
+    document.getElementById('btn-archive').style.display = '';
+    document.getElementById('btn-restore').style.display = 'none';
+    document.getElementById('btn-publish').style.display = '';
     showEditor(true);
     renderList();
     renderPreview();
   });
 
-  document.getElementById('btn-refresh').addEventListener('click', loadPuzzles);
+  document.getElementById('btn-refresh').addEventListener('click', function () {
+    loadPuzzles();
+    loadCategories();
+  });
   document.getElementById('btn-save').addEventListener('click', function () { savePuzzle(!currentSlug); });
   document.getElementById('btn-publish').addEventListener('click', publishPuzzle);
   document.getElementById('btn-archive').addEventListener('click', archivePuzzle);
+
+  // ---- New lifecycle buttons ----
+  document.getElementById('btn-restore').addEventListener('click', function () {
+    if (!currentSlug) return;
+    fetch(API_BASE + '/puzzles/' + currentSlug + '/restore', { method: 'POST', headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function () { toast('Puzzle restored to draft'); loadPuzzles(); selectPuzzle(currentSlug); });
+  });
+
+  document.getElementById('btn-duplicate').addEventListener('click', function () {
+    if (!currentSlug) return;
+    fetch(API_BASE + '/puzzles/' + currentSlug + '/clone', { method: 'POST', headers: headers() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.puzzle) {
+          toast('Duplicated as: ' + data.puzzle.slug);
+          loadPuzzles();
+          setTimeout(function () { selectPuzzle(data.puzzle.slug); }, 300);
+        }
+      });
+  });
+
+  document.getElementById('btn-preview-player').addEventListener('click', function () {
+    if (!currentSlug) return;
+    window.open('/games.html#' + currentSlug, '_blank');
+  });
+
+  // ---- Category filter + archive toggle ----
+  document.getElementById('category-filter').addEventListener('change', function () {
+    categoryFilter = this.value;
+    renderList();
+  });
+
+  document.getElementById('show-archived').addEventListener('change', function () {
+    showArchived = this.checked;
+    loadPuzzles();
+  });
+
+  // ---- New category button ----
+  document.getElementById('btn-new-category').addEventListener('click', function () {
+    var label = prompt('Category name (e.g. RECON, CAFÉ OPS):');
+    if (!label) return;
+    var emoji = prompt('Emoji for this category:', '📁') || '📁';
+    fetch(API_BASE + '/categories', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ label: label, emoji: emoji, sort_order: categories.length })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.category) {
+          toast('Category created: ' + label);
+          loadCategories();
+        }
+      });
+  });
+
+  // ---- Print single sticker ----
+  document.getElementById('btn-print-sticker').addEventListener('click', function () {
+    var img = document.querySelector('#qr-canvas-wrap img');
+    if (!img) { toast('No QR code generated'); return; }
+    var title = document.getElementById('f-title').value || 'PUZZLE';
+    var url = document.getElementById('qr-url-display').textContent || '';
+    var w = window.open('', '_blank');
+    w.document.write(
+      '<html><head><title>QR Sticker</title><style>' +
+      'body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:"Courier New",monospace;background:#fff;}' +
+      '.sticker{text-align:center;border:2px dashed #999;padding:20px;border-radius:8px;max-width:320px;}' +
+      '.sticker img{width:256px;height:256px;image-rendering:pixelated;}' +
+      '.sticker h2{font-size:14px;letter-spacing:0.15em;margin:10px 0 4px;}' +
+      '.sticker .url{font-size:9px;color:#999;word-break:break-all;}' +
+      '.sticker .footer{font-size:10px;font-weight:bold;margin-top:10px;letter-spacing:0.2em;}' +
+      '@media print{body{min-height:auto;}.sticker{border:none;}}' +
+      '</style></head><body>' +
+      '<div class="sticker">' +
+        '<div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;">EYES ONLY</div>' +
+        '<img src="' + img.src + '" alt="QR Code">' +
+        '<h2>' + escapeHtml(title) + '</h2>' +
+        '<div class="url">' + escapeHtml(url) + '</div>' +
+        '<div class="footer">SCAN TO ENGAGE &#9830;</div>' +
+      '</div></body></html>'
+    );
+    w.document.close();
+    setTimeout(function () { w.print(); }, 300);
+  });
 
   document.getElementById('btn-copy-template').addEventListener('click', function () {
     navigator.clipboard.writeText(BLANK_TEMPLATE).then(function () { toast('Template copied!'); });
@@ -663,6 +847,7 @@
   });
 
   // ---- Init ----
+  loadCategories();
   loadPuzzles();
 
   } // end initApp

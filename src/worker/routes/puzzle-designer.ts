@@ -217,6 +217,134 @@ puzzleDesignerRoutes.get('/puzzles/:slug/qr', async (c) => {
   });
 });
 
+// ---- CATEGORY CRUD ----
+
+/** GET /api/ops/categories — list all categories */
+puzzleDesignerRoutes.get('/categories', async (c) => {
+  const result = await c.env.DB.prepare(
+    'SELECT * FROM qr_categories ORDER BY sort_order ASC, created_at ASC'
+  ).all();
+  return c.json({ categories: result.results });
+});
+
+/** POST /api/ops/categories — create category */
+puzzleDesignerRoutes.post('/categories', async (c) => {
+  const body = await c.req.json<{ label: string; emoji?: string; sort_order?: number }>();
+  if (!body.label) return c.json({ error: 'label is required' }, 400);
+
+  const slug = slugify(body.label) + '-' + Date.now().toString(36).slice(-3);
+  await c.env.DB.prepare(
+    'INSERT INTO qr_categories (slug, label, emoji, sort_order) VALUES (?, ?, ?, ?)'
+  ).bind(slug, body.label, body.emoji || '📁', body.sort_order || 0).run();
+
+  const created = await c.env.DB.prepare(
+    'SELECT * FROM qr_categories WHERE slug = ?'
+  ).bind(slug).first();
+  return c.json({ category: created }, 201);
+});
+
+/** PUT /api/ops/categories/:slug — update category */
+puzzleDesignerRoutes.put('/categories/:slug', async (c) => {
+  const slug = c.req.param('slug');
+  const body = await c.req.json<{ label?: string; emoji?: string; sort_order?: number; status?: string }>();
+
+  const fields: string[] = [];
+  const values: (string | number)[] = [];
+  if (body.label !== undefined) { fields.push('label = ?'); values.push(body.label); }
+  if (body.emoji !== undefined) { fields.push('emoji = ?'); values.push(body.emoji); }
+  if (body.sort_order !== undefined) { fields.push('sort_order = ?'); values.push(body.sort_order); }
+  if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
+  fields.push('updated_at = ?'); values.push(Date.now());
+  values.push(slug);
+
+  await c.env.DB.prepare(
+    `UPDATE qr_categories SET ${fields.join(', ')} WHERE slug = ?`
+  ).bind(...values).run();
+
+  const updated = await c.env.DB.prepare('SELECT * FROM qr_categories WHERE slug = ?').bind(slug).first();
+  return c.json({ category: updated });
+});
+
+/** DELETE /api/ops/categories/:slug — archive category (puzzles move to uncategorized) */
+puzzleDesignerRoutes.delete('/categories/:slug', async (c) => {
+  const slug = c.req.param('slug');
+  await c.env.DB.prepare(
+    'UPDATE qr_categories SET status = ?, updated_at = ? WHERE slug = ?'
+  ).bind('archived', Date.now(), slug).run();
+  // Move puzzles in this category to uncategorized
+  await c.env.DB.prepare(
+    'UPDATE qr_puzzles SET category_slug = NULL WHERE category_slug = ?'
+  ).bind(slug).run();
+  return c.json({ ok: true });
+});
+
+/** PUT /api/ops/categories/reorder — batch update sort_order */
+puzzleDesignerRoutes.put('/categories/reorder', async (c) => {
+  const body = await c.req.json<{ order: { slug: string; sort_order: number }[] }>();
+  if (!body.order || !Array.isArray(body.order)) return c.json({ error: 'order array required' }, 400);
+
+  for (const item of body.order) {
+    await c.env.DB.prepare(
+      'UPDATE qr_categories SET sort_order = ?, updated_at = ? WHERE slug = ?'
+    ).bind(item.sort_order, Date.now(), item.slug).run();
+  }
+  return c.json({ ok: true });
+});
+
+// ---- PUZZLE LIFECYCLE EXTENSIONS ----
+
+/** POST /api/ops/puzzles/:slug/restore — restore archived puzzle to draft */
+puzzleDesignerRoutes.post('/puzzles/:slug/restore', async (c) => {
+  const slug = c.req.param('slug');
+  await c.env.DB.prepare(
+    'UPDATE qr_puzzles SET status = ?, updated_at = ? WHERE slug = ?'
+  ).bind('draft', Date.now(), slug).run();
+  return c.json({ ok: true });
+});
+
+/** POST /api/ops/puzzles/:slug/clone — duplicate puzzle with new slug */
+puzzleDesignerRoutes.post('/puzzles/:slug/clone', async (c) => {
+  const slug = c.req.param('slug');
+  const original = await c.env.DB.prepare('SELECT * FROM qr_puzzles WHERE slug = ?').bind(slug).first<any>();
+  if (!original) return c.json({ error: 'Puzzle not found' }, 404);
+
+  const newSlug = slugify(original.title + '-copy') + '-' + Date.now().toString(36).slice(-4);
+  const qrUrl = `https://flapsandseals.com/games#${newSlug}`;
+  const qrImage = generateQRBase64(qrUrl);
+
+  await c.env.DB.prepare(`
+    INSERT INTO qr_puzzles (scenario_id, slug, title, description, emoji, tag, tag_class, puzzle_js, chain_order, category_slug, qr_url, qr_image, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    original.scenario_id, newSlug, original.title + ' (Copy)', original.description,
+    original.emoji, original.tag, original.tag_class, original.puzzle_js,
+    original.chain_order, original.category_slug, qrUrl, qrImage, 'draft'
+  ).run();
+
+  const created = await c.env.DB.prepare('SELECT * FROM qr_puzzles WHERE slug = ?').bind(newSlug).first();
+  return c.json({ puzzle: created, qr_url: qrUrl }, 201);
+});
+
+/** PUT /api/ops/puzzles/reorder — batch update chain_order */
+puzzleDesignerRoutes.put('/puzzles/reorder', async (c) => {
+  const body = await c.req.json<{ order: { slug: string; chain_order: number; category_slug?: string }[] }>();
+  if (!body.order || !Array.isArray(body.order)) return c.json({ error: 'order array required' }, 400);
+
+  for (const item of body.order) {
+    const fields = ['chain_order = ?', 'updated_at = ?'];
+    const values: (string | number | null)[] = [item.chain_order, Date.now()];
+    if (item.category_slug !== undefined) {
+      fields.push('category_slug = ?');
+      values.push(item.category_slug);
+    }
+    values.push(item.slug);
+    await c.env.DB.prepare(
+      `UPDATE qr_puzzles SET ${fields.join(', ')} WHERE slug = ?`
+    ).bind(...values).run();
+  }
+  return c.json({ ok: true });
+});
+
 // ================================================================
 // PUBLIC ROUTES — /api/puzzles/*
 // No auth required. Player-facing endpoints.
@@ -236,10 +364,45 @@ puzzlePublicRoutes.get('/live', async (c) => {
 /** GET /api/puzzles/live/:slug — single live puzzle's JS (on-demand load) */
 puzzlePublicRoutes.get('/live/:slug', async (c) => {
   const slug = c.req.param('slug');
-  const puzzle = await c.env.DB.prepare(
-    `SELECT slug, title, puzzle_js, next_slug FROM qr_puzzles WHERE slug = ? AND status = 'live'`
-  ).bind(slug).first();
 
-  if (!puzzle) return c.json({ error: 'Puzzle not found or not live' }, 404);
-  return c.json({ puzzle });
+  // First try live
+  const puzzle = await c.env.DB.prepare(
+    `SELECT slug, title, puzzle_js, next_slug, status FROM qr_puzzles WHERE slug = ?`
+  ).bind(slug).first<any>();
+
+  if (!puzzle) return c.json({ error: 'Puzzle not found' }, 404);
+
+  if (puzzle.status === 'live') {
+    return c.json({ puzzle: { slug: puzzle.slug, title: puzzle.title, puzzle_js: puzzle.puzzle_js, next_slug: puzzle.next_slug } });
+  }
+
+  // Archived/draft: return a "MISSION EXPIRED" shell so the QR code doesn't 404
+  if (puzzle.status === 'archived' || puzzle.status === 'draft') {
+    const expiredJs = `
+PuzzlePopup.register('custom-${slug}', {
+  title: 'MISSION EXPIRED',
+  render: function(container) {
+    container.innerHTML =
+      '<div class="puzzle-ddc-briefing">' +
+        '<span class="puzzle-ddc-label">MISSION EXPIRED</span>' +
+        '<p class="puzzle-ddc-flavor">This field operation has been decommissioned. The QR code you scanned is no longer active.</p>' +
+        '<p class="puzzle-ddc-flavor" style="margin-top:8px;font-size:0.8em;color:var(--phosphor-dim,#1a6b4a);">Original mission: ${puzzle.title.replace(/'/g, "\\'")}</p>' +
+      '</div>' +
+      '<div style="text-align:center;margin:16px 0;font-size:0.9em;color:#666;">' +
+        'Check <a href="/games.html" style="color:var(--phosphor,#1cff9b);">the Field Kit</a> for active missions.' +
+      '</div>';
+  }
+});`;
+    return c.json({ puzzle: { slug, title: 'MISSION EXPIRED', puzzle_js: expiredJs, next_slug: null }, expired: true });
+  }
+
+  return c.json({ error: 'Puzzle not available' }, 404);
+});
+
+/** GET /api/puzzles/categories — public list of live categories */
+puzzlePublicRoutes.get('/categories', async (c) => {
+  const result = await c.env.DB.prepare(
+    `SELECT slug, label, emoji, sort_order FROM qr_categories WHERE status = 'live' ORDER BY sort_order ASC`
+  ).all();
+  return c.json({ categories: result.results });
 });
