@@ -190,14 +190,14 @@
   if (typeof PuzzlePopup !== 'undefined') {
     _register();
   } else {
-    document.addEventListener('DOMContentLoaded', function () {
+    window.addEventListener('load', function () {
       if (typeof PuzzlePopup !== 'undefined') _register();
     });
     var _attempts = 0;
     var _poll = setInterval(function () {
       _attempts++;
       if (typeof PuzzlePopup !== 'undefined') { clearInterval(_poll); _register(); }
-      else if (_attempts > 50) { clearInterval(_poll); }
+      else if (_attempts > 100) { clearInterval(_poll); }
     }, 100);
   }
 

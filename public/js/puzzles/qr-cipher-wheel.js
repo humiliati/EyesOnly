@@ -191,17 +191,18 @@
   if (typeof PuzzlePopup !== 'undefined') {
     _register();
   } else {
-    document.addEventListener('DOMContentLoaded', function () {
+    // Primary: window load fires after ALL scripts have executed
+    window.addEventListener('load', function () {
       if (typeof PuzzlePopup !== 'undefined') _register();
     });
-    // Fallback: poll briefly in case DOMContentLoaded already fired
+    // Backup: poll for PuzzlePopup (handles edge cases)
     var _attempts = 0;
     var _poll = setInterval(function () {
       _attempts++;
       if (typeof PuzzlePopup !== 'undefined') {
         clearInterval(_poll);
         _register();
-      } else if (_attempts > 50) {
+      } else if (_attempts > 100) {
         clearInterval(_poll);
       }
     }, 100);
