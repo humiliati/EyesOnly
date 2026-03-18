@@ -1,0 +1,496 @@
+/* ═════════════════════════════════════════════════════════════════
+   TELESCOPE Mode — AR Constellation Tracker Styles
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────── */
+/* LAYER SYSTEM */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+#real-stars-canvas {
+  z-index: 1;
+}
+
+#surface-stars-canvas {
+  z-index: 2;
+}
+
+#grid-canvas {
+  z-index: 3;
+}
+
+#constellation-canvas {
+  z-index: 4;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* HAND FAN PORTHOLES */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-fan {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.hand-fan-telescope {
+  display: flex !important;
+  gap: -30px;
+}
+
+/* Override hand-fan-component styles for telescope */
+.hand-fan-telescope .coin-card {
+  width: 100px;
+  height: 140px;
+  transform-origin: bottom center;
+}
+
+.hand-fan-telescope .coin-card::after {
+  z-index: -1;
+}
+
+.hand-fan-telescope .starfield-window {
+  width: 80px;
+  height: 80px;
+  margin: 10px auto;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* HUD OVERLAY */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  z-index: 200;
+  pointer-events: none;
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  color: var(--theme-primary, #33ff33);
+  text-shadow: 0 0 10px var(--theme-primary, #33ff33);
+}
+
+/* Compass */
+.hud-compass {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 40px;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 4px;
+}
+
+.compass-dir {
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.compass-dir.active {
+  opacity: 1;
+  text-shadow: 0 0 15px var(--theme-primary, #33ff33);
+}
+
+/* Coordinates */
+.hud-coords {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 30px;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.coord {
+  display: flex;
+  gap: 5px;
+}
+
+.coord-label {
+  opacity: 0.5;
+}
+
+/* Constellation tracker */
+.hud-tracker {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.tracker-current {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--theme-primary, #33ff33);
+  padding: 10px 20px;
+  border-radius: 4px;
+}
+
+.constellation-name {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.stars-found {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+  opacity: 0.7;
+}
+
+/* Mode indicator */
+.hud-mode {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  opacity: 0.5;
+  letter-spacing: 1px;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* LENS SELECTOR */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-lens-selector {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  pointer-events: auto;
+}
+
+.lens-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid var(--theme-primary, #33ff33);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.lens-btn:hover,
+.lens-btn.active {
+  background: var(--theme-primary, #33ff33);
+  box-shadow: 0 0 20px var(--theme-primary, #33ff33);
+}
+
+.lens-btn.active {
+  border-color: transparent;
+}
+
+.lens-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.lens-name {
+  font-size: 6px;
+  letter-spacing: 1px;
+  margin-top: 2px;
+  color: var(--theme-primary, #33ff33);
+}
+
+.lens-btn.active .lens-name {
+  color: #000;
+}
+
+/* Lens-specific colors */
+.lens-btn[data-lens="panther"] { border-color: #ff3090; }
+.lens-btn[data-lens="panther"] .lens-icon { color: #ff3090; }
+.lens-btn[data-lens="panther"]:hover,
+.lens-btn[data-lens="panther"].active { background: #ff3090; box-shadow: 0 0 20px #ff3090; }
+
+.lens-btn[data-lens="phosphor"] { border-color: #33ff33; }
+.lens-btn[data-lens="phosphor"] .lens-icon { color: #33ff33; }
+.lens-btn[data-lens="phosphor"]:hover,
+.lens-btn[data-lens="phosphor"].active { background: #33ff33; box-shadow: 0 0 20px #33ff33; }
+
+.lens-btn[data-lens="amber"] { border-color: #ffb000; }
+.lens-btn[data-lens="amber"] .lens-icon { color: #ffb000; }
+.lens-btn[data-lens="amber"]:hover,
+.lens-btn[data-lens="amber"].active { background: #ffb000; box-shadow: 0 0 20px #ffb000; }
+
+.lens-btn[data-lens="clear"] { border-color: #b0c4de; }
+.lens-btn[data-lens="clear"] .lens-icon { color: #b0c4de; }
+.lens-btn[data-lens="clear"]:hover,
+.lens-btn[data-lens="clear"].active { background: #b0c4de; box-shadow: 0 0 20px #b0c4de; }
+
+/* ───────────────────────────────────────────────────────────────── */
+/* TARGET INFO PANEL */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-target-panel {
+  position: fixed;
+  bottom: 250px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--theme-primary, #33ff33);
+  padding: 15px 25px;
+  border-radius: 8px;
+  text-align: center;
+  animation: panel-appear 0.3s ease;
+}
+
+@keyframes panel-appear {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.target-name {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: var(--theme-primary, #33ff33);
+}
+
+.target-info {
+  display: flex;
+  gap: 20px;
+  font-size: 11px;
+  margin-top: 8px;
+  opacity: 0.7;
+  letter-spacing: 1px;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* NCH CAPSULE OVERRIDE FOR TELESCOPE */
+/* ───────────────────────────────────────────────────────────────── */
+
+.nch-capsule-telescope {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: 20px !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* STAR STYLES */
+/* ───────────────────────────────────────────────────────────────── */
+
+/* Surface layer stars */
+.surface-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+}
+
+/* Real stars (constellation nodes) */
+.real-star {
+  position: absolute;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.real-star:hover {
+  transform: scale(1.5);
+}
+
+.real-star.found {
+  box-shadow: 0 0 15px var(--theme-primary, #33ff33);
+}
+
+.real-star.connected {
+  box-shadow: 0 0 10px var(--theme-primary, #33ff33);
+}
+
+/* Polaris special effect */
+.real-star.polaris {
+  /* Normal state */
+}
+
+.real-star.polaris.panther-active {
+  animation: polaris-blowup 1s ease-in-out infinite;
+  box-shadow: 0 0 30px #ff3090, 0 0 60px #ff3090;
+}
+
+@keyframes polaris-blowup {
+  0%, 100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 20px #ff3090, 0 0 40px #ff3090;
+  }
+  50% { 
+    transform: scale(1.3); 
+    box-shadow: 0 0 40px #ff3090, 0 0 80px #ff3090;
+  }
+}
+
+/* Constellation lines */
+.constellation-line {
+  position: absolute;
+  background: var(--theme-primary, #33ff33);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.constellation-line.complete {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--theme-primary, #33ff33);
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* GRID STYLES */
+/* ───────────────────────────────────────────────────────────────── */
+
+.grid-line {
+  position: absolute;
+  background: var(--theme-primary, #33ff33);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.grid-line-horizontal {
+  width: 100%;
+  height: 1px;
+}
+
+.grid-line-vertical {
+  width: 1px;
+  height: 100%;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* LOCAL BODY (planets, moon) */
+/* ───────────────────────────────────────────────────────────────── */
+
+.local-body {
+  position: absolute;
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.local-body:hover {
+  transform: scale(1.2);
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* THEME TRANSITIONS */
+/* ───────────────────────────────────────────────────────────────── */
+
+body[data-theme="phosphor"] {
+  --theme-primary: #33ff33;
+}
+
+body[data-theme="amber"] {
+  --theme-primary: #ffb000;
+}
+
+body[data-theme="silver"] {
+  --theme-primary: #b0c4de;
+}
+
+body[data-theme="panther"] {
+  --theme-primary: #ff3090;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* MOBILE RESPONSIVE */
+/* ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .telescope-lens-selector {
+    right: 10px;
+    gap: 10px;
+  }
+
+  .lens-btn {
+    width: 50px;
+    height: 50px;
+  }
+
+  .lens-name {
+    display: none;
+  }
+
+  .hud-compass {
+    font-size: 14px;
+    gap: 25px;
+  }
+
+  .hud-coords {
+    font-size: 12px;
+    gap: 15px;
+  }
+
+  .hand-fan-telescope .coin-card {
+    width: 80px;
+    height: 110px;
+  }
+
+  .hand-fan-telescope .starfield-window {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* DESKTOP DRAG MODE */
+/* ───────────────────────────────────────────────────────────────── */
+
+.telescope-container.desktop-mode .telescope-hud {
+  cursor: crosshair;
+}
+
+.telescope-container.desktop-mode:active .telescope-hud {
+  cursor: grabbing;
+}
+
+/* ───────────────────────────────────────────────────────────────── */
+/* REWARD ANIMATION */
+/* ───────────────────────────────────────────────────────────────── */
+
+@keyframes reward-pulse {
+  0% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+  100% { 
+    transform: scale(3); 
+    opacity: 0;
+  }
+}
+
+.reward-burst {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--theme-primary, #33ff33);
+  animation: reward-pulse 0.5s ease-out forwards;
+  pointer-events: none;
+}

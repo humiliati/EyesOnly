@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="TELESCOPE — Celestial Navigation Interface">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <meta property="og:title" content="EYES ONLY // TELESCOPE">
+  <meta property="og:description" content="Chart the night sky">
+  <meta property="og:type" content="website">
+  <title>EYES ONLY // TELESCOPE</title>
+
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Core styles -->
+  <link rel="stylesheet" href="css/crt.css?v=20260314e">
+  <link rel="stylesheet" href="css/themes.css?v=20260314a">
+  <link rel="stylesheet" href="css/nch-overlay.css?v=20260316b">
+  <link rel="stylesheet" href="css/splash-screen.css?v=20260316a">
+  <link rel="stylesheet" href="css/hand-fan-component.css?v=20260307n">
+  <link rel="stylesheet" href="css/telescope.css?v=20260317a">
+
+  <style>
+    body {
+      background: #000;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+    }
+    body[data-theme="phosphor"] { --theme-primary: #33ff33; }
+    body[data-theme="amber"] { --theme-primary: #ffb000; }
+    body[data-theme="silver"] { --theme-primary: #b0c4de; }
+    body[data-theme="panther"] { --theme-primary: #ff3090; }
+  </style>
+</head>
+<body data-theme="phosphor">
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- DUAL-LAYER STARFIELD SYSTEM -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Layer 0: Underlying star layer (real stars as nodes for constellation game) -->
+  <!-- This is what the portholes reveal -->
+  <canvas id="real-stars-canvas" class="telescope-layer"></canvas>
+
+  <!-- Layer 1: Surface star layer (decorative stars with labels, local bodies, grid) -->
+  <canvas id="surface-stars-canvas" class="telescope-layer"></canvas>
+
+  <!-- Layer 2: Grid overlay -->
+  <canvas id="grid-canvas" class="telescope-layer"></canvas>
+
+  <!-- Layer 3: Constellation lines (drawn on top of portholes) -->
+  <canvas id="constellation-canvas" class="telescope-layer"></canvas>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PORTHOLE HAND FAN (reveals underlying real-stars layer) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <div id="telescope-fan" class="telescope-fan">
+    <div class="hand-fan-container hand-fan-telescope" style="display: flex;">
+      <!-- Porthole cards will be injected here -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- HUD OVERLAY -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <div class="telescope-hud">
+    <!-- Compass -->
+    <div class="hud-compass">
+      <span class="compass-dir" data-dir="N">N</span>
+      <span class="compass-dir" data-dir="E">E</span>
+      <span class="compass-dir" data-dir="S">S</span>
+      <span class="compass-dir" data-dir="W">W</span>
+    </div>
+
+    <!-- Coordinates -->
+    <div class="hud-coords">
+      <span class="coord"><span class="coord-label">AZ</span> <span id="azimuth">0</span>°</span>
+      <span class="coord"><span class="coord-label">ALT</span> <span id="altitude">45</span>°</span>
+    </div>
+
+    <!-- Constellation tracker -->
+    <div class="hud-tracker">
+      <div class="tracker-current" id="current-constellation">
+        <span class="constellation-name">Big Dipper</span>
+        <span class="stars-found"><span id="stars-found">0</span>/7</span>
+      </div>
+    </div>
+
+    <!-- Mode indicator -->
+    <div class="hud-mode">
+      <span id="mode-indicator">DESKTOP MODE — Drag to aim</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LENS SELECTOR -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <div class="telescope-lens-selector">
+    <button class="lens-btn" data-lens="clear" title="Clear Lens">
+      <span class="lens-icon">⚪</span>
+      <span class="lens-name">CLEAR</span>
+    </button>
+    <button class="lens-btn active" data-lens="panther" title="Panther Lens">
+      <span class="lens-icon" style="color: #ff3090;">●</span>
+      <span class="lens-name">PANTHER</span>
+    </button>
+    <button class="lens-btn" data-lens="phosphor" title="Phosphor Lens">
+      <span class="lens-icon" style="color: #33ff33;">●</span>
+      <span class="lens-name">PHOSPHOR</span>
+    </button>
+    <button class="lens-btn" data-lens="amber" title="Amber Lens">
+      <span class="lens-icon" style="color: #ffb000;">●</span>
+      <span class="lens-name">AMBER</span>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TARGET INFO PANEL -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <div class="telescope-target-panel" id="target-panel" hidden>
+    <div class="target-star">
+      <span class="target-name" id="target-name">Dubhe</span>
+      <span class="target-info">
+        <span class="target-mag">Mag: <span id="target-mag">1.79</span></span>
+        <span class="target-const" id="target-const">Ursa Major</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- NCH OVERLAY (lens selector from existing system) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <div id="nch-capsule" class="nch-capsule nch-capsule-telescope">
+    <div class="nch-joker-stack">
+      <!-- Joker cards with lenses -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SCRIPTS -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <script src="js/starfield.js"></script>
+  <script src="js/telescope.js"></script>
+
+  <script>
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+      Telescope.init();
+    });
+  </script>
+
+</body>
+</html>

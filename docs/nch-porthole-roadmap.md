@@ -925,7 +925,7 @@ Solve constellations → earn forever stars → cascades spawn new constellation
 | 10 — Procedural Generation, Cascades & Forever Sky | 🔧 ~65% shipped (procgen, cascades, forever sky enhancements, currency bridge). Remaining: advanced generator, grand constellation, star destroyer. | Phase 8 + 9 |
 | 11 — Constellation Ecosystem & Volatility | ⬜ Not started | Phase 9 + 10 |
 | 12 — Trick Glasses (Compound Porthole / Benjamin Franklin Effect) | ⬜ Spec drafted | Phase 8 |
-| 13 — TELESCOPE Mode (AR Constellation Tracker) | ⭐ Spec complete | Phase 8 + Device API |
+| 13 — TELESCOPE Mode (AR Constellation Tracker) | 🔧 Phase 1 built (dual-layer, portholes, lenses) | Phase 8 + Device API |
 
 **Next up:** Phase 10 (cascades + forever sky damage) → Phase 11 (volatility + gambling) → Phase 12 (trick glasses) → **Phase 13 (TELESCOPE AR)**
 

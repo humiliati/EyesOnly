@@ -1,5 +1,52 @@
 # TELESCOPE Mode — AR Constellation Tracker
 
+## Implementation Status: Phase 1 Complete ✅
+
+The following files have been created:
+
+| File | Status | Description |
+|------|--------|-------------|
+| `public/telescope.html` | ✅ Built | Main page with dual-layer starfield system |
+| `public/css/telescope.css` | ✅ Built | Theme-styled HUD, lens selector, animations |
+| `public/js/telescope.js` | ✅ Built | Core logic: orientation, rendering, constellation tracing |
+| `public/data/real-stars.json` | ✅ Built | Celestial data: Big Dipper, Little Dipper, Cassiopeia, Polaris |
+
+### Dual-Layer Architecture Implemented
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 3: Constellation Lines (drawn on top)               │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 2: Grid Overlay (azimuth/altitude lines + labels)   │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 1: Surface Stars (decorative, labels, local bodies) │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 0: Real Stars (nodes for constellation game)         │
+│           ↑ revealed through portholes                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Features Working
+
+- ✅ Desktop drag-to-aim (mouse)
+- ✅ Mobile orientation tracking (with iOS permission)
+- ✅ Real star rendering based on azimuth/altitude
+- ✅ Constellation path tracing (Big Dipper)
+- ✅ Lens selector (Clear, Panther, Phosphor, Amber)
+- ✅ Theme integration (body data-theme)
+- ✅ HUD: compass, coordinates, tracker
+- ✅ Porthole hand fan (3 cards)
+- ✅ Progress persistence (localStorage)
+
+### Next Steps (Phase 2)
+
+- [ ] Polaris "blow up" effect with panther lens
+- [ ] More constellations (Little Dipper, Cassiopeia)
+- [ ] Camera feed integration (true AR)
+- [ ] NCH overlay integration for lens selection
+
+---
+
 ## Overview
 
 **TELESCOPE** is a new standalone mode that turns the phone into an augmented reality window for finding and connecting real constellations in the night sky. Players point their device at the sky to reveal stars, trace constellations, and unlock rewards.

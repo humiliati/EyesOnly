@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "description": "Real celestial star data for TELESCOPE mode. RA in degrees, Dec in degrees, magnitude (brightness).",
+  "constellations": [
+    {
+      "id": "big-dipper",
+      "name": "The Big Dipper",
+      "starIds": ["dubhe", "merak", "phecda", "megrez", "alioth", "mizar", "alkaid"],
+      "connections": [
+        ["dubhe", "merak"],
+        ["merak", "phecda"],
+        ["phecda", "megrez"],
+        ["megrez", "dubhe"],
+        ["megrez", "alioth"],
+        ["alioth", "mizar"],
+        ["mizar", "alkaid"]
+      ]
+    },
+    {
+      "id": "little-dipper",
+      "name": "The Little Dipper",
+      "starIds": ["polaris", "kochab", "pherkad", "yildun", "epsilon-umi", "zeta-umi", "eta-umi"],
+      "connections": [
+        ["polaris", "yildun"],
+        ["yildun", "epsilon-umi"],
+        ["epsilon-umi", "zeta-umi"],
+        ["zeta-umi", "eta-umi"],
+        ["eta-umi", "kochab"],
+        ["kochab", "pherkad"],
+        ["pherkad", "polaris"]
+      ]
+    },
+    {
+      "id": "cassiop",
+      "name": "Cassiopeia",
+      "starIds": ["schedar", "caph", "gamma-cas", "ruchbah", "segine"],
+      "connections": [
+        ["schedar", "caph"],
+        ["caph", "gamma-cas"],
+        ["gamma-cas", "ruchbah"],
+        ["ruchbah", "segine"],
+        ["segine", "schedar"]
+      ]
+    }
+  ],
+  "stars": {
+    "dubhe": {
+      "id": "dubhe",
+      "name": "Dubhe",
+      "ra": 165.93,
+      "dec": 61.75,
+      "magnitude": 1.79,
+      "spectral": "K0",
+      "constellation": "uma"
+    },
+    "merak": {
+      "id": "merak", 
+      "name": "Merak",
+      "ra": 165.46,
+      "dec": 56.38,
+      "magnitude": 2.37,
+      "spectral": "A1",
+      "constellation": "uma"
+    },
+    "phecda": {
+      "id": "phecda",
+      "name": "Phecda",
+      "ra": 178.46,
+      "dec": 53.69,
+      "magnitude": 2.44,
+      "spectral": "A0",
+      "constellation": "uma"
+    },
+    "megrez": {
+      "id": "megrez",
+      "name": "Megrez",
+      "ra": 183.86,
+      "dec": 57.03,
+      "magnitude": 3.31,
+      "spectral": "A3",
+      "constellation": "uma"
+    },
+    "alioth": {
+      "id": "alioth",
+      "name": "Alioth",
+      "ra": 193.51,
+      "dec": 55.96,
+      "magnitude": 1.77,
+      "spectral": "A0",
+      "constellation": "uma"
+    },
+    "mizar": {
+      "id": "mizar",
+      "name": "Mizar",
+      "ra": 200.98,
+      "dec": 54.93,
+      "magnitude": 2.27,
+      "spectral": "A1",
+      "constellation": "uma"
+    },
+    "alkaid": {
+      "id": "alkaid",
+      "name": "Alkaid",
+      "ra": 206.89,
+      "dec": 49.31,
+      "magnitude": 1.86,
+      "spectral": "B3",
+      "constellation": "uma"
+    },
+    "polaris": {
+      "id": "polaris",
+      "name": "Polaris",
+      "ra": 37.95,
+      "dec": 89.26,
+      "magnitude": 1.98,
+      "spectral": "F7",
+      "constellation": "umi",
+      "special": "north-star"
+    },
+    "kochab": {
+      "id": "kochab",
+      "name": "Kochab",
+      "ra": 222.68,
+      "dec": 74.16,
+      "magnitude": 2.08,
+      "spectral": "K4",
+      "constellation": "umi"
+    },
+    "pherkad": {
+      "id": "pherkad",
+      "name": "Pherkad",
+      "ra": 232.75,
+      "dec": 71.83,
+      "magnitude": 3.05,
+      "spectral": "A3",
+      "constellation": "umi"
+    },
+    "yildun": {
+      "id": "yildun",
+      "name": "Yildun",
+      "ra": 261.13,
+      "dec": 86.59,
+      "magnitude": 4.35,
+      "spectral": "A3",
+      "constellation": "umi"
+    },
+    "epsilon-umi": {
+      "id": "epsilon-umi",
+      "name": "Epsilon Ursae Minoris",
+      "ra": 258.22,
+      "dec": 82.04,
+      "magnitude": 4.21,
+      "spectral": "A8",
+      "constellation": "umi"
+    },
+    "zeta-umi": {
+      "id": "zeta-umi",
+      "name": "Zeta Ursae Minoris",
+      "ra": 271.44,
+      "dec": 77.79,
+      "magnitude": 4.36,
+      "spectral": "A3",
+      "constellation": "umi"
+    },
+    "eta-umi": {
+      "id": "eta-umi",
+      "name": "Eta Ursae Minoris",
+      "ra": 294.28,
+      "dec": 75.76,
+      "magnitude": 4.95,
+      "spectral": "F5",
+      "constellation": "umi"
+    },
+    "schedar": {
+      "id": "schedar",
+      "name": "Schedar",
+      "ra": 10.13,
+      "dec": 56.54,
+      "magnitude": 2.23,
+      "spectral": "K0",
+      "constellation": "cas"
+    },
+    "caph": {
+      "id": "caph",
+      "name": "Caph",
+      "ra": 2.29,
+      "dec": 59.15,
+      "magnitude": 2.27,
+      "spectral": "F2",
+      "constellation": "cas"
+    },
+    "gamma-cas": {
+      "id": "gamma-cas",
+      "name": "Gamma Cassiopeiae",
+      "ra": 14.18,
+      "dec": 60.72,
+      "magnitude": 2.47,
+      "spectral": "B0",
+      "constellation": "cas"
+    },
+    "ruchbah": {
+      "id": "ruchbah",
+      "name": "Ruchbah",
+      "ra": 21.45,
+      "dec": 60.24,
+      "magnitude": 2.68,
+      "spectral": "A5",
+      "constellation": "cas"
+    },
+    "segine": {
+      "id": "segine",
+      "name": "Segine",
+      "ra": 28.60,
+      "dec": 63.67,
+      "magnitude": 3.37,
+      "spectral": "B3",
+      "constellation": "cas"
+    }
+  },
+  "localBodies": {
+    "moon": {
+      "id": "moon",
+      "name": "Moon",
+      "angularSize": 0.52,
+      "period": 27.3,
+      "emoji": "🌙"
+    },
+    "mars": {
+      "id": "mars",
+      "name": "Mars",
+      "ra": -1.0,
+      "dec": -1.0,
+      "angularSize": 0.02,
+      "emoji": "🔴"
+    },
+    "venus": {
+      "id": "venus",
+      "name": "Venus",
+      "ra": -1.0,
+      "dec": -1.0,
+      "angularSize": 0.02,
+      "emoji": "🔶"
+    },
+    "jupiter": {
+      "id": "jupiter",
+      "name": "Jupiter",
+      "ra": -1.0,
+      "dec": -1.0,
+      "angularSize": 0.05,
+      "emoji": "🟤"
+    },
+    "saturn": {
+      "id": "saturn",
+      "name": "Saturn",
+      "ra": -1.0,
+      "dec": -1.0,
+      "angularSize": 0.02,
+      "emoji": "🪐"
+    }
+  }
+}
