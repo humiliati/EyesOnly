@@ -370,20 +370,20 @@
    ============================================================ */
 
 /* ============================================================
-   BASE — Tight, compact button with neon glow halo
+   BASE — Sleek, wide, low-profile button with neon glow halo
    ============================================================ */
 .porthole-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 24px;
-  border-radius: 8px;
+  /* SLEEK: thin vertical, generous horizontal */
+  padding: 7px 36px;
+  border-radius: 6px;
   border: 2px solid var(--theme-primary, #33ff33);
   background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
   cursor: pointer;
   overflow: visible;
-  white-space: nowrap;
   /* ── IDLE GLOW — big dramatic neon halo bleeding onto paper ── */
   box-shadow:
     0 0 8px  var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
@@ -408,27 +408,29 @@
   clip-path: inset(0 round 6px);
 }
 
-/* ---- Label ---- */
+/* ---- Label — BIG, BOLD, SHADOWED ---- */
 .porthole-btn-label {
   position: relative;
   z-index: 3;
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  font-size: clamp(13px, 3.5vw, 16px);
+  font-size: 18px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--paper-heading, #1a1610);
   text-align: center;
-  line-height: 1.2;
+  line-height: 1;
   pointer-events: none;
+  /* Shadow for legibility on any background */
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 .porthole-btn-label small {
   display: block;
-  font-size: clamp(9px, 2.5vw, 11px);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   opacity: 0.5;
   margin-top: 2px;
   transition: opacity 0.3s ease;
@@ -558,34 +560,18 @@
    VARIANTS
    ============================================================ */
 
-/* Smaller inline (action card buttons) */
+/* Action card inline buttons — same font, just slightly less padding */
 .porthole-btn-sm {
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 6px 28px;
 }
 
-.porthole-btn-sm .porthole-btn-label {
-  font-size: clamp(11px, 3vw, 14px);
-}
-
-.porthole-btn-sm .sparkle { font-size: 7px !important; }
-.porthole-btn-sm .sparkle-3 { font-size: 11px !important; }
-
-/* Full-width form submit */
+/* Full-width form submit — stretches to container */
 .porthole-btn-wide {
   display: flex;
   width: 100%;
-  min-width: 0;
   box-sizing: border-box;
-  padding: 12px 20px;
+  padding: 8px 32px;
   margin-top: 12px;
-}
-
-.porthole-btn-wide .porthole-btn-label {
-  font-size: clamp(13px, 3.5vw, 16px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Disabled / loading */
@@ -595,18 +581,7 @@
   cursor: not-allowed;
   pointer-events: none;
   animation: none;
-  box-shadow:
-    0 0 4px var(--porthole-btn-glow, rgba(51, 255, 51, 0.1));
-}
-
-/* ---- Mobile responsive ---- */
-@media (max-width: 480px) {
-  .porthole-btn {
-    padding: 8px 16px;
-  }
-  .porthole-btn-wide {
-    padding: 10px 14px;
-  }
+  box-shadow: 0 0 4px var(--porthole-btn-glow, rgba(51, 255, 51, 0.1));
 }
 
 
