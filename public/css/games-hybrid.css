@@ -24,27 +24,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 24px;
+  padding: 6px 24px;
   background: linear-gradient(180deg, #2e2820 0%, #221e16 50%, #1a160e 100%);
   border-bottom: 2px solid;
   border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
   box-shadow:
     inset 0 1px 0 rgba(180, 160, 100, 0.1),
     0 2px 8px rgba(0, 0, 0, 0.5);
+  /* Force single row — never wrap */
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .games-v2-nav-brand {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: bold;
   color: rgba(220, 200, 140, 0.9);
-  letter-spacing: 0.25em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(60, 50, 25, 0.8);
   font-family: var(--theme-font-display, Georgia, serif);
   text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.games-v2-nav-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.games-v2-nav-links { display: flex; gap: 10px; flex-wrap: nowrap; flex-shrink: 1; overflow: hidden; }
 
 .games-v2-nav-link {
   font-size: 11px;
@@ -250,34 +256,33 @@
   /* Keep footer on mobile (inside CRT) */
   .games-v2-monitor .games-footer-strip { display: none; }
 
-  /* ---- Paper torso: horizontal sticky note strip ---- */
+  /* ---- Paper torso: 2-row grid of category buttons ---- */
   .games-v2-torso {
     position: relative;
     z-index: 20;
-    display: flex;
-    gap: 8px;
-    padding: 8px 10px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 6px;
+    padding: 6px 8px;
     background: var(--postit-bg, rgba(255, 248, 200, 0.92));
     border-bottom: 2px solid rgba(0,0,0,0.08);
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
 
-  .games-v2-torso::-webkit-scrollbar { display: none; }
-
   .games-v2-torso-btn {
-    flex-shrink: 0;
-    padding: 4px 10px;
+    padding: 5px 4px;
     font-family: 'Courier New', monospace;
     font-size: 10px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     color: var(--paper-text, #2a2418);
     background: rgba(255,255,255,0.4);
     border: 1px solid rgba(0,0,0,0.08);
     border-radius: 2px;
     cursor: pointer;
     white-space: nowrap;
+    text-align: center;
+    text-overflow: clip;
+    overflow: hidden;
     transition: background 0.15s;
   }
 
@@ -287,9 +292,10 @@
     font-weight: bold;
   }
 
-  .games-v2-nav-link { font-size: 10px; }
-  .games-v2-nav { padding: 8px 12px; }
-  .games-v2-nav-brand { font-size: 12px; letter-spacing: 0.15em; }
+  .games-v2-nav-link { font-size: 9px; white-space: nowrap; }
+  .games-v2-nav { padding: 5px 10px; }
+  .games-v2-nav-brand { font-size: 11px; letter-spacing: 0.12em; }
+  .games-v2-nav-links { gap: 8px; }
 }
 
 
