@@ -125,6 +125,9 @@
       }
     }
 
+    // Apex detection: satellite just got flung to a new peak speed
+    var prevSpeed = Math.sqrt(sat.vx * sat.vx + sat.vy * sat.vy);
+
     // Return to base drift
     sat.vx += (sat.baseVx - sat.vx) * RETURN_DAMPING;
     sat.vy += (sat.baseVy - sat.vy) * RETURN_DAMPING;
@@ -132,6 +135,19 @@
     // Friction
     sat.vx *= FRICTION;
     sat.vy *= FRICTION;
+
+    // Play snap SFX when satellite reaches orbital apex (speed crosses threshold going up)
+    var newSpeed = Math.sqrt(sat.vx * sat.vx + sat.vy * sat.vy);
+    if (_enabled && prevSpeed < APEX_VELOCITY && newSpeed >= APEX_VELOCITY) {
+      var now = performance.now();
+      if (now - _lastSnapTime > 120) { // throttle: max 1 snap per 120ms
+        _lastSnapTime = now;
+        var variant = 1 + Math.floor(Math.random() * SNAP_VARIANTS);
+        if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+          AudioSystem.play('snap-' + variant, { volume: 0.3 });
+        }
+      }
+    }
 
     // Move (in screen px, then normalize back)
     sx += sat.vx;
