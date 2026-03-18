@@ -127,6 +127,11 @@ var NchOverlay = (function () {
     return mission && mission.suitClass === 'suit-spade';
   }
 
+  function _isPantherLensCard(cardIndex) {
+    var mission = MISSIONS[cardIndex];
+    return mission && mission.suitClass === 'suit-diamond';
+  }
+
   /**
    * Activate the porthole lens effect on ANY card during drag.
    * Each card has its own lens technology (silver=aperture, blue=glow,
@@ -202,6 +207,20 @@ var NchOverlay = (function () {
     SatelliteScrubber.endSession();
   }
 
+  /**
+   * Start suit transformer during panther card drag (♦ diamond transformation).
+   */
+  function _startSuitTransform(drag) {
+    if (!_isPantherLensCard(drag.index)) return;
+    if (typeof SuitTransformer === 'undefined') return;
+    SuitTransformer.beginSession('panther');
+  }
+
+  function _endSuitTransform() {
+    if (typeof SuitTransformer === 'undefined') return;
+    SuitTransformer.endSession();
+  }
+
   // Track previous cursor for drag velocity calculation
   var _prevCursorX = 0;
   var _prevCursorY = 0;
@@ -226,6 +245,11 @@ var NchOverlay = (function () {
     // Feed satellite scrubber (silver lens)
     if (typeof SatelliteScrubber !== 'undefined') {
       SatelliteScrubber.updateCursor(cx, cy);
+    }
+
+    // Feed suit transformer (panther lens)
+    if (typeof SuitTransformer !== 'undefined' && SuitTransformer.isEnabled()) {
+      SuitTransformer.updateCursor(cx, cy);
     }
 
     var lensOverlay = ghost.querySelector('.porthole-lens-overlay');
@@ -1136,6 +1160,9 @@ var NchOverlay = (function () {
     // Phase 9: Begin satellite scrubbing if this is the silver lens (♠ spade) card
     _startSatelliteScrub(drag);
 
+    // Phase 9: Begin suit transformation if this is the panther lens (♦ diamond) card
+    _startSuitTransform(drag);
+
     // ── Placeholder (mirrors splash-screen's _createDragPlaceholder) ──
     var cs = window.getComputedStyle(cardEl);
     var placeholder = document.createElement('div');
@@ -1288,6 +1315,7 @@ var NchOverlay = (function () {
     _deactivateLens();
     _endConstellationTrace();
     _endSatelliteScrub();
+    _endSuitTransform();
 
     var cardEl = drag.cardEl;
     var ghost = drag.ghostEl;
@@ -1724,6 +1752,8 @@ var NchOverlay = (function () {
       if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
       if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
       if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
+      // Phase 9: Suit transformer (panther lens → diamond transformation)
+      if (typeof SuitTransformer !== 'undefined') SuitTransformer.init();
       // Phase 9: Satellite scrubber (silver lens mechanic)
       if (typeof SatelliteScrubber !== 'undefined') SatelliteScrubber.init();
 

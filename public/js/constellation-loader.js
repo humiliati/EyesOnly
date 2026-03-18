@@ -53,9 +53,9 @@
         return c.nodes && c.nodes.length > 0;
       });
 
-      // Phase 8: only tier 1
+      // Phase 9: include tier 1 AND tier 2 (panther lens now transforms diamonds)
       _designedTemplates = _designedTemplates.filter(function (c) {
-        return (c.tier || 1) <= 1;
+        return (c.tier || 1) <= 2;
       });
 
       // Sort by id

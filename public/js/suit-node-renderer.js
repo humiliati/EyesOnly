@@ -137,6 +137,25 @@
     }
   }
 
+  /**
+   * Register a standalone node (not part of any constellation).
+   * Used for solo outlier diamonds that shatter for coins.
+   */
+  function registerNode(nd) {
+    if (!nd || !nd.id) return;
+    _nodes.push({
+      id: nd.id,
+      x: nd.x,
+      y: nd.y,
+      suit: nd.suit || 'diamond',
+      state: 'idle',
+      constellation: null,  // no constellation = solo outlier
+      brightness: 1.0,
+      pulsePhase: Math.random() * Math.PI * 2,
+      transformedTo: null,
+    });
+  }
+
   // ── Node Queries ────────────────────────────────────────────
 
   function getNodes() { return _nodes; }
@@ -450,6 +469,7 @@
     init:                  init,
     destroy:               destroy,
     registerConstellation: registerConstellation,
+    registerNode:          registerNode,
     clearConstellations:   clearConstellations,
     getNodes:              getNodes,
     getConstellations:     getConstellations,
