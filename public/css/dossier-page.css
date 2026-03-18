@@ -359,155 +359,206 @@
 
 
 /* ============================================================
-   7. PORTHOLE BUTTONS — Coin buttons with starfield blowout
+   7. PORTHOLE BUTTONS — Sleek rectangular CTA with
+      starfield blowthrough on hover/tap.
    ============================================================
-   Round buttons styled like the NCH coin buttons.
-   Each contains a starfield-window canvas for the
-   starfield underlayment reveal effect. */
+   Default: solid themed background, dark text, brass border.
+   Hover:   background dissolves → starfield canvas underneath
+            becomes visible → border glows → text inverts to
+            white with glow → CSS star sparkles burst outward.
+            Stars "break the 4th wall" from the underlay.
+   ============================================================ */
 
 .porthole-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: 3px solid;
-  border-image: none;
-  border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #5a5038);
-  background:
-    radial-gradient(
-      circle at 40% 35%,
-      rgba(255, 255, 255, 0.06) 0%,
-      transparent 60%
-    ),
-    linear-gradient(
-      175deg,
-      rgba(40, 36, 24, 0.95) 0%,
-      rgba(20, 18, 10, 0.98) 100%
-    );
+  gap: 10px;
+  padding: 14px 32px;
+  border-radius: 8px;
+  border: 2.5px solid color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #5a5038);
+  /* Solid themed face — the "closed" state */
+  background: color-mix(in srgb, var(--theme-primary, #33ff33) 18%, #d4c8a0);
   cursor: pointer;
   overflow: hidden;
   box-shadow:
-    /* Outer metallic rim */
-    0 0 0 4px rgba(90, 80, 56, 0.4),
-    0 0 0 6px rgba(50, 44, 30, 0.3),
-    /* Theme glow */
-    0 0 20px var(--porthole-btn-glow, rgba(51, 255, 51, 0.25)),
-    /* Depth */
-    0 4px 16px rgba(0, 0, 0, 0.4),
-    /* Inner ring */
-    inset 0 0 12px rgba(0, 0, 0, 0.5),
-    inset 0 2px 0 rgba(180, 160, 100, 0.08);
-  transition: all 0.3s ease;
+    0 0 0 0 transparent,
+    0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.35s cubic-bezier(0.05, 0.83, 0.43, 0.96);
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.porthole-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* Blowout transition — starfield glow expands on hover */
-@keyframes porthole-blowout {
-  0%   { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
-                      0 0 20px var(--porthole-btn-glow, rgba(51,255,51,0.25)),
-                      0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5); }
-  50%  { box-shadow: 0 0 0 5px rgba(90,80,56,0.5), 0 0 0 7px rgba(50,44,30,0.4),
-                      0 0 40px var(--porthole-btn-glow, rgba(51,255,51,0.45)),
-                      0 0 80px var(--porthole-btn-glow, rgba(51,255,51,0.15)),
-                      0 8px 28px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.3); }
-  100% { box-shadow: 0 0 0 4px rgba(90,80,56,0.5), 0 0 0 6px rgba(50,44,30,0.4),
-                      0 0 30px var(--porthole-btn-glow, rgba(51,255,51,0.35)),
-                      0 0 60px var(--porthole-btn-glow, rgba(51,255,51,0.12)),
-                      0 6px 24px rgba(0,0,0,0.5), inset 0 0 16px rgba(0,0,0,0.4); }
-}
-
-.porthole-btn:hover {
-  animation: porthole-blowout 0.5s ease-out forwards;
-  transform: translateY(-3px) scale(1.03);
-}
-
-/* Idle pulse — subtle breathing glow */
-@keyframes porthole-idle-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
-                          0 0 18px var(--porthole-btn-glow, rgba(51,255,51,0.22)),
-                          0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5),
-                          inset 0 2px 0 rgba(180,160,100,0.08); }
-  50%      { box-shadow: 0 0 0 4px rgba(90,80,56,0.4), 0 0 0 6px rgba(50,44,30,0.3),
-                          0 0 28px var(--porthole-btn-glow, rgba(51,255,51,0.32)),
-                          0 4px 16px rgba(0,0,0,0.4), inset 0 0 12px rgba(0,0,0,0.5),
-                          inset 0 2px 0 rgba(180,160,100,0.08); }
-}
-
-.porthole-btn:not(:hover) {
-  animation: porthole-idle-pulse 3s ease-in-out infinite;
-}
-
-/* Starfield canvas inside the porthole button */
+/* ---- Starfield canvas — hidden behind opaque face ---- */
 .porthole-btn .starfield-window {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 6px;
   z-index: 0;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
 }
 
-/* Label over the starfield */
+/* ---- Label text ---- */
 .porthole-btn-label {
   position: relative;
-  z-index: 2;
-  font-family: var(--theme-font-display, Georgia, serif);
-  font-size: 13px;
-  font-weight: bold;
+  z-index: 3;
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.8),
-    0 0 12px var(--porthole-btn-glow, rgba(51, 255, 51, 0.3));
+  color: var(--paper-heading, #1a1610);
   text-align: center;
-  line-height: 1.3;
+  line-height: 1;
   pointer-events: none;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 .porthole-btn-label small {
   display: block;
   font-size: 10px;
-  font-weight: normal;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-  margin-top: 2px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  margin-top: 5px;
+  transition: opacity 0.3s ease;
 }
 
-/* Lens ring overlay on porthole button */
-.porthole-btn .porthole-lens-ring {
+/* ---- CSS star sparkles (hidden by default, burst on hover) ---- */
+.porthole-btn .sparkle {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
-  border: 2px solid rgba(180, 160, 100, 0.15);
-  box-shadow:
-    inset 0 0 8px rgba(0, 0, 0, 0.6),
-    inset 0 0 2px var(--porthole-btn-glow, rgba(51, 255, 51, 0.15));
-  background:
-    /* Spy glass crosshair lines */
-    linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.03) 49%, rgba(255, 255, 255, 0.03) 51%, transparent 52%),
-    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.03) 49%, rgba(255, 255, 255, 0.03) 51%, transparent 52%);
+  opacity: 0;
+  transition: all 0.7s cubic-bezier(0.05, 0.83, 0.43, 0.96);
+  filter: drop-shadow(0 0 0 transparent);
 }
 
-/* Smaller porthole variant for inline buttons */
+.porthole-btn .sparkle::before {
+  content: '✦';
+  display: block;
+  color: var(--theme-primary, #33ff33);
+  font-size: inherit;
+}
+
+.porthole-btn .sparkle-1 { top: 15%; left: 12%; font-size: 14px; }
+.porthole-btn .sparkle-2 { top: -8%; left: 55%; font-size: 8px; }
+.porthole-btn .sparkle-3 { top: 50%; right: -4%; font-size: 18px; }
+.porthole-btn .sparkle-4 { bottom: -6%; left: 30%; font-size: 6px; }
+.porthole-btn .sparkle-5 { top: -10%; right: 15%; font-size: 11px; }
+.porthole-btn .sparkle-6 { bottom: 10%; left: -3%; font-size: 5px; }
+
+
+/* ============================================================
+   HOVER / TAP — The 4th-wall break
+   ============================================================ */
+.porthole-btn:hover,
+.porthole-btn:focus-visible {
+  /* Face dissolves to transparent — starfield shows through */
+  background: transparent;
+  /* Border ignites with theme glow */
+  border-color: var(--theme-primary, #33ff33);
+  box-shadow:
+    0 0 0 1px var(--theme-primary, #33ff33),
+    0 0 15px var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
+    0 0 40px var(--porthole-btn-glow, rgba(51, 255, 51, 0.12)),
+    inset 0 0 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Canvas fades in — starfield revealed */
+.porthole-btn:hover .starfield-window,
+.porthole-btn:focus-visible .starfield-window {
+  opacity: 1;
+}
+
+/* Text inverts to white with glow */
+.porthole-btn:hover .porthole-btn-label,
+.porthole-btn:focus-visible .porthole-btn-label {
+  color: #fff;
+  text-shadow:
+    0 0 8px var(--porthole-btn-glow, rgba(51, 255, 51, 0.5)),
+    0 0 20px var(--porthole-btn-glow, rgba(51, 255, 51, 0.2)),
+    0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.porthole-btn:hover .porthole-btn-label small,
+.porthole-btn:focus-visible .porthole-btn-label small {
+  opacity: 0.8;
+}
+
+/* Sparkles burst outward on hover */
+.porthole-btn:hover .sparkle,
+.porthole-btn:focus-visible .sparkle {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--theme-primary, #33ff33));
+}
+
+.porthole-btn:hover .sparkle-1 { top: -15%; left: -8%; }
+.porthole-btn:hover .sparkle-2 { top: -25%; left: 50%; }
+.porthole-btn:hover .sparkle-3 { top: 40%; right: -18%; }
+.porthole-btn:hover .sparkle-4 { bottom: -20%; left: 25%; }
+.porthole-btn:hover .sparkle-5 { top: -22%; right: -5%; }
+.porthole-btn:hover .sparkle-6 { bottom: 5%; left: -15%; }
+
+/* Focus-visible same positions */
+.porthole-btn:focus-visible .sparkle-1 { top: -15%; left: -8%; }
+.porthole-btn:focus-visible .sparkle-2 { top: -25%; left: 50%; }
+.porthole-btn:focus-visible .sparkle-3 { top: 40%; right: -18%; }
+.porthole-btn:focus-visible .sparkle-4 { bottom: -20%; left: 25%; }
+.porthole-btn:focus-visible .sparkle-5 { top: -22%; right: -5%; }
+.porthole-btn:focus-visible .sparkle-6 { bottom: 5%; left: -15%; }
+
+
+/* ---- Press / active — tactile click-down ---- */
+.porthole-btn:active {
+  transform: translateY(1px) scale(0.97);
+  transition-duration: 0.08s;
+  box-shadow:
+    0 0 0 1px var(--theme-primary, #33ff33),
+    0 0 10px var(--porthole-btn-glow, rgba(51, 255, 51, 0.4)),
+    inset 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Idle subtle shimmer (gentle border pulse) ---- */
+@keyframes porthole-shimmer {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #5a5038);
+    box-shadow: 0 0 0 0 transparent, 0 2px 8px rgba(0,0,0,0.15);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 40%, #5a5038);
+    box-shadow: 0 0 6px var(--porthole-btn-glow, rgba(51,255,51,0.1)), 0 2px 8px rgba(0,0,0,0.15);
+  }
+}
+
+.porthole-btn:not(:hover):not(:focus-visible):not(:active) {
+  animation: porthole-shimmer 3.5s ease-in-out infinite;
+}
+
+
+/* ============================================================
+   PORTHOLE-BTN VARIANTS
+   ============================================================ */
+
+/* Smaller inline variant (action card buttons) */
 .porthole-btn-sm {
-  width: 80px;
-  height: 80px;
+  padding: 11px 22px;
+  border-radius: 6px;
 }
 
 .porthole-btn-sm .porthole-btn-label {
-  font-size: 10px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
 }
+
+.porthole-btn-sm .sparkle { font-size: 8px !important; }
+.porthole-btn-sm .sparkle-3 { font-size: 12px !important; }
 
 
 /* ============================================================
