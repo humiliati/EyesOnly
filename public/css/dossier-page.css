@@ -1,0 +1,820 @@
+/* ============================================================
+   DOSSIER PAGE — Shared "Paper on Folder on Desk" Aesthetic
+   ============================================================
+   Used by /booking and /partners pages.
+   Layers (bottom→top):
+     1. Desk surface (dark wood/leather)
+     2. Manila folder frame
+     3. Paper page (ruled lines, theme-colored)
+     4. Content (post-it notes, forms, portholes)
+
+   Theme integration: reads --paper-*, --folder-*, --desk-*,
+   --field-glow-paper, --porthole-btn-glow from themes.css.
+   ============================================================ */
+
+
+/* ============================================================
+   1. DESK SURFACE — Dark tabletop background
+   ============================================================ */
+.dossier-desk {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background:
+    /* Subtle wood grain via repeating gradients */
+    repeating-linear-gradient(
+      92deg,
+      transparent 0px, transparent 40px,
+      rgba(60, 45, 20, 0.03) 40px, rgba(60, 45, 20, 0.03) 41px
+    ),
+    repeating-linear-gradient(
+      88deg,
+      transparent 0px, transparent 80px,
+      rgba(80, 60, 25, 0.02) 80px, rgba(80, 60, 25, 0.02) 81px
+    ),
+    /* Warm center vignette */
+    radial-gradient(
+      ellipse 80% 70% at 50% 30%,
+      var(--desk-texture, rgba(40, 32, 18, 0.3)) 0%,
+      transparent 70%
+    ),
+    /* Base */
+    var(--desk-bg, #0e0c08);
+  background-color: var(--desk-bg, #0e0c08);
+}
+
+
+/* ============================================================
+   2. MANILA FOLDER — Outer frame for the paper
+   ============================================================ */
+.dossier-folder {
+  position: relative;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 28px 40px;
+  background:
+    /* Subtle fiber texture */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 3px,
+      rgba(0, 0, 0, 0.015) 3px, rgba(0, 0, 0, 0.015) 4px
+    ),
+    linear-gradient(
+      175deg,
+      var(--folder-bg, #c9a86c) 0%,
+      color-mix(in srgb, var(--folder-bg, #c9a86c) 92%, #000) 100%
+    );
+  border-radius: 4px 4px 6px 6px;
+  box-shadow:
+    0 8px 32px var(--folder-shadow, rgba(60, 40, 10, 0.35)),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 240, 200, 0.15);
+}
+
+/* Folder tab — protruding label at top */
+.dossier-folder-tab {
+  position: absolute;
+  top: -24px;
+  left: 40px;
+  padding: 6px 24px 4px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--folder-tab, #b89858) 100%, #fff 8%) 0%,
+      var(--folder-tab, #b89858) 100%
+    );
+  border-radius: 6px 6px 0 0;
+  font-family: var(--theme-font-display, Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(60, 40, 10, 0.7);
+  box-shadow:
+    0 -2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 240, 200, 0.2);
+}
+
+
+/* ============================================================
+   3. PAPER PAGE — Ruled notebook paper
+   ============================================================ */
+.dossier-paper {
+  position: relative;
+  background:
+    /* Horizontal ruled lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 27px,
+      var(--paper-line, rgba(51, 255, 51, 0.08)) 27px,
+      var(--paper-line, rgba(51, 255, 51, 0.08)) 28px
+    ),
+    /* Left margin line */
+    linear-gradient(
+      90deg,
+      transparent 48px,
+      var(--paper-margin, rgba(220, 80, 80, 0.15)) 48px,
+      var(--paper-margin, rgba(220, 80, 80, 0.15)) 49px,
+      transparent 49px
+    ),
+    /* Paper base */
+    var(--paper-bg, #f5f0e6);
+  background-color: var(--paper-bg, #f5f0e6);
+  border-radius: 2px;
+  padding: 36px 32px 40px 64px;
+  color: var(--paper-text, #2a2418);
+  font-family: var(--theme-font-body, 'Courier New', monospace);
+  box-shadow:
+    /* Lifted paper shadow */
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    /* Inner glow — very subtle theme tint */
+    inset 0 0 60px rgba(0, 0, 0, 0.02);
+  line-height: 1.65;
+}
+
+/* Paper edge highlight (top) */
+.dossier-paper::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3) 20%, rgba(255, 255, 255, 0.3) 80%, transparent);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Subtle corner curl shadow (bottom-right) */
+.dossier-paper::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 40%;
+  height: 10px;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+  z-index: -1;
+  transform: rotate(2deg);
+}
+
+
+/* ============================================================
+   4. PAPER TYPOGRAPHY — Dark text on light paper
+   ============================================================ */
+.dossier-paper h1,
+.dossier-paper h2,
+.dossier-paper h3 {
+  color: var(--paper-heading, #1a1610);
+  font-family: var(--theme-font-display, Georgia, serif);
+  line-height: 1.3;
+}
+
+.dossier-paper h1 {
+  font-size: clamp(24px, 4vw, 36px);
+  margin-bottom: 8px;
+}
+
+.dossier-paper h2 {
+  font-size: clamp(18px, 3vw, 26px);
+  margin-bottom: 8px;
+}
+
+.dossier-paper p {
+  color: var(--paper-text-dim, #5a5040);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.dossier-paper .paper-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--paper-text-label, #7a6c50);
+  margin-bottom: 6px;
+}
+
+.dossier-paper .paper-classified {
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(220, 60, 60, 0.6);
+}
+
+
+/* ============================================================
+   5. FORM FIELDS ON PAPER — Inset with theme glow
+   ============================================================ */
+.dossier-paper .form-group label {
+  color: var(--paper-text-label, #7a6c50);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.dossier-paper .form-group input,
+.dossier-paper .form-group select,
+.dossier-paper .form-group textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--paper-text, #2a2418);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 14px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.dossier-paper .form-group input:focus,
+.dossier-paper .form-group select:focus,
+.dossier-paper .form-group textarea:focus {
+  outline: none;
+  border-color: var(--theme-primary, #33ff33);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.06),
+    0 0 8px var(--field-glow-paper, rgba(51, 255, 51, 0.12)),
+    0 0 0 2px var(--field-glow-paper, rgba(51, 255, 51, 0.08));
+}
+
+.dossier-paper .form-group input::placeholder,
+.dossier-paper .form-group textarea::placeholder {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.dossier-paper .form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23665540' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-color: rgba(255, 255, 255, 0.6);
+  padding-right: 36px;
+}
+
+.dossier-paper .form-group select option {
+  background: #f5f0e6;
+  color: var(--paper-text, #2a2418);
+}
+
+.dossier-paper .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dossier-paper .form-group {
+  margin-bottom: 18px;
+}
+
+.dossier-paper .form-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+  margin: 24px 0;
+}
+
+/* Checkboxes on paper */
+.dossier-paper .form-checkbox-group label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--paper-text-dim, #5a5040);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.dossier-paper .form-checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--theme-primary, #33ff33);
+  box-shadow: none;
+}
+
+
+/* ============================================================
+   6. POST-IT NOTES — Replacing scenario/action card frames
+   ============================================================ */
+.postit {
+  position: relative;
+  padding: 24px 20px 28px;
+  background: var(--postit-bg, rgba(255, 248, 200, 0.92));
+  border-radius: 2px;
+  box-shadow:
+    2px 3px 8px var(--postit-shadow, rgba(0, 0, 0, 0.18)),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  transform: rotate(-0.5deg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--paper-text, #2a2418);
+}
+
+.postit:nth-child(even) {
+  transform: rotate(0.7deg);
+}
+
+.postit:nth-child(3n) {
+  transform: rotate(-1deg);
+}
+
+.postit:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow:
+    3px 5px 14px var(--postit-shadow, rgba(0, 0, 0, 0.22)),
+    0 2px 4px rgba(0, 0, 0, 0.10);
+}
+
+/* Tape strip at top */
+.postit::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  width: 60px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 1px;
+}
+
+.postit h3 {
+  font-family: var(--theme-font-display, Georgia, serif);
+  font-size: 16px;
+  color: var(--paper-heading, #1a1610);
+  margin-bottom: 8px;
+}
+
+.postit p {
+  font-size: 13px;
+  color: var(--paper-text-dim, #5a5040);
+  line-height: 1.55;
+}
+
+.postit .postit-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+
+/* ============================================================
+   7. PORTHOLE BUTTONS — Coin buttons with starfield blowout
+   ============================================================
+   Round buttons styled like the NCH coin buttons.
+   Each contains a starfield-window canvas for the
+   starfield underlayment reveal effect. */
+
+.porthole-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 3px solid;
+  border-image: none;
+  border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #5a5038);
+  background:
+    radial-gradient(
+      circle at 40% 35%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      175deg,
+      rgba(40, 36, 24, 0.95) 0%,
+      rgba(20, 18, 10, 0.98) 100%
+    );
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    /* Outer metallic rim */
+    0 0 0 4px rgba(90, 80, 56, 0.4),
+    0 0 0 6px rgba(50, 44, 30, 0.3),
+    /* Theme glow */
+    0 0 20px var(--porthole-btn-glow, rgba(51, 255, 51, 0.25)),
+    /* Depth */
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    /* Inner ring */
+    inset 0 0 12px rgba(0, 0, 0, 0.5),
+    inset 0 2px 0 rgba(180, 160, 100, 0.08);
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.porthole-btn:hover {
+  box-shadow:
+    0 0 0 4px rgba(90, 80, 56, 0.5),
+    0 0 0 6px rgba(50, 44, 30, 0.4),
+    0 0 30px var(--porthole-btn-glow, rgba(51, 255, 51, 0.35)),
+    0 0 60px var(--porthole-btn-glow, rgba(51, 255, 51, 0.12)),
+    0 6px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 16px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(180, 160, 100, 0.12);
+  transform: translateY(-3px) scale(1.03);
+}
+
+.porthole-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Starfield canvas inside the porthole button */
+.porthole-btn .starfield-window {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Label over the starfield */
+.porthole-btn-label {
+  position: relative;
+  z-index: 2;
+  font-family: var(--theme-font-display, Georgia, serif);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.8),
+    0 0 12px var(--porthole-btn-glow, rgba(51, 255, 51, 0.3));
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.porthole-btn-label small {
+  display: block;
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+/* Lens ring overlay on porthole button */
+.porthole-btn .porthole-lens-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px solid rgba(180, 160, 100, 0.15);
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.6),
+    inset 0 0 2px var(--porthole-btn-glow, rgba(51, 255, 51, 0.15));
+  background:
+    /* Spy glass crosshair lines */
+    linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.03) 49%, rgba(255, 255, 255, 0.03) 51%, transparent 52%),
+    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.03) 49%, rgba(255, 255, 255, 0.03) 51%, transparent 52%);
+}
+
+/* Smaller porthole variant for inline buttons */
+.porthole-btn-sm {
+  width: 80px;
+  height: 80px;
+}
+
+.porthole-btn-sm .porthole-btn-label {
+  font-size: 10px;
+}
+
+
+/* ============================================================
+   8. PORTHOLE LENS TECHNOLOGY FRAME
+   ============================================================
+   Spy tabletop binocular/scope feel.
+   Brass ring with rivets + glass lens effect. */
+
+.porthole-frame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  /* Brass outer ring */
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      rgba(220, 200, 140, 0.2) 0%,
+      transparent 50%
+    ),
+    linear-gradient(
+      160deg,
+      #5a5038 0%, #7a6c48 15%, #4a4028 30%,
+      #6a5c3c 50%, #7a6c48 70%, #4a4028 85%, #3a3220 100%
+    );
+  padding: 8px;
+  box-shadow:
+    0 0 0 2px rgba(90, 80, 56, 0.6),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(220, 200, 140, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Inner glass ring */
+.porthole-frame-inner {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.7),
+    0 0 8px var(--porthole-btn-glow, rgba(51, 255, 51, 0.15));
+}
+
+/* Rivet dots */
+.porthole-frame::before,
+.porthole-frame::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(220, 200, 140, 0.3), rgba(90, 80, 56, 0.8));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.porthole-frame::before {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.porthole-frame::after {
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+/* ============================================================
+   9. SUBMIT BUTTON ON PAPER — Brass accent on light surface
+   ============================================================ */
+.dossier-paper .form-submit {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 2px solid color-mix(in srgb, var(--theme-primary, #33ff33) 25%, #7a6c48);
+  border-radius: 6px;
+  background:
+    linear-gradient(175deg, rgba(60, 50, 30, 0.85) 0%, rgba(40, 34, 20, 0.92) 100%);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 8px;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 0 12px var(--field-glow-paper, rgba(51, 255, 51, 0.08));
+}
+
+.dossier-paper .form-submit:hover {
+  border-color: var(--theme-primary, #33ff33);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    0 0 20px var(--field-glow-paper, rgba(51, 255, 51, 0.15));
+  transform: translateY(-1px);
+}
+
+.dossier-paper .form-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Field errors on paper */
+.dossier-paper .field-error {
+  color: #c03030;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.dossier-paper .form-api-error {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(200, 50, 50, 0.3);
+  border-radius: 4px;
+  background: rgba(200, 50, 50, 0.06);
+  color: #c03030;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Field hints */
+.dossier-paper .field-optional {
+  color: rgba(0, 0, 0, 0.3);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+}
+
+.dossier-paper .field-hint {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.3);
+  margin-top: 4px;
+}
+
+
+/* ============================================================
+   10. STEP LABELS & DIVIDERS ON PAPER
+   ============================================================ */
+.dossier-paper .booking-step-label {
+  font-size: 11px;
+  color: var(--paper-text-label, #7a6c50);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+
+/* ============================================================
+   11. WAIVER / LEGAL TEXT ON PAPER
+   ============================================================ */
+.dossier-paper .waiver-text,
+.dossier-paper .legal-text {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--paper-text-dim, #5a5040);
+  line-height: 1.7;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dossier-paper .waiver-text h4,
+.dossier-paper .legal-text h4 {
+  font-size: 14px;
+  color: var(--paper-heading, #1a1610);
+  margin-bottom: 10px;
+}
+
+.dossier-paper .waiver-text p,
+.dossier-paper .legal-text p {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.dossier-paper .waiver-version-note,
+.dossier-paper .legal-review-note {
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 40%, #7a6c50);
+}
+
+
+/* ============================================================
+   12. SUCCESS STATE ON PAPER
+   ============================================================ */
+.dossier-paper .form-success {
+  text-align: center;
+  padding: 30px;
+}
+
+.dossier-paper .form-success .success-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.dossier-paper .form-success .success-title {
+  font-size: 20px;
+  color: var(--paper-heading, #1a1610);
+  margin-bottom: 10px;
+}
+
+.dossier-paper .form-success p {
+  font-size: 14px;
+  color: var(--theme-primary, #33ff33);
+  margin-bottom: 16px;
+  /* Glow on dark text feels wrong — use theme primary on paper bg */
+  text-shadow: none;
+}
+
+.dossier-paper .booking-ref {
+  font-size: 12px;
+  color: var(--paper-text-label, #7a6c50);
+  margin-bottom: 20px;
+}
+
+.dossier-paper .success-back-link {
+  display: inline-block;
+  padding: 10px 24px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  color: var(--paper-text, #2a2418);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.dossier-paper .success-back-link:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.25);
+  text-decoration: none;
+}
+
+
+/* ============================================================
+   13. BOOKING CONFIRM BANNER ON PAPER
+   ============================================================ */
+.dossier-paper .booking-confirm-banner {
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--theme-primary, #33ff33) 20%, rgba(0, 0, 0, 0.1));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--theme-primary, #33ff33) 5%, rgba(255, 255, 255, 0.4));
+  color: var(--paper-text, #2a2418);
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+
+/* ============================================================
+   RESPONSIVE — Mobile-first portrait readability
+   ============================================================ */
+@media (max-width: 768px) {
+  .dossier-folder {
+    margin: 0 8px;
+    padding: 20px 12px 28px;
+    border-radius: 3px;
+  }
+
+  .dossier-folder-tab {
+    left: 20px;
+    font-size: 10px;
+    padding: 5px 16px 3px;
+  }
+
+  .dossier-paper {
+    padding: 24px 16px 28px 36px;
+  }
+
+  .dossier-paper .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .postit {
+    padding: 20px 16px 24px;
+  }
+
+  .porthole-btn {
+    width: 110px;
+    height: 110px;
+  }
+
+  .porthole-btn-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dossier-folder {
+    margin: 0 4px;
+    padding: 16px 8px 24px;
+  }
+
+  .dossier-paper {
+    padding: 20px 12px 24px 28px;
+  }
+
+  /* Reduce margin line on very small screens */
+  .dossier-paper {
+    background-position-x: 0, 24px, 0;
+  }
+
+  .porthole-btn {
+    width: 90px;
+    height: 90px;
+  }
+
+  .porthole-btn-label {
+    font-size: 9px;
+  }
+}
+
+/* iOS zoom prevention */
+@supports (-webkit-touch-callout: none) {
+  .dossier-paper .form-group input,
+  .dossier-paper .form-group select,
+  .dossier-paper .form-group textarea {
+    font-size: 16px;
+  }
+}

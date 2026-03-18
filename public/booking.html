@@ -11,8 +11,9 @@
   <title>EYES ONLY // Book a Mission</title>
 
   <link rel="stylesheet" href="css/crt.css?v=20260314e">
-  <link rel="stylesheet" href="css/themes.css?v=20260314a">
-  <link rel="stylesheet" href="css/booking.css?v=20260314a">
+  <link rel="stylesheet" href="css/themes.css?v=20260317b">
+  <link rel="stylesheet" href="css/dossier-page.css?v=20260317a">
+  <link rel="stylesheet" href="css/booking.css?v=20260317a">
   <link rel="stylesheet" href="css/nch-overlay.css?v=20260316c">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
 
@@ -48,327 +49,341 @@
     </div>
   </nav>
 
-  <!-- ═══════ HERO / PAGE HEADER ═══════ -->
-  <header class="booking-hero">
-    <div class="booking-hero-inner">
-      <div class="booking-hero-label">CLASSIFIED OPERATIONS</div>
-      <h1 class="booking-hero-title">Live Scenario Missions</h1>
-      <p class="booking-hero-sub">Sandpoint, Idaho &mdash; Real terrain. Real stakes. Choose your mission below.</p>
-    </div>
-    <div class="booking-hero-scanline"></div>
-  </header>
+  <!-- ═══════ DESK SURFACE ═══════ -->
+  <div class="dossier-desk">
 
-  <!-- ═══════ SCENARIO 1 ═══════ -->
-  <section class="scenario-section" id="scenario-1">
-    <div class="scenario-inner">
-      <div class="scenario-badge">MISSION DOSSIER</div>
-      <div class="scenario-grid">
-
-        <!-- Left: details -->
-        <div class="scenario-details">
-          <div class="scenario-classified">EYES ONLY</div>
-          <h2 class="scenario-title">Scenario 1</h2>
-          <p class="scenario-subtitle">24-Hour Field Exercise</p>
-          <p class="scenario-desc">
-            A rapid-deployment live-action scenario across Sandpoint's urban and wilderness terrain.
-            Your team receives a classified briefing, deploys into the field, and has 24 hours to
-            complete objectives before extraction. Expect surveillance, dead drops, coded messages,
-            and encounters with both allies and adversaries.
-          </p>
-
-          <div class="scenario-specs">
-            <div class="scenario-spec">
-              <span class="spec-label">Duration</span>
-              <span class="spec-value">24 Hours</span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Price</span>
-              <span class="spec-value">$500 <span class="spec-note">per team</span></span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Team Size</span>
-              <span class="spec-value">2 &ndash; 60 Players</span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Difficulty</span>
-              <span class="spec-value">Moderate</span>
-            </div>
-          </div>
-
-          <div class="scenario-includes">
-            <h3 class="includes-heading">Mission Includes</h3>
-            <ul class="includes-list">
-              <li>Classified mission briefing packet</li>
-              <li>Field communication equipment</li>
-              <li>Real-world terrain navigation</li>
-              <li>Live actor encounters &amp; NPC interactions</li>
-              <li>After-action debrief &amp; mission dossier</li>
-            </ul>
-          </div>
-
-          <button class="scenario-book-btn" data-scenario="scenario-1" id="book-btn-s1">
-            <span class="book-btn-icon">&#x1F5B3;</span>
-            <span class="book-btn-text">Book This Mission</span>
-            <span class="book-btn-price">$500</span>
-          </button>
-        </div>
-
-        <!-- Right: porthole with starfield + suit symbol -->
-        <div class="scenario-visual">
-          <div class="scenario-icon-wrap" data-suit="&#x2660;" data-suit-class="suit-spade">
-            <canvas class="starfield-window" width="200" height="200"></canvas>
-            <div class="scenario-rings"></div>
-            <div class="scenario-suit suit-spade">&#x2660;</div>
-          </div>
-          <div class="scenario-visual-tags">
-            <span class="visual-tag">24 HR</span>
-            <span class="visual-tag">$500</span>
-            <span class="visual-tag">2&ndash;60 PLAYERS</span>
-          </div>
-        </div>
-
+    <!-- ═══════ HERO / PAGE HEADER (on the desk) ═══════ -->
+    <header class="booking-hero">
+      <div class="booking-hero-inner">
+        <div class="booking-hero-label">CLASSIFIED OPERATIONS</div>
+        <h1 class="booking-hero-title">Live Scenario Missions</h1>
+        <p class="booking-hero-sub">Sandpoint, Idaho &mdash; Real terrain. Real stakes. Choose your mission below.</p>
       </div>
-    </div>
-  </section>
+      <div class="booking-hero-scanline"></div>
+    </header>
 
-  <!-- ═══════ DIVIDER ═══════ -->
-  <div class="scenario-divider">
-    <div class="divider-line"></div>
-    <div class="divider-label">OR</div>
-    <div class="divider-line"></div>
-  </div>
+    <!-- ═══════ MANILA FOLDER ═══════ -->
+    <div class="dossier-folder">
+      <div class="dossier-folder-tab">Mission Dossiers</div>
 
-  <!-- ═══════ SCENARIO 2 ═══════ -->
-  <section class="scenario-section scenario-section-alt" id="scenario-2">
-    <div class="scenario-inner">
-      <div class="scenario-badge scenario-badge-alt">MISSION DOSSIER</div>
-      <div class="scenario-grid">
+      <!-- ═══════ PAPER PAGE ═══════ -->
+      <div class="dossier-paper">
 
-        <div class="scenario-details">
-          <div class="scenario-classified scenario-classified-alt">TOP SECRET</div>
-          <h2 class="scenario-title">Scenario 2</h2>
-          <p class="scenario-subtitle">72-Hour Extended Operation</p>
-          <p class="scenario-desc">
-            A deep-cover operation spanning three days across Sandpoint and the surrounding Lake
-            Pend Oreille region. Your team embeds in the community, builds cover identities,
-            and executes multi-phase objectives. Includes overnight surveillance rotations,
-            watercraft operations, mountain terrain, and a final extraction under pressure.
-          </p>
+        <!-- ═══════ SCENARIO 1 — Post-it note ═══════ -->
+        <section class="scenario-section" id="scenario-1">
+          <div class="scenario-inner postit">
+            <div class="scenario-badge">MISSION DOSSIER</div>
+            <div class="scenario-grid">
 
-          <div class="scenario-specs">
-            <div class="scenario-spec">
-              <span class="spec-label">Duration</span>
-              <span class="spec-value">72 Hours</span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Price</span>
-              <span class="spec-value">$1,200 <span class="spec-note">per team</span></span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Team Size</span>
-              <span class="spec-value">3 &ndash; 30 Players</span>
-            </div>
-            <div class="scenario-spec">
-              <span class="spec-label">Difficulty</span>
-              <span class="spec-value">Advanced</span>
-            </div>
-          </div>
+              <!-- Left: details -->
+              <div class="scenario-details">
+                <div class="scenario-classified">EYES ONLY</div>
+                <h2 class="scenario-title">Scenario 1</h2>
+                <p class="scenario-subtitle">24-Hour Field Exercise</p>
+                <p class="scenario-desc">
+                  A rapid-deployment live-action scenario across Sandpoint's urban and wilderness terrain.
+                  Your team receives a classified briefing, deploys into the field, and has 24 hours to
+                  complete objectives before extraction. Expect surveillance, dead drops, coded messages,
+                  and encounters with both allies and adversaries.
+                </p>
 
-          <div class="scenario-includes">
-            <h3 class="includes-heading">Mission Includes</h3>
-            <ul class="includes-list">
-              <li>Everything in Scenario 1, plus:</li>
-              <li>Multi-day deep-cover narrative</li>
-              <li>Watercraft &amp; mountain terrain access</li>
-              <li>Overnight surveillance rotations</li>
-              <li>Advanced field equipment loadout</li>
-              <li>Extended after-action intelligence report</li>
-            </ul>
-          </div>
+                <div class="scenario-specs">
+                  <div class="scenario-spec">
+                    <span class="spec-label">Duration</span>
+                    <span class="spec-value">24 Hours</span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Price</span>
+                    <span class="spec-value">$500 <span class="spec-note">per team</span></span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Team Size</span>
+                    <span class="spec-value">2 &ndash; 60 Players</span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Difficulty</span>
+                    <span class="spec-value">Moderate</span>
+                  </div>
+                </div>
 
-          <button class="scenario-book-btn scenario-book-btn-alt" data-scenario="scenario-2" id="book-btn-s2">
-            <span class="book-btn-icon">&#x1F5B3;</span>
-            <span class="book-btn-text">Book This Mission</span>
-            <span class="book-btn-price">$1,200</span>
-          </button>
-        </div>
+                <div class="scenario-includes">
+                  <h3 class="includes-heading">Mission Includes</h3>
+                  <ul class="includes-list">
+                    <li>Classified mission briefing packet</li>
+                    <li>Field communication equipment</li>
+                    <li>Real-world terrain navigation</li>
+                    <li>Live actor encounters &amp; NPC interactions</li>
+                    <li>After-action debrief &amp; mission dossier</li>
+                  </ul>
+                </div>
 
-        <div class="scenario-visual">
-          <div class="scenario-icon-wrap" data-suit="&#x2663;" data-suit-class="suit-club">
-            <canvas class="starfield-window" width="200" height="200"></canvas>
-            <div class="scenario-rings scenario-rings-alt"></div>
-            <div class="scenario-suit suit-club">&#x2663;</div>
-          </div>
-          <div class="scenario-visual-tags">
-            <span class="visual-tag visual-tag-alt">72 HR</span>
-            <span class="visual-tag visual-tag-alt">$1,200</span>
-            <span class="visual-tag visual-tag-alt">3&ndash;30 PLAYERS</span>
-          </div>
-        </div>
+                <button class="scenario-book-btn" data-scenario="scenario-1" id="book-btn-s1">
+                  <span class="book-btn-icon">&#x1F5B3;</span>
+                  <span class="book-btn-text">Book This Mission</span>
+                  <span class="book-btn-price">$500</span>
+                </button>
+              </div>
 
-      </div>
-    </div>
-  </section>
+              <!-- Right: porthole with starfield in spy-glass frame -->
+              <div class="scenario-visual">
+                <div class="scenario-icon-wrap" data-suit="&#x2660;" data-suit-class="suit-spade">
+                  <canvas class="starfield-window" width="200" height="200"></canvas>
+                  <div class="scenario-rings"></div>
+                  <div class="scenario-suit suit-spade">&#x2660;</div>
+                </div>
+                <div class="scenario-visual-tags">
+                  <span class="visual-tag">24 HR</span>
+                  <span class="visual-tag">$500</span>
+                  <span class="visual-tag">2&ndash;60 PLAYERS</span>
+                </div>
+              </div>
 
-  <!-- ═══════ BOOKING FORM ═══════ -->
-  <section class="booking-form-section" id="booking-form">
-    <div class="booking-form-inner">
-      <h2 class="booking-form-title">Reserve Your Mission</h2>
-      <p class="booking-form-sub">Fill out the booking request below. We'll confirm availability within 48 hours.</p>
-
-      <!-- Step 1: Booking Details -->
-      <form id="booking-details-form" class="booking-form" novalidate>
-        <div class="booking-step-label">STEP 1 &mdash; MISSION DETAILS</div>
-
-        <div class="form-group">
-          <label for="bf-scenario">Mission Type</label>
-          <select id="bf-scenario" name="scenario_type" required>
-            <option value="">Select mission...</option>
-            <option value="scenario-1">Scenario 1 &mdash; 24-Hour Field Exercise ($500)</option>
-            <option value="scenario-2">Scenario 2 &mdash; 72-Hour Extended Operation ($1,200)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="bf-group">Group / Team Name <span class="field-optional">(optional)</span></label>
-          <input type="text" id="bf-group" name="group_name" placeholder="e.g., Team Alpha">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="bf-name">Lead Contact Name</label>
-            <input type="text" id="bf-name" name="lead_name" required placeholder="Full name">
-          </div>
-          <div class="form-group">
-            <label for="bf-email">Email</label>
-            <input type="email" id="bf-email" name="lead_email" required placeholder="you@example.com">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="bf-phone">Phone <span class="field-optional">(optional)</span></label>
-            <input type="tel" id="bf-phone" name="lead_phone" placeholder="(208) 555-0123">
-          </div>
-          <div class="form-group">
-            <label for="bf-players">Number of Players</label>
-            <input type="number" id="bf-players" name="player_count" required min="2" max="60" placeholder="2-60">
-            <div class="field-hint" id="player-hint">Scenario 1: 2-60 players &bull; Scenario 2: 3-30 players</div>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="bf-date">Preferred Date <span class="field-optional">(optional)</span></label>
-            <input type="date" id="bf-date" name="preferred_date">
-          </div>
-          <div class="form-group">
-            <label for="bf-time">Preferred Start Time <span class="field-optional">(optional)</span></label>
-            <select id="bf-time" name="preferred_time">
-              <option value="">No preference</option>
-              <option value="morning">Morning (06:00 - 12:00)</option>
-              <option value="afternoon">Afternoon (12:00 - 18:00)</option>
-              <option value="evening">Evening (18:00 - 00:00)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-divider"></div>
-        <div class="booking-step-label">EMERGENCY CONTACT</div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="bf-emerg-name">Emergency Contact Name</label>
-            <input type="text" id="bf-emerg-name" name="emergency_name" placeholder="Full name">
-          </div>
-          <div class="form-group">
-            <label for="bf-emerg-phone">Emergency Phone</label>
-            <input type="tel" id="bf-emerg-phone" name="emergency_phone" placeholder="(208) 555-0123">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="bf-emerg-rel">Relationship <span class="field-optional">(optional)</span></label>
-          <input type="text" id="bf-emerg-rel" name="emergency_relation" placeholder="e.g., Spouse, Parent">
-        </div>
-
-        <div class="form-divider"></div>
-
-        <div class="form-group">
-          <label for="bf-notes">Additional Notes <span class="field-optional">(optional)</span></label>
-          <textarea id="bf-notes" name="notes" rows="3" placeholder="Special requests, accessibility needs, group details..."></textarea>
-        </div>
-
-        <button type="submit" class="form-submit" id="booking-submit-btn">
-          Submit Booking Request
-        </button>
-        <div class="form-api-error" id="booking-api-error" style="display:none;"></div>
-      </form>
-
-      <!-- Step 2: Waiver (shown after booking created) -->
-      <div id="booking-waiver-step" class="booking-form" style="display:none;">
-        <div class="booking-step-label">STEP 2 &mdash; LIABILITY WAIVER</div>
-        <div class="booking-confirm-banner" id="booking-confirm-banner"></div>
-
-        <div class="waiver-text" id="waiver-text">
-          <h4>Participant Liability Waiver &amp; Assumption of Risk</h4>
-          <p>EYES ONLY operates live-action spy scenarios that involve physical activity
-          across varied terrain including urban streets, forested areas, waterfront, and
-          mountainous regions in and around Sandpoint, Idaho.</p>
-          <p><strong>1. ASSUMPTION OF RISK:</strong> I voluntarily assume all risks associated
-          with participation, including but not limited to: physical exertion, uneven terrain,
-          weather exposure, water hazards, encounters with wildlife, vehicular traffic, and
-          interactions with actors/NPCs during scenario play.</p>
-          <p><strong>2. RELEASE AND WAIVER:</strong> I, on behalf of myself, my heirs, executors,
-          and assigns, hereby release, waive, and forever discharge EYES ONLY LLC, its officers,
-          directors, employees, agents, volunteers, and partner businesses from any and all
-          liability, claims, demands, or causes of action arising out of my participation.</p>
-          <p><strong>3. MEDICAL ACKNOWLEDGMENT:</strong> I certify that I am physically fit to
-          participate and have no medical conditions that would prevent safe participation. I
-          authorize emergency medical treatment if necessary.</p>
-          <p><strong>4. PHOTO/VIDEO RELEASE:</strong> I grant EYES ONLY permission to use
-          photographs, video, and audio recordings of my participation for promotional purposes.</p>
-          <p><strong>5. GOVERNING LAW:</strong> This waiver is governed by the laws of the
-          State of Idaho. Any disputes shall be resolved in Bonner County, Idaho.</p>
-          <p class="waiver-version-note"><em>Waiver version: v1.0-draft &mdash; effective upon digital signature below.</em></p>
-        </div>
-
-        <form id="waiver-form" novalidate>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="wf-name">Full Legal Name (Digital Signature)</label>
-              <input type="text" id="wf-name" name="signature_name" required placeholder="Type your full legal name">
-            </div>
-            <div class="form-group">
-              <label for="wf-email">Email (Confirmation)</label>
-              <input type="email" id="wf-email" name="signature_email" disabled>
             </div>
           </div>
-          <div class="form-group form-checkbox-group">
-            <label>
-              <input type="checkbox" id="wf-agree" name="waiver_agreed" required>
-              <span>I have read, understand, and voluntarily agree to the terms of this Liability Waiver &amp; Assumption of Risk</span>
-            </label>
-          </div>
-          <button type="submit" class="form-submit" id="waiver-submit-btn">
-            Sign Waiver &amp; Proceed to Payment
-          </button>
-          <div class="form-api-error" id="waiver-api-error" style="display:none;"></div>
-        </form>
-      </div>
+        </section>
 
-      <!-- Final success state -->
-      <div id="booking-success" class="booking-form" style="display:none;">
-        <div class="form-success">
-          <div class="success-icon">&#x2705;</div>
-          <h3 class="success-title">Mission Booking Complete</h3>
-          <p id="booking-success-msg">Your booking has been submitted and waiver signed. Check your email for confirmation.</p>
-          <div class="booking-ref" id="booking-ref"></div>
-          <a href="/" class="success-back-link">&larr; Return to Terminal</a>
+        <!-- ═══════ DIVIDER ═══════ -->
+        <div class="scenario-divider">
+          <div class="divider-line"></div>
+          <div class="divider-label">OR</div>
+          <div class="divider-line"></div>
         </div>
-      </div>
 
-    </div>
-  </section>
+        <!-- ═══════ SCENARIO 2 — Post-it note ═══════ -->
+        <section class="scenario-section" id="scenario-2">
+          <div class="scenario-inner postit">
+            <div class="scenario-badge scenario-badge-alt">MISSION DOSSIER</div>
+            <div class="scenario-grid">
+
+              <div class="scenario-details">
+                <div class="scenario-classified scenario-classified-alt">TOP SECRET</div>
+                <h2 class="scenario-title">Scenario 2</h2>
+                <p class="scenario-subtitle">72-Hour Extended Operation</p>
+                <p class="scenario-desc">
+                  A deep-cover operation spanning three days across Sandpoint and the surrounding Lake
+                  Pend Oreille region. Your team embeds in the community, builds cover identities,
+                  and executes multi-phase objectives. Includes overnight surveillance rotations,
+                  watercraft operations, mountain terrain, and a final extraction under pressure.
+                </p>
+
+                <div class="scenario-specs">
+                  <div class="scenario-spec">
+                    <span class="spec-label">Duration</span>
+                    <span class="spec-value">72 Hours</span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Price</span>
+                    <span class="spec-value">$1,200 <span class="spec-note">per team</span></span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Team Size</span>
+                    <span class="spec-value">3 &ndash; 30 Players</span>
+                  </div>
+                  <div class="scenario-spec">
+                    <span class="spec-label">Difficulty</span>
+                    <span class="spec-value">Advanced</span>
+                  </div>
+                </div>
+
+                <div class="scenario-includes">
+                  <h3 class="includes-heading">Mission Includes</h3>
+                  <ul class="includes-list">
+                    <li>Everything in Scenario 1, plus:</li>
+                    <li>Multi-day deep-cover narrative</li>
+                    <li>Watercraft &amp; mountain terrain access</li>
+                    <li>Overnight surveillance rotations</li>
+                    <li>Advanced field equipment loadout</li>
+                    <li>Extended after-action intelligence report</li>
+                  </ul>
+                </div>
+
+                <button class="scenario-book-btn scenario-book-btn-alt" data-scenario="scenario-2" id="book-btn-s2">
+                  <span class="book-btn-icon">&#x1F5B3;</span>
+                  <span class="book-btn-text">Book This Mission</span>
+                  <span class="book-btn-price">$1,200</span>
+                </button>
+              </div>
+
+              <div class="scenario-visual">
+                <div class="scenario-icon-wrap" data-suit="&#x2663;" data-suit-class="suit-club">
+                  <canvas class="starfield-window" width="200" height="200"></canvas>
+                  <div class="scenario-rings scenario-rings-alt"></div>
+                  <div class="scenario-suit suit-club">&#x2663;</div>
+                </div>
+                <div class="scenario-visual-tags">
+                  <span class="visual-tag visual-tag-alt">72 HR</span>
+                  <span class="visual-tag visual-tag-alt">$1,200</span>
+                  <span class="visual-tag visual-tag-alt">3&ndash;30 PLAYERS</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══════ BOOKING FORM ═══════ -->
+        <section class="booking-form-section" id="booking-form">
+          <div class="booking-form-inner">
+            <h2 class="booking-form-title">Reserve Your Mission</h2>
+            <p class="booking-form-sub">Fill out the booking request below. We'll confirm availability within 48 hours.</p>
+
+            <!-- Step 1: Booking Details -->
+            <form id="booking-details-form" class="booking-form" novalidate>
+              <div class="booking-step-label">STEP 1 &mdash; MISSION DETAILS</div>
+
+              <div class="form-group">
+                <label for="bf-scenario">Mission Type</label>
+                <select id="bf-scenario" name="scenario_type" required>
+                  <option value="">Select mission...</option>
+                  <option value="scenario-1">Scenario 1 &mdash; 24-Hour Field Exercise ($500)</option>
+                  <option value="scenario-2">Scenario 2 &mdash; 72-Hour Extended Operation ($1,200)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="bf-group">Group / Team Name <span class="field-optional">(optional)</span></label>
+                <input type="text" id="bf-group" name="group_name" placeholder="e.g., Team Alpha">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bf-name">Lead Contact Name</label>
+                  <input type="text" id="bf-name" name="lead_name" required placeholder="Full name">
+                </div>
+                <div class="form-group">
+                  <label for="bf-email">Email</label>
+                  <input type="email" id="bf-email" name="lead_email" required placeholder="you@example.com">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bf-phone">Phone <span class="field-optional">(optional)</span></label>
+                  <input type="tel" id="bf-phone" name="lead_phone" placeholder="(208) 555-0123">
+                </div>
+                <div class="form-group">
+                  <label for="bf-players">Number of Players</label>
+                  <input type="number" id="bf-players" name="player_count" required min="2" max="60" placeholder="2-60">
+                  <div class="field-hint" id="player-hint">Scenario 1: 2-60 players &bull; Scenario 2: 3-30 players</div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bf-date">Preferred Date <span class="field-optional">(optional)</span></label>
+                  <input type="date" id="bf-date" name="preferred_date">
+                </div>
+                <div class="form-group">
+                  <label for="bf-time">Preferred Start Time <span class="field-optional">(optional)</span></label>
+                  <select id="bf-time" name="preferred_time">
+                    <option value="">No preference</option>
+                    <option value="morning">Morning (06:00 - 12:00)</option>
+                    <option value="afternoon">Afternoon (12:00 - 18:00)</option>
+                    <option value="evening">Evening (18:00 - 00:00)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-divider"></div>
+              <div class="booking-step-label">EMERGENCY CONTACT</div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bf-emerg-name">Emergency Contact Name</label>
+                  <input type="text" id="bf-emerg-name" name="emergency_name" placeholder="Full name">
+                </div>
+                <div class="form-group">
+                  <label for="bf-emerg-phone">Emergency Phone</label>
+                  <input type="tel" id="bf-emerg-phone" name="emergency_phone" placeholder="(208) 555-0123">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="bf-emerg-rel">Relationship <span class="field-optional">(optional)</span></label>
+                <input type="text" id="bf-emerg-rel" name="emergency_relation" placeholder="e.g., Spouse, Parent">
+              </div>
+
+              <div class="form-divider"></div>
+
+              <div class="form-group">
+                <label for="bf-notes">Additional Notes <span class="field-optional">(optional)</span></label>
+                <textarea id="bf-notes" name="notes" rows="3" placeholder="Special requests, accessibility needs, group details..."></textarea>
+              </div>
+
+              <button type="submit" class="form-submit" id="booking-submit-btn">
+                Submit Booking Request
+              </button>
+              <div class="form-api-error" id="booking-api-error" style="display:none;"></div>
+            </form>
+
+            <!-- Step 2: Waiver (shown after booking created) -->
+            <div id="booking-waiver-step" class="booking-form" style="display:none;">
+              <div class="booking-step-label">STEP 2 &mdash; LIABILITY WAIVER</div>
+              <div class="booking-confirm-banner" id="booking-confirm-banner"></div>
+
+              <div class="waiver-text" id="waiver-text">
+                <h4>Participant Liability Waiver &amp; Assumption of Risk</h4>
+                <p>EYES ONLY operates live-action spy scenarios that involve physical activity
+                across varied terrain including urban streets, forested areas, waterfront, and
+                mountainous regions in and around Sandpoint, Idaho.</p>
+                <p><strong>1. ASSUMPTION OF RISK:</strong> I voluntarily assume all risks associated
+                with participation, including but not limited to: physical exertion, uneven terrain,
+                weather exposure, water hazards, encounters with wildlife, vehicular traffic, and
+                interactions with actors/NPCs during scenario play.</p>
+                <p><strong>2. RELEASE AND WAIVER:</strong> I, on behalf of myself, my heirs, executors,
+                and assigns, hereby release, waive, and forever discharge EYES ONLY LLC, its officers,
+                directors, employees, agents, volunteers, and partner businesses from any and all
+                liability, claims, demands, or causes of action arising out of my participation.</p>
+                <p><strong>3. MEDICAL ACKNOWLEDGMENT:</strong> I certify that I am physically fit to
+                participate and have no medical conditions that would prevent safe participation. I
+                authorize emergency medical treatment if necessary.</p>
+                <p><strong>4. PHOTO/VIDEO RELEASE:</strong> I grant EYES ONLY permission to use
+                photographs, video, and audio recordings of my participation for promotional purposes.</p>
+                <p><strong>5. GOVERNING LAW:</strong> This waiver is governed by the laws of the
+                State of Idaho. Any disputes shall be resolved in Bonner County, Idaho.</p>
+                <p class="waiver-version-note"><em>Waiver version: v1.0-draft &mdash; effective upon digital signature below.</em></p>
+              </div>
+
+              <form id="waiver-form" novalidate>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="wf-name">Full Legal Name (Digital Signature)</label>
+                    <input type="text" id="wf-name" name="signature_name" required placeholder="Type your full legal name">
+                  </div>
+                  <div class="form-group">
+                    <label for="wf-email">Email (Confirmation)</label>
+                    <input type="email" id="wf-email" name="signature_email" disabled>
+                  </div>
+                </div>
+                <div class="form-group form-checkbox-group">
+                  <label>
+                    <input type="checkbox" id="wf-agree" name="waiver_agreed" required>
+                    <span>I have read, understand, and voluntarily agree to the terms of this Liability Waiver &amp; Assumption of Risk</span>
+                  </label>
+                </div>
+                <button type="submit" class="form-submit" id="waiver-submit-btn">
+                  Sign Waiver &amp; Proceed to Payment
+                </button>
+                <div class="form-api-error" id="waiver-api-error" style="display:none;"></div>
+              </form>
+            </div>
+
+            <!-- Final success state -->
+            <div id="booking-success" class="booking-form" style="display:none;">
+              <div class="form-success">
+                <div class="success-icon">&#x2705;</div>
+                <h3 class="success-title">Mission Booking Complete</h3>
+                <p id="booking-success-msg">Your booking has been submitted and waiver signed. Check your email for confirmation.</p>
+                <div class="booking-ref" id="booking-ref"></div>
+                <a href="/" class="success-back-link">&larr; Return to Terminal</a>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div><!-- /dossier-paper -->
+    </div><!-- /dossier-folder -->
+  </div><!-- /dossier-desk -->
 
   <!-- ═══════ FOOTER ═══════ -->
   <footer class="eo-footer">

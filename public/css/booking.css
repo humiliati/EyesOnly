@@ -1,7 +1,8 @@
 /* ============================================================
-   EYES ONLY — Booking Page
-   Metal-frame bezel + CRT content aesthetic.
-   Nav/footer = brass monitor bezel. Content = CRT phosphor screen.
+   EYES ONLY — Booking Page (Dossier Aesthetic)
+   Paper-on-folder-on-desk design.
+   Nav/footer = brass monitor bezel (unchanged).
+   Content = paper page in manila folder on spy desk.
    ============================================================ */
 
 /* ---- Reset & base ---- */
@@ -25,19 +26,19 @@ html, body {
 
 body {
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  background: #0c0e0c;
-  color: #c8d0c8;
+  background: var(--desk-bg, #0e0c08);
+  color: var(--paper-text, #2a2418);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--phosphor); text-decoration: none; }
+a { color: var(--theme-primary, #33ff33); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 
 /* ============================================================
-   METAL FRAME — Nav bar (brass monitor bezel)
+   METAL FRAME — Nav bar (brass monitor bezel) — UNCHANGED
    ============================================================ */
 .eo-nav {
   position: sticky;
@@ -79,20 +80,16 @@ a:hover { text-decoration: underline; }
   transition: color 0.2s;
 }
 .eo-nav-link:hover { color: rgba(220, 200, 140, 0.9); text-decoration: none; }
-.eo-nav-link.eo-nav-active { color: var(--phosphor); text-shadow: 0 0 6px var(--phosphor-glow); }
+.eo-nav-link.eo-nav-active { color: var(--theme-primary, #33ff33); text-shadow: 0 0 6px var(--theme-primary-glow, rgba(51,255,51,0.15)); }
 
 
 /* ============================================================
-   HERO — CRT screen header
+   HERO — On the desk, above the folder
    ============================================================ */
 .booking-hero {
   position: relative;
-  padding: 70px 24px 50px;
+  padding: 70px 24px 40px;
   text-align: center;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(20, 40, 20, 0.15), transparent 70%),
-    linear-gradient(180deg, #0a0e0a 0%, #080c08 100%);
-  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
   overflow: hidden;
 }
 
@@ -100,7 +97,7 @@ a:hover { text-decoration: underline; }
 
 .booking-hero-label {
   font-size: 11px;
-  color: rgba(255, 70, 70, 0.6);
+  color: rgba(255, 70, 70, 0.7);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   margin-bottom: 12px;
@@ -108,16 +105,17 @@ a:hover { text-decoration: underline; }
 
 .booking-hero-title {
   font-size: clamp(28px, 5vw, 48px);
-  color: rgba(220, 240, 220, 0.95);
+  color: rgba(220, 200, 140, 0.95);
   font-weight: bold;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
-  text-shadow: 0 0 20px var(--phosphor-glow), 0 0 40px rgba(51, 255, 51, 0.05);
+  text-shadow: 0 0 20px var(--theme-primary-glow, rgba(51,255,51,0.15)), 0 2px 4px rgba(0,0,0,0.5);
+  font-family: var(--theme-font-display, Georgia, serif);
 }
 
 .booking-hero-sub {
   font-size: clamp(13px, 2vw, 16px);
-  color: rgba(200, 210, 200, 0.5);
+  color: rgba(200, 180, 140, 0.5);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -132,129 +130,127 @@ a:hover { text-decoration: underline; }
 
 
 /* ============================================================
-   SCENARIO SECTIONS — CRT content panels
+   SCENARIO SECTIONS — Post-it notes on the paper
    ============================================================ */
 .scenario-section {
-  padding: 50px 24px;
-  max-width: 1100px;
-  margin: 0 auto;
+  padding: 0;
+  margin-bottom: 24px;
 }
 
-.scenario-section-alt {
-  background: rgba(20, 18, 10, 0.3);
+.scenario-inner {
+  /* Inherits postit styling from HTML class */
 }
 
 .scenario-badge {
   font-size: 10px;
-  color: var(--phosphor-dim);
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(100, 88, 50, 0.25);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   display: inline-block;
 }
 
 .scenario-badge-alt {
-  color: rgba(201, 168, 76, 0.6);
-  border-color: rgba(201, 168, 76, 0.2);
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 40%, #7a6c50);
 }
 
 .scenario-grid {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 40px;
+  grid-template-columns: 1fr 220px;
+  gap: 24px;
   align-items: start;
 }
 
 .scenario-classified {
   font-size: 10px;
-  color: rgba(255, 70, 70, 0.6);
+  color: rgba(220, 60, 60, 0.6);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 
 .scenario-classified-alt {
-  color: rgba(201, 168, 76, 0.7);
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 50%, rgba(180, 120, 40, 0.7));
 }
 
 .scenario-title {
-  font-size: clamp(24px, 3.5vw, 36px);
-  color: rgba(230, 240, 230, 0.95);
+  font-size: clamp(22px, 3.5vw, 32px);
+  color: var(--paper-heading, #1a1610);
+  font-family: var(--theme-font-display, Georgia, serif);
   font-weight: bold;
   margin-bottom: 4px;
 }
 
 .scenario-subtitle {
-  font-size: 15px;
-  color: var(--phosphor);
-  margin-bottom: 16px;
-  text-shadow: 0 0 8px var(--phosphor-glow);
+  font-size: 14px;
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 50%, var(--paper-text-dim, #5a5040));
+  margin-bottom: 14px;
+  font-weight: 600;
 }
 
 .scenario-desc {
-  font-size: 14px;
-  color: rgba(200, 210, 200, 0.65);
+  font-size: 13px;
+  color: var(--paper-text-dim, #5a5040);
   line-height: 1.7;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
-/* Spec grid — CRT data readout panels */
+/* Spec grid — data readout on post-it */
 .scenario-specs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .scenario-spec {
-  padding: 12px 14px;
-  border: 1px solid rgba(100, 88, 50, 0.2);
-  border-radius: 6px;
-  background: rgba(8, 12, 8, 0.6);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .spec-label {
   display: block;
   font-size: 10px;
-  color: rgba(180, 160, 100, 0.5);
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .spec-value {
-  font-size: 16px;
-  color: rgba(220, 240, 220, 0.95);
+  font-size: 15px;
+  color: var(--paper-heading, #1a1610);
   font-weight: bold;
 }
 
 .spec-note {
   font-size: 11px;
-  color: rgba(180, 180, 180, 0.4);
+  color: var(--paper-text-label, #7a6c50);
   font-weight: normal;
 }
 
 /* Includes */
 .includes-heading {
-  font-size: 12px;
-  color: rgba(180, 160, 100, 0.6);
+  font-size: 11px;
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .includes-list {
   list-style: none;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .includes-list li {
-  font-size: 13px;
-  color: rgba(200, 210, 200, 0.6);
-  padding: 5px 0 5px 20px;
+  font-size: 12px;
+  color: var(--paper-text-dim, #5a5040);
+  padding: 4px 0 4px 18px;
   position: relative;
 }
 
@@ -262,33 +258,36 @@ a:hover { text-decoration: underline; }
   content: '\25B8';
   position: absolute;
   left: 0;
-  color: var(--phosphor);
+  color: var(--theme-primary, #33ff33);
 }
 
-/* Book button — brass-bordered CTA */
+/* Book button on post-it — brass CTA */
 .scenario-book-btn {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 28px;
-  border: 2px solid rgba(140, 120, 60, 0.5);
+  gap: 10px;
+  padding: 12px 24px;
+  border: 2px solid color-mix(in srgb, var(--theme-primary, #33ff33) 25%, #7a6c48);
   border-radius: 6px;
-  background: linear-gradient(175deg, rgba(30, 26, 16, 0.6) 0%, rgba(20, 18, 10, 0.8) 100%);
-  color: rgba(220, 200, 140, 0.9);
+  background: linear-gradient(175deg, rgba(60, 50, 30, 0.85) 0%, rgba(40, 34, 20, 0.92) 100%);
+  color: rgba(255, 255, 255, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08), 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 0 12px var(--field-glow-paper, rgba(51, 255, 51, 0.08));
 }
 
 .scenario-book-btn:hover {
-  border-color: rgba(180, 160, 80, 0.7);
-  background: linear-gradient(175deg, rgba(40, 34, 18, 0.8) 0%, rgba(28, 24, 14, 0.9) 100%);
-  box-shadow: 0 0 16px rgba(180, 160, 80, 0.12), 0 2px 12px rgba(0, 0, 0, 0.4);
+  border-color: var(--theme-primary, #33ff33);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    0 0 20px var(--field-glow-paper, rgba(51, 255, 51, 0.15));
   transform: translateY(-2px);
 }
 
@@ -297,131 +296,135 @@ a:hover { text-decoration: underline; }
 }
 
 .scenario-book-btn-alt {
-  border-color: rgba(201, 168, 76, 0.4);
-  color: rgba(220, 190, 100, 0.9);
-  background: linear-gradient(175deg, rgba(36, 28, 12, 0.6) 0%, rgba(24, 20, 8, 0.8) 100%);
+  border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 30%, #8a7a48);
 }
 
 .scenario-book-btn-alt:hover {
-  border-color: rgba(220, 190, 90, 0.6);
-  background: linear-gradient(175deg, rgba(48, 38, 16, 0.8) 0%, rgba(32, 26, 10, 0.9) 100%);
-  box-shadow: 0 0 16px rgba(201, 168, 76, 0.12), 0 2px 12px rgba(0, 0, 0, 0.4);
+  border-color: var(--theme-primary, #33ff33);
 }
 
-.book-btn-icon { font-size: 18px; }
+.book-btn-icon { font-size: 16px; }
 .book-btn-price {
   padding: 3px 10px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  font-size: 13px;
-  border: 1px solid rgba(100, 88, 50, 0.15);
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Visual / icon column */
+/* Visual / porthole column */
 .scenario-visual {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding-top: 20px;
+  gap: 16px;
+  padding-top: 10px;
 }
 
-/* ---- Porthole: starfield canvas + concentric rings + suit symbol ---- */
+/* ---- Porthole: starfield in spy-glass frame ---- */
 .scenario-icon-wrap {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   overflow: hidden;
+  /* Brass porthole frame */
+  background:
+    radial-gradient(circle at 35% 30%, rgba(220, 200, 140, 0.15), transparent 50%),
+    linear-gradient(160deg, #5a5038 0%, #7a6c48 15%, #4a4028 30%, #6a5c3c 50%, #7a6c48 70%, #4a4028 85%, #3a3220 100%);
+  padding: 6px;
+  box-shadow:
+    /* Outer brass rim */
+    0 0 0 3px rgba(90, 80, 56, 0.5),
+    0 0 0 5px rgba(50, 44, 30, 0.3),
+    /* Theme glow */
+    0 0 16px var(--porthole-btn-glow, rgba(51, 255, 51, 0.15)),
+    /* Depth */
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    /* Inner ring */
+    inset 0 1px 0 rgba(220, 200, 140, 0.12);
 }
 
 .scenario-icon-wrap .starfield-window {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
   border-radius: 50%;
   z-index: 0;
   pointer-events: none;
 }
 
-/* Concentric ring overlay */
+/* Concentric ring overlay — spy glass lens rings */
 .scenario-rings {
   position: absolute;
-  inset: 0;
+  inset: 6px;
   z-index: 1;
   pointer-events: none;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at center,
-      transparent 0%, transparent 42%,
-      rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.6) 46%,
-      rgba(0,0,0,0.5) 46%, rgba(0,0,0,0.4) 50%,
-      rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.25) 54%,
-      rgba(0,0,0,0.18) 54%, rgba(0,0,0,0.12) 58%,
-      rgba(0,0,0,0.10) 58%, rgba(0,0,0,0.06) 62%,
-      rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.01) 66%,
-      transparent 66%, transparent 100%
-    ),
-    radial-gradient(circle at center,
-      transparent 0%, transparent 43%,
-      var(--phosphor-glow) 44%, transparent 45%,
-      transparent 49%,
-      var(--phosphor-glow) 50%, transparent 51%,
-      transparent 57%,
-      var(--phosphor-glow) 58%, transparent 59%,
-      transparent 100%
-    );
+  border: 1.5px solid rgba(180, 160, 100, 0.12);
   box-shadow:
-    inset 0 0 15px rgba(0, 0, 0, 0.9),
-    0 0 20px var(--phosphor-glow);
+    inset 0 0 12px rgba(0, 0, 0, 0.7),
+    inset 0 0 2px var(--porthole-btn-glow, rgba(51, 255, 51, 0.12));
+  /* Crosshair lines */
+  background:
+    linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.04) 49.5%, rgba(255, 255, 255, 0.04) 50.5%, transparent 52%),
+    linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.04) 49.5%, rgba(255, 255, 255, 0.04) 50.5%, transparent 52%);
 }
 
 .scenario-rings-alt {
-  background:
-    radial-gradient(circle at center,
-      transparent 0%, transparent 42%,
-      rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.6) 46%,
-      rgba(0,0,0,0.5) 46%, rgba(0,0,0,0.4) 50%,
-      rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.25) 54%,
-      rgba(0,0,0,0.18) 54%, rgba(0,0,0,0.12) 58%,
-      rgba(0,0,0,0.10) 58%, rgba(0,0,0,0.06) 62%,
-      rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.01) 66%,
-      transparent 66%, transparent 100%
-    ),
-    radial-gradient(circle at center,
-      transparent 0%, transparent 43%,
-      rgba(201, 168, 76, 0.15) 44%, transparent 45%,
-      transparent 49%,
-      rgba(201, 168, 76, 0.10) 50%, transparent 51%,
-      transparent 57%,
-      rgba(201, 168, 76, 0.06) 58%, transparent 59%,
-      transparent 100%
-    );
+  border-color: rgba(201, 168, 76, 0.15);
   box-shadow:
-    inset 0 0 15px rgba(0, 0, 0, 0.9),
-    0 0 20px rgba(201, 168, 76, 0.06);
+    inset 0 0 12px rgba(0, 0, 0, 0.7),
+    inset 0 0 2px rgba(201, 168, 76, 0.1);
+}
+
+/* Rivet dots on porthole frame */
+.scenario-icon-wrap::before,
+.scenario-icon-wrap::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  z-index: 3;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(220, 200, 140, 0.3), rgba(90, 80, 56, 0.8));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.scenario-icon-wrap::before {
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.scenario-icon-wrap::after {
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Suit symbol */
 .scenario-suit {
   z-index: 5;
-  font-size: 56px;
+  font-size: 48px;
   line-height: 1;
   position: relative;
   text-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.8),
-    0 8px 16px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(80, 60, 30, 0.15);
+    0 3px 6px rgba(0, 0, 0, 0.7),
+    0 0 16px var(--porthole-btn-glow, rgba(51, 255, 51, 0.2));
   animation: suit-bob 4s ease-in-out infinite;
-  filter: drop-shadow(0 -2px 1px var(--phosphor-glow));
 }
 
 .scenario-suit.suit-spade {
-  color: var(--phosphor);
-  filter: drop-shadow(0 -2px 1px var(--phosphor-glow));
+  color: var(--theme-primary, #33ff33);
+  filter: drop-shadow(0 -2px 1px var(--theme-primary-glow, rgba(51,255,51,0.15)));
 }
 
 .scenario-suit.suit-club {
@@ -431,104 +434,106 @@ a:hover { text-decoration: underline; }
 
 @keyframes suit-bob {
   0%, 100% { transform: translateY(0px); }
-  50%      { transform: translateY(-5px); }
+  50%      { transform: translateY(-4px); }
 }
 
 .scenario-visual-tags {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .visual-tag {
-  font-size: 10px;
-  color: rgba(180, 160, 100, 0.55);
+  font-size: 9px;
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.1em;
-  padding: 4px 10px;
-  border: 1px solid rgba(100, 88, 50, 0.2);
+  padding: 3px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 3px;
-  background: rgba(20, 18, 10, 0.3);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .visual-tag-alt {
-  color: rgba(201, 168, 76, 0.55);
-  border-color: rgba(201, 168, 76, 0.2);
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 40%, #7a6c50);
+  border-color: color-mix(in srgb, var(--theme-primary, #33ff33) 10%, rgba(0, 0, 0, 0.08));
 }
 
-/* ---- Divider ---- */
+/* ---- Divider between scenarios ---- */
 .scenario-divider {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 24px;
-  max-width: 1100px;
-  margin: 0 auto;
+  padding: 0;
+  margin: 8px 0;
 }
 
 .divider-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(140, 120, 60, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
 }
 
 .divider-label {
   font-size: 12px;
-  color: rgba(180, 160, 100, 0.35);
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.2em;
 }
 
 
 /* ============================================================
-   BOOKING FORM — Themed form fields with metal accents
+   BOOKING FORM — On the paper page
    ============================================================ */
 .booking-form-section {
-  padding: 50px 24px;
-  max-width: 750px;
-  margin: 0 auto;
+  padding: 0;
+  margin-top: 32px;
 }
 
 .booking-form-title {
-  font-size: 24px;
-  color: rgba(220, 240, 220, 0.95);
-  margin-bottom: 8px;
+  font-size: 22px;
+  color: var(--paper-heading, #1a1610);
+  font-family: var(--theme-font-display, Georgia, serif);
+  margin-bottom: 6px;
   text-align: center;
 }
 
 .booking-form-sub {
   font-size: 13px;
-  color: rgba(180, 180, 180, 0.45);
-  margin-bottom: 30px;
+  color: var(--paper-text-label, #7a6c50);
+  margin-bottom: 28px;
   text-align: center;
 }
 
+/* The form itself — subtle card within the paper */
 .booking-form {
-  border: 1px solid rgba(100, 88, 50, 0.25);
-  border-radius: 8px;
-  background: rgba(10, 12, 10, 0.95);
-  padding: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 28px 24px;
   animation: bf-slide-in 0.3s ease-out;
-  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.04), 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 @keyframes bf-slide-in {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Form fields inherit from dossier-page.css .dossier-paper */
+/* But we need standalone rules too for non-.dossier-paper contexts */
 .booking-step-label {
   font-size: 11px;
-  color: rgba(180, 160, 100, 0.6);
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.25em;
   text-transform: uppercase;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(100, 88, 50, 0.2);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.form-group {
-  margin-bottom: 18px;
-}
+.form-group { margin-bottom: 18px; }
 
 .form-row {
   display: grid;
@@ -536,18 +541,17 @@ a:hover { text-decoration: underline; }
   gap: 16px;
 }
 
-/* ---- THEMED FORM LABELS ---- */
 .form-group label {
   display: block;
   font-size: 11px;
-  color: var(--field-label, rgba(180, 160, 100, 0.7));
+  color: var(--paper-text-label, #7a6c50);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
 
 .field-optional {
-  color: rgba(160, 150, 120, 0.35);
+  color: rgba(0, 0, 0, 0.25);
   text-transform: none;
   letter-spacing: 0;
   font-size: 10px;
@@ -555,24 +559,23 @@ a:hover { text-decoration: underline; }
 
 .field-hint {
   font-size: 10px;
-  color: rgba(160, 150, 120, 0.3);
+  color: rgba(0, 0, 0, 0.25);
   margin-top: 4px;
 }
 
-/* ---- THEMED FORM INPUTS — metal-inset fields ---- */
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
   padding: 11px 14px;
-  border: 1px solid var(--field-border, rgba(100, 88, 50, 0.3));
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 5px;
-  background: var(--field-bg, rgba(4, 6, 4, 0.8));
-  color: var(--field-text, rgba(220, 210, 180, 0.9));
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--paper-text, #2a2418);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4));
+  transition: border-color 0.25s, box-shadow 0.25s;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
   -webkit-appearance: none;
   appearance: none;
 }
@@ -581,28 +584,29 @@ a:hover { text-decoration: underline; }
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--field-border-focus, rgba(140, 120, 60, 0.6));
+  border-color: var(--theme-primary, #33ff33);
   box-shadow:
-    var(--field-inset, inset 0 2px 4px rgba(0, 0, 0, 0.4)),
-    0 0 8px var(--field-glow-focus, rgba(180, 160, 80, 0.12)),
-    0 0 0 1px var(--field-border-focus, rgba(140, 120, 60, 0.3));
+    inset 0 2px 4px rgba(0, 0, 0, 0.06),
+    0 0 8px var(--field-glow-paper, rgba(51, 255, 51, 0.12)),
+    0 0 0 2px var(--field-glow-paper, rgba(51, 255, 51, 0.08));
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: var(--field-placeholder, rgba(140, 130, 100, 0.3));
+  color: rgba(0, 0, 0, 0.22);
 }
 
 .form-group select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23998860' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23665540' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
+  background-color: rgba(255, 255, 255, 0.6);
   padding-right: 36px;
 }
 
 .form-group select option {
-  background: #0c0e0c;
-  color: rgba(220, 210, 180, 0.9);
+  background: #f5f0e6;
+  color: var(--paper-text, #2a2418);
 }
 
 .form-group input:disabled {
@@ -612,17 +616,17 @@ a:hover { text-decoration: underline; }
 
 .form-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(100, 88, 50, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.06), transparent);
   margin: 24px 0;
 }
 
-/* ---- Checkboxes ---- */
+/* Checkboxes */
 .form-checkbox-group label {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   font-size: 13px;
-  color: rgba(200, 200, 190, 0.6);
+  color: var(--paper-text-dim, #5a5040);
   text-transform: none;
   letter-spacing: 0;
   cursor: pointer;
@@ -631,40 +635,45 @@ a:hover { text-decoration: underline; }
 .form-checkbox-group input[type="checkbox"] {
   width: auto;
   margin-top: 3px;
-  accent-color: var(--phosphor);
+  accent-color: var(--theme-primary, #33ff33);
   box-shadow: none;
 }
 
-/* ---- Submit button — brass accent ---- */
+/* Submit */
 .form-submit {
   display: block;
   width: 100%;
   padding: 14px;
-  border: 2px solid rgba(140, 120, 60, 0.5);
+  border: 2px solid color-mix(in srgb, var(--theme-primary, #33ff33) 25%, #7a6c48);
   border-radius: 6px;
-  background: linear-gradient(175deg, rgba(30, 26, 16, 0.7) 0%, rgba(20, 18, 10, 0.9) 100%);
-  color: rgba(220, 200, 140, 0.9);
+  background: linear-gradient(175deg, rgba(60, 50, 30, 0.85) 0%, rgba(40, 34, 20, 0.92) 100%);
+  color: rgba(255, 255, 255, 0.9);
   font-family: var(--theme-font-data, 'Courier New', monospace);
   font-size: 14px;
   font-weight: bold;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s;
   margin-top: 8px;
-  box-shadow: inset 0 1px 0 rgba(180, 160, 100, 0.08);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 10px var(--field-glow-paper, rgba(51, 255, 51, 0.08));
 }
 
 .form-submit:hover {
-  border-color: rgba(180, 160, 80, 0.7);
-  background: linear-gradient(175deg, rgba(40, 34, 18, 0.85) 0%, rgba(28, 24, 14, 0.95) 100%);
-  box-shadow: 0 0 12px rgba(180, 160, 80, 0.1);
+  border-color: var(--theme-primary, #33ff33);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 0 20px var(--field-glow-paper, rgba(51, 255, 51, 0.15));
+  transform: translateY(-1px);
 }
 
 .form-submit:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
+  transform: none;
 }
 
 .form-submit.is-loading {
@@ -674,19 +683,18 @@ a:hover { text-decoration: underline; }
 
 /* Field errors */
 .field-error {
-  color: #ff5050;
+  color: #c03030;
   font-size: 11px;
   margin-top: 4px;
 }
 
-/* API error banner */
 .form-api-error {
   margin-top: 12px;
   padding: 12px 16px;
-  border: 1px solid rgba(255, 70, 70, 0.3);
+  border: 1px solid rgba(200, 50, 50, 0.25);
   border-radius: 4px;
-  background: rgba(255, 70, 70, 0.06);
-  color: #ff5050;
+  background: rgba(200, 50, 50, 0.05);
+  color: #c03030;
   font-size: 13px;
   text-align: center;
 }
@@ -694,10 +702,10 @@ a:hover { text-decoration: underline; }
 /* Confirmation banner */
 .booking-confirm-banner {
   padding: 14px 18px;
-  border: 1px solid rgba(100, 88, 50, 0.25);
+  border: 1px solid color-mix(in srgb, var(--theme-primary, #33ff33) 15%, rgba(0, 0, 0, 0.08));
   border-radius: 6px;
-  background: rgba(20, 18, 10, 0.4);
-  color: var(--phosphor);
+  background: color-mix(in srgb, var(--theme-primary, #33ff33) 4%, rgba(255, 255, 255, 0.35));
+  color: var(--paper-text, #2a2418);
   font-size: 13px;
   margin-bottom: 24px;
   line-height: 1.6;
@@ -708,26 +716,26 @@ a:hover { text-decoration: underline; }
   max-height: 280px;
   overflow-y: auto;
   padding: 16px;
-  border: 1px solid rgba(100, 88, 50, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 4px;
-  background: rgba(4, 6, 4, 0.6);
+  background: rgba(255, 255, 255, 0.45);
   margin-bottom: 20px;
   font-size: 12px;
-  color: rgba(200, 200, 190, 0.5);
+  color: var(--paper-text-dim, #5a5040);
   line-height: 1.7;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .waiver-text h4 {
   font-size: 14px;
-  color: rgba(220, 220, 210, 0.85);
+  color: var(--paper-heading, #1a1610);
   margin-bottom: 10px;
 }
 
 .waiver-text p { margin-bottom: 10px; }
 
 .waiver-version-note {
-  color: rgba(201, 168, 76, 0.6);
+  color: color-mix(in srgb, var(--theme-primary, #33ff33) 40%, #7a6c50);
 }
 
 /* Success state */
@@ -740,45 +748,46 @@ a:hover { text-decoration: underline; }
 
 .success-title {
   font-size: 20px;
-  color: rgba(220, 240, 220, 0.95);
+  color: var(--paper-heading, #1a1610);
+  font-family: var(--theme-font-display, Georgia, serif);
   margin-bottom: 10px;
 }
 
 .form-success p {
   font-size: 14px;
-  color: var(--phosphor);
+  color: var(--theme-primary, #33ff33);
   margin-bottom: 16px;
 }
 
 .booking-ref {
   font-size: 12px;
-  color: rgba(180, 180, 170, 0.4);
+  color: var(--paper-text-label, #7a6c50);
   margin-bottom: 20px;
 }
 
 .success-back-link {
   display: inline-block;
   padding: 10px 24px;
-  border: 1px solid rgba(100, 88, 50, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
-  color: rgba(220, 200, 140, 0.8);
+  color: var(--paper-text, #2a2418);
   font-size: 13px;
   letter-spacing: 0.05em;
   transition: all 0.2s;
 }
 
 .success-back-link:hover {
-  background: rgba(30, 26, 16, 0.4);
-  border-color: rgba(140, 120, 60, 0.4);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
   text-decoration: none;
 }
 
 
 /* ============================================================
-   METAL FRAME — Footer (brass monitor bezel)
+   METAL FRAME — Footer (brass monitor bezel) — UNCHANGED
    ============================================================ */
 .eo-footer {
-  margin-top: 50px;
+  margin-top: 0;
   padding: 24px 24px;
   border-top: 2px solid;
   border-image: linear-gradient(90deg, #3a3220, #7a6c48 30%, #5a5038 50%, #7a6c48 70%, #3a3220) 1;
@@ -824,27 +833,18 @@ a:hover { text-decoration: underline; }
 /* ============================================================
    iOS MOBILE FIXES
    ============================================================ */
-
-/* Prevent iOS zoom on input focus */
 @supports (-webkit-touch-callout: none) {
   .form-group input,
   .form-group select,
   .form-group textarea {
-    font-size: 16px; /* prevents iOS auto-zoom on focus */
+    font-size: 16px;
   }
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
-  .eo-nav {
-    padding: 10px 16px;
-  }
-
-  .eo-nav-brand {
-    font-size: 13px;
-    letter-spacing: 0.15em;
-  }
-
+  .eo-nav { padding: 10px 16px; }
+  .eo-nav-brand { font-size: 13px; letter-spacing: 0.15em; }
   .eo-nav-links { gap: 14px; }
   .eo-nav-link { font-size: 10px; }
 
@@ -855,15 +855,13 @@ a:hover { text-decoration: underline; }
   .scenario-visual {
     order: -1;
     padding-top: 0;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
   }
 
   .scenario-icon-wrap {
-    width: 120px;
-    height: 120px;
+    width: 130px;
+    height: 130px;
   }
-
-  .scenario-icon-main { font-size: 48px; }
 
   .scenario-specs {
     grid-template-columns: 1fr 1fr;
@@ -894,14 +892,11 @@ a:hover { text-decoration: underline; }
   }
 
   .booking-hero {
-    padding: 50px 16px 40px;
+    padding: 50px 16px 30px;
   }
 
-  .scenario-section {
-    padding: 40px 16px;
-  }
-
-  .booking-form-section {
-    padding: 40px 12px;
+  .scenario-icon-wrap {
+    width: 110px;
+    height: 110px;
   }
 }
