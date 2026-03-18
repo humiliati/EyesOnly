@@ -324,19 +324,20 @@
    */
   function _playRewardAudio(coinYield, nodeCount) {
     // Manifest names use hyphens (audio-manifest.json convention)
+    // Stagger intervals must exceed AudioSystem's 80ms SFX cooldown per clip.
     //  0 ms — (tether lock is visual-only, no dedicated SFX)
     // 500 ms — coin rain
     _playSound('coin-rain', 0.45, 500);
-    // 600+ ms — coin flip per star, staggered
+    // 600+ ms — coin flip per star, staggered at 120ms (above 80ms cooldown)
     for (var i = 0; i < Math.min(nodeCount, 6); i++) {
-      _playSound('coin-flip', 0.3, 600 + i * 80);
+      _playSound('coin-flip', 0.3, 600 + i * 120);
     }
-    // 1200 ms — coin pouch finisher
-    _playSound('coin-pouch-1', 0.55, 1200);
-    // 1000+ ms — click-release counter ticks
-    var ticks = Math.min(Math.ceil(coinYield / 3), 12);
+    // 1400 ms — coin pouch finisher (after last flip at 600 + 5*120 = 1200)
+    _playSound('coin-pouch-1', 0.55, 1400);
+    // 1000+ ms — click-release counter ticks at 100ms intervals (above 80ms cooldown)
+    var ticks = Math.min(Math.ceil(coinYield / 3), 10);
     for (var j = 0; j < ticks; j++) {
-      _playSound('clickandrelease-1', 0.2, 1000 + j * 60);
+      _playSound('clickandrelease-1', 0.2, 1000 + j * 100);
     }
   }
 

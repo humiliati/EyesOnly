@@ -93,7 +93,7 @@
 
   function _spawnInitial() {
     for (var i = 0; i < INITIAL_COUNT; i++) {
-      if (_satellites.length < MAX_SATELLITES) {
+      if (true) { // no hard cap — let it get hectic
         _satellites.push(_createSatellite(null, null, 0));
       }
     }
@@ -236,7 +236,7 @@
     var spawnY = sat.y;
     setTimeout(function () {
       for (var h = 0; h < 2; h++) {
-        if (_satellites.length < MAX_SATELLITES) {
+        if (true) { // no hard cap — let it get hectic
           var offset = 0.03 + Math.random() * 0.04;
           var angle = Math.random() * Math.PI * 2;
           _satellites.push(_createSatellite(
