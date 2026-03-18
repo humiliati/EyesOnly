@@ -622,6 +622,14 @@ a:hover { text-decoration: underline; }
   .eo-nav-brand { font-size: 13px; letter-spacing: 0.15em; }
   .eo-nav-links { gap: 14px; }
   .eo-nav-link { font-size: 10px; }
+  /* Vowel-dropped abbreviation on mobile */
+  .eo-nav-link[data-abbr] {
+    font-size: 0; line-height: 0; letter-spacing: 0; overflow: hidden;
+  }
+  .eo-nav-link[data-abbr]::after {
+    content: attr(data-abbr);
+    font-size: 10px; line-height: 1.2; letter-spacing: 0.08em;
+  }
 
   .action-cards {
     grid-template-columns: 1fr;
