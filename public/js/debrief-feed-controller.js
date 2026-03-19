@@ -591,11 +591,15 @@ const DebriefFeedController = (function() {
   function _renderMOK() {
     var html = '<div class="debrief-mok-display">';
 
-    // MOK visual container
-    html += '<div id="mok-visual-container" class="mok-visual-container"></div>';
-
-    // NOTE: MOK interjection lives in #log-column footer (#mok-interjections),
-    // not inside the debrief feed. Stale orphan div removed — was stealing 30px.
+    // MOK 3D Pyramid Avatar (replaces old MOKVisualEngine flat triangle)
+    html += '<div id="mok-avatar" class="mok-pyramid-loader mok-state-idle" role="button" tabindex="0" aria-label="MOK avatar">';
+    html += '<div class="mok-pyramid-wrapper">';
+    html += '<span class="mok-pyramid-side mok-side-1"></span>';
+    html += '<span class="mok-pyramid-side mok-side-2"></span>';
+    html += '<span class="mok-pyramid-side mok-side-3"></span>';
+    html += '<span class="mok-pyramid-side mok-side-4"></span>';
+    html += '<span class="mok-pyramid-shadow"></span>';
+    html += '</div></div>';
 
     // Kernel API status (if in Gone Rogue)
     if (_currentMode === MODES.goneRogue) {
@@ -611,17 +615,9 @@ const DebriefFeedController = (function() {
 
     _debriefScreen.innerHTML = html;
 
-    // Initialize MOK visual engine
-    if (!_mokInitialized) {
-      setTimeout(function() {
-        var container = document.getElementById('mok-visual-container');
-        if (container) {
-          MOKVisualEngine.init(container);
-          MOKStateMachine.init(MOKVisualEngine);
-          _mokInitialized = true;
-        }
-      }, 100);
-    }
+    // Legacy MOKVisualEngine/MOKStateMachine no longer initialized here.
+    // The 3D pyramid is driven by CSS classes via mok-ux.js and kernel-manager.js.
+    _mokInitialized = true;
 
     _attachEventHandlers();
   }
