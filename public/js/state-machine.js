@@ -323,10 +323,18 @@ const StateMachine = (function () {
           '',
           'AVAILABLE COMMANDS:',
           '  /HELP, CLEARANCE, ACCESS, AUTH, EYES ONLY',
-          '  ABOUT, CONTACT, FAQ, SANDPOINT, MENU',
-          '  SHOP, SOCIAL, HOME, LOGIN, STREET',
-          '  MAP        - Enter street exploration mode',
+          '  ABOUT, FAQ, SANDPOINT, MENU, SOCIAL, HOME',
+          '',
+          'NAVIGATION:',
+          '  /BOOKING   - Book a live mission',
+          '  /PARTNERS  - Business & actor sign-on',
+          '  /CONTACT   - Help docs & contact forms',
+          '  /GAMES     - Field Kit & Arcade',
+          '  LOGIN      - User account login',
+          '',
+          'GAME MODES:',
           '  ROGUE      - Enter Gone Rogue survival mode',
+          '  STREET     - Enter street exploration mode',
           ''
         ],
         newState: _state
@@ -362,6 +370,20 @@ const StateMachine = (function () {
 
     if (cmd === 'JOIN') {
       return _handleJoinCommand(parsed);
+    }
+
+    // Navigation commands — go to other pages
+    var NAV_ROUTES = {
+      'BOOKING': '/booking.html', '/BOOKING': '/booking.html',
+      'PARTNERS': '/partners.html', '/PARTNERS': '/partners.html',
+      'CONTACT': '/contact.html', '/CONTACT': '/contact.html',
+      'GAMES': '/games.html', '/GAMES': '/games.html',
+      'ARCADE': '/games.html', '/ARCADE': '/games.html',
+      'DESIGNER': '/puzzle-designer', '/DESIGNER': '/puzzle-designer',
+    };
+    if (NAV_ROUTES[cmd]) {
+      window.location.href = NAV_ROUTES[cmd];
+      return { type: 'output', lines: ['NAVIGATING...'], newState: _state };
     }
 
     // Check "normal website" commands
@@ -622,32 +644,40 @@ const StateMachine = (function () {
         lines: [
           '',
           'TERMINAL COMMANDS:',
-          'STATUS, MISSIONS, DOSSIER, MAP, ROGUE, FALCON, SNOWMAN, SUBMERGED',
-          'ABOUT, CONTACT, FAQ, SANDPOINT, MENU, SOCIAL, HOME, LOGIN, STREET',
-          'MAP (or GRID/SECTOR) enters Street Chronicles',
-          'ROGUE enters Gone Rogue survival mode',
-          'CLEAR, RESET',
+          '',
+          'NAVIGATION:',
+          '  /BOOKING   - Book a live mission',
+          '  /PARTNERS  - Business & actor sign-on',
+          '  /CONTACT   - Help docs & contact forms',
+          '  /GAMES     - Field Kit & Arcade',
+          '  /DESIGNER  - Puzzle Designer Portal',
+          '',
+          'GAME MODES:',
+          '  ROGUE      - Enter Gone Rogue survival mode',
+          '  STREET     - Enter Street Chronicles',
+          '',
+          'INTELLIGENCE:',
           '  STATUS    - Display operational status',
           '  MISSIONS  - List active mission nodes',
           '  DOSSIER   - Access collected intelligence',
-          '  MAP       - Display sector grid',
-          '  ROGUE     - Enter Gone Rogue subsystem',
           '  FALCON    - Query FALCON reference',
           '  SNOWMAN   - Query SNOWMAN reference',
           '  SUBMERGED - Query SUBMERGED SITE',
+          '',
+          'ACCOUNT:',
+          '  LOGIN      - User account login',
+          '  LOGOUT     - Sign out',
+          '  JOIN <CODE> - Join a live scenario',
+          '  OPS        - Field operations status',
+          '  DISCONNECT - Leave current scenario',
+          '',
+          'SYSTEM:',
           '  CLEAR     - Clear terminal',
           '  RESET     - Purge all session data',
-          '',
           '  ABOUT     - Operational disclosure',
-          '  CONTACT   - Secure communications channel',
           '  FAQ       - Frequently asked questions',
           '  SANDPOINT - Location intelligence',
           '  HOME      - Return to title screen',
-          '',
-          'FIELD OPERATIONS:',
-          '  JOIN <CODE>  - Join a live scenario',
-          '  OPS          - Field operations status',
-          '  DISCONNECT   - Leave current scenario',
           '',
           'Enter a MISSION CODE to unlock nodes.',
           ''
@@ -755,6 +785,20 @@ const StateMachine = (function () {
 
     if (cmd === 'DISCONNECT') {
       return _handleDisconnectCommand();
+    }
+
+    // Navigation commands — go to other pages
+    var NAV_ROUTES = {
+      'BOOKING': '/booking.html', '/BOOKING': '/booking.html',
+      'PARTNERS': '/partners.html', '/PARTNERS': '/partners.html',
+      'CONTACT': '/contact.html', '/CONTACT': '/contact.html',
+      'GAMES': '/games.html', '/GAMES': '/games.html',
+      'ARCADE': '/games.html', '/ARCADE': '/games.html',
+      'DESIGNER': '/puzzle-designer', '/DESIGNER': '/puzzle-designer',
+    };
+    if (NAV_ROUTES[cmd]) {
+      window.location.href = NAV_ROUTES[cmd];
+      return { type: 'output', lines: ['NAVIGATING...'], newState: _state };
     }
 
     // Check "normal website" commands (work post-access too)

@@ -20,7 +20,8 @@
    */
   function start() {
     Terminal.init();
-    if (typeof LoginShell !== 'undefined') LoginShell.init();
+    // LoginShell (fake ARG filesystem) disabled — use canonical LoginUI via left-column button
+    // if (typeof LoginShell !== 'undefined') LoginShell.init();
 
     // StreetChronicles may be in the lazy bundle now — guard it
     if (typeof StreetChronicles !== 'undefined') StreetChronicles.init();
@@ -100,21 +101,33 @@
 
   /**
    * Animated boot sequence - Cold War terminal aesthetics.
+   * Newcomers get a helpful orientation. Returning users skip this.
    */
   function _runBootSequence() {
     StateMachine.transition('BOOTING');
 
     var bootLines = [
       'SIGNAL DETECTED',
-      'INITIALIZING SECURE SESSION',
-      '...'
+      'INITIALIZING SECURE SESSION...',
+      '',
+      'EYES ONLY // Spy Games',
+      'Booking and Partners Engine',
+      'Sandpoint, Idaho \u2014 Est. 2025',
+      '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+      'BOOK A MISSION  \u2192  /booking   Live 24-72hr field exercises',
+      'BECOME AN ACTOR \u2192  /partners  Businesses & actors sign-on',
+      'CONTACT         \u2192  /contact   Help docs or contact forms',
+      '',
+      'GONE ROGUE      \u2192  type ROGUE procedural stealth roguelike',
+      '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+      'TYPE HELP FOR ALL TERMINAL COMMANDS',
+      ''
     ];
 
-    Terminal.typeLines(bootLines, Terminal.TYPE_SPEED_FAST, 180, 'system-msg')
+    Terminal.typeLines(bootLines, Terminal.TYPE_SPEED_FAST, 120, 'system-msg')
       .then(function () {
-        return _pause(450);
-      })
-      .then(function () {
+        // Mark as visited so next time they get the short restore
+        try { localStorage.setItem('eyesonly_has_visited', 'true'); } catch (_) {}
         StateMachine.transition('AWAITING_CMD');
         _enableInput('> ');
       });
@@ -129,29 +142,26 @@
       return;
     }
 
-    // Check if Gone Rogue was previously active
+    var lines = ['SESSION RESTORED'];
+
+    // Context-aware hint for returning users
     var rogueWasActive = false;
     try {
       var rogueState = localStorage.getItem('eyesonly_rogue_state');
-      if (rogueState) {
-        var parsed = JSON.parse(rogueState);
-        rogueWasActive = parsed.active === true;
-      }
+      if (rogueState) rogueWasActive = JSON.parse(rogueState).active === true;
     } catch (e) { /* ignore */ }
 
     if (rogueWasActive) {
-      // Restore to normal state, not rogue mode
-      // User can re-enter rogue mode with "rogue" command
-      Terminal.typeLines(['SESSION RESTORED', 'TYPE HELP FOR AVAILABLE COMMANDS', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
-        .then(function () {
-          _enableInput(_promptForState(state));
-        });
+      lines.push('Type ROGUE to resume your run, or HELP for commands.');
     } else {
-      Terminal.typeLines(['SESSION RESTORED', ''], Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
-        .then(function () {
-          _enableInput(_promptForState(state));
-        });
+      lines.push('Type HELP, ROGUE, or /BOOKING /CONTACT /GAMES');
     }
+    lines.push('');
+
+    Terminal.typeLines(lines, Terminal.TYPE_SPEED_FAST, 80, 'system-msg')
+      .then(function () {
+        _enableInput(_promptForState(state));
+      });
   }
 
   function _promptForState(state) {
@@ -217,11 +227,11 @@
       return;
     }
 
-    // Priority 4: Check if Login Shell is active
-    if (LoginShell.isActive()) {
-      _executeLoginAction(LoginShell.process(rawInput || ''));
-      return;
-    }
+    // Priority 4: Login Shell (ARG filesystem — disabled, kept for reference)
+    // if (LoginShell.isActive()) {
+    //   _executeLoginAction(LoginShell.process(rawInput || ''));
+    //   return;
+    // }
 
     if ((!rawInput || rawInput.trim().length === 0) &&
         currentState !== StateMachine.STATES.AWAITING_FINAL_ENTER &&
@@ -378,7 +388,13 @@
         break;
 
       case 'login':
-        _executeLoginAction(LoginShell.start());
+        // Redirect to canonical login (LoginShell ARG disabled)
+        if (typeof UIControls !== 'undefined' && typeof UIControls.showLoginOverlay === 'function') {
+          UIControls.showLoginOverlay('index');
+        } else if (typeof LoginUI !== 'undefined') {
+          LoginUI.showLoginPrompt();
+          _enableInput('> ');
+        }
         break;
 
       case 'user_login':
@@ -641,8 +657,8 @@
 
     Terminal.typeLines([
       '',
-      'SESSION RESTORED',
-      'WELCOME BACK, CIVILIAN',
+      'SESSION RESTORED \u2014 WELCOME BACK',
+      'Type HELP, ROGUE, or /BOOKING /CONTACT /GAMES',
       ''
     ], Terminal.TYPE_SPEED_FAST, 100, 'system-msg')
       .then(function () {
