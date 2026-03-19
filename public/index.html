@@ -538,6 +538,16 @@
   <script src="js/api-client.js"></script>
   <script src="js/state-machine.js"></script>
 
+  <!-- Core account/auth modules — must load sync (before main.js, not lazy) -->
+  <script src="js/kernel-manager.js"></script>
+  <script src="js/user-account.js"></script>
+  <script src="js/login-ui.js"></script>
+  <script>
+    // Init account session immediately so ui-controls.js can read login state
+    if (typeof UserAccount !== 'undefined' && UserAccount.init) UserAccount.init();
+    if (typeof LoginUI !== 'undefined' && LoginUI.init) LoginUI.init();
+  </script>
+
   <!-- Phase 2: Lazy game module loader (starts background fetch after first paint) -->
   <script src="js/gone-rogue-loader.js"></script>
 

@@ -66,9 +66,7 @@
     'js/shop-system.js',
     'tests/agent-headless-adapter.js',
     'js/agent-integration.js',
-    'js/kernel-manager.js',
-    'js/user-account.js',
-    'js/login-ui.js',
+    // kernel-manager.js, user-account.js, login-ui.js — moved to sync in index.html
     'js/awol-difficulty.js?v=20260307m',
     'js/street-chronicles.js',
     'js/enemy-intent-system.js?v=20260305m',
@@ -249,8 +247,7 @@
 
     console.log('[RogueLoader] Initializing game subsystems');
 
-    if (typeof UserAccount !== 'undefined' && UserAccount.init) UserAccount.init();
-    if (typeof LoginUI !== 'undefined' && LoginUI.init) LoginUI.init();
+    // UserAccount, LoginUI, KernelManager now load sync in index.html (already inited)
     if (typeof TerminalCommandRouter !== 'undefined' && TerminalCommandRouter.init) TerminalCommandRouter.init();
     if (typeof GAMESTATE !== 'undefined' && GAMESTATE.init) GAMESTATE.init();
     if (typeof GoneRogue !== 'undefined' && GoneRogue.init) GoneRogue.init();
@@ -290,16 +287,17 @@
     scriptCount: function () { return SCRIPTS.length; },
   };
 
-  // ── Begin background loading after first paint ──
-  // Use rAF to yield to the browser's paint, then start loading.
-  // This ensures the splash screen renders before any game scripts execute.
-  requestAnimationFrame(function () {
-    // One more frame to let the splash screen composite
-    requestAnimationFrame(function () {
-      _loadAll(function () {
-        _initGameSystems();
-      });
-    });
-  });
+  // ── Deferred loading: game modules only load when user launches a game ──
+  // Previously loaded immediately after first paint. Now waits for
+  // RogueLoader.ensureLoaded() (called by AWOL button, "rogue" command,
+  // or "street" command). This keeps the terminal responsive for visitors
+  // who just want to browse /booking, /contact, etc.
+  //
+  // To restore eager loading, uncomment the block below:
+  // requestAnimationFrame(function () {
+  //   requestAnimationFrame(function () {
+  //     _loadAll(function () { _initGameSystems(); });
+  //   });
+  // });
 
 })();
