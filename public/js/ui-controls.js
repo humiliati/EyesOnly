@@ -1617,42 +1617,35 @@
    * Handle Kernel button click - Agent integration
    */
   function handleKernelClick() {
-    // Check if user is logged in
-    if (typeof LoginShell === 'undefined' || !LoginShell.isAuthenticated || !LoginShell.isAuthenticated()) {
+    // Check if user is logged in via canonical UserAccount (not LoginShell)
+    var isLoggedIn = (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn());
+
+    if (!isLoggedIn) {
       printToTerminal([
         '',
         'KERNEL ACCESS DENIED',
-        '————————————————————————————————',
-        '',
-        '[SYSTEM]: Authentication required.',
-        '[SYSTEM]: Please login to access agent integration.',
-        '',
-        'Use the LOGIN button to authenticate.',
+        '————————————————————',
+        'Login required. Use the LOGIN button or type LOGIN.',
         ''
       ]);
       return;
     }
 
-    // User is logged in - open kernel interface via command handler if available
+    // User is logged in — route through main command handler to KernelManager
     if (typeof window !== 'undefined' && typeof window._mainCommandHandler === 'function') {
-      window._mainCommandHandler('kernel');
+      window._mainCommandHandler('kernel status');
       return;
     }
 
-    // Fallback: show kernel interface (legacy)
+    // Fallback: show kernel help directly
     printToTerminal([
       '',
       'KERNEL AGENT INTEGRATION',
-      '————————————————————————————————',
-      '',
-      '[MOK]: "Agent API integration portal."',
-      '[MOK]: "Connect your own AI agent to play alongside me."',
-      '',
-      'AVAILABLE COMMANDS:',
-      '  KERNEL CONNECT <agent_url>  - Connect agent URL',
-      '  KERNEL DISCONNECT           - Disconnect agent',
-      '  KERNEL STATUS               - View connection status',
-      '  KERNEL HELP                 - Show help',
+      '————————————————————————',
+      'KERNEL CONNECT <url>  - Connect an AI agent',
+      'KERNEL DISCONNECT     - Disconnect agent',
+      'KERNEL STATUS         - View connection status',
+      'KERNEL HELP           - Full command list',
       ''
     ]);
   }

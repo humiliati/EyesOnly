@@ -79,7 +79,27 @@
   transition-duration: 0.06s;
 }
 
-/* Don't apply porthole to disabled kernel button */
+/* ---- Kernel button states ---- */
+
+/* Enabled: subtle indicator, NOT a spotlight — just a tinted border hint */
+.control-buttons button.kernel-btn.enabled {
+  border-color: rgba(200, 100, 255, 0.25) !important;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4), 0 0 4px rgba(200, 100, 255, 0.08) !important;
+  /* Same background as other buttons — no visual distinction except faint border tint */
+}
+
+.control-buttons button.kernel-btn.enabled:hover {
+  border-color: rgba(200, 100, 255, 0.6) !important;
+  box-shadow:
+    0 0 0 1px rgba(200, 100, 255, 0.5),
+    0 0 8px rgba(200, 100, 255, 0.2),
+    inset 0 0 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Disabled: fully dimmed, no porthole effect */
+.control-buttons button.kernel-btn:disabled {
+  opacity: 0.3 !important;
+}
 .control-buttons button.kernel-btn:disabled:hover .btn-starfield {
   opacity: 0;
 }
@@ -88,4 +108,5 @@
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 255, 90, 0.06) !important;
   color: #555 !important;
   text-shadow: none !important;
+  transform: none !important;
 }

@@ -295,6 +295,11 @@
     if (typeof KernelManager !== 'undefined' && typeof KernelManager.disconnect === 'function') {
       KernelManager.disconnect();
     }
+
+    // Disable kernel button
+    if (typeof UIControls !== 'undefined' && typeof UIControls.disableKernelButton === 'function') {
+      UIControls.disableKernelButton();
+    }
   }
 
   /**
