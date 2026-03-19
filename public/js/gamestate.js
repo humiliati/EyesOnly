@@ -2038,6 +2038,9 @@ const GAMESTATE = (function () {
       UIControls.updateCurrency(_state.cryptos);
     }
 
+    // Sync to server (fire-and-forget)
+    _syncCryptosToServer(amount, 'earn');
+
     return {
       success: true,
       total: _state.cryptos,
@@ -2064,11 +2067,32 @@ const GAMESTATE = (function () {
       UIControls.updateCurrency(_state.cryptos);
     }
 
+    // Sync to server (fire-and-forget)
+    _syncCryptosToServer(-amount, 'spend');
+
     return {
       success: true,
       remaining: _state.cryptos,
       message: 'Spent ¢' + amount + ' (Remaining: ¢' + _state.cryptos + ')'
     };
+  }
+
+  /**
+   * Sync a currency delta to server. Fire-and-forget — never blocks gameplay.
+   * Only syncs if the user is logged in via UserAccount.
+   */
+  function _syncCryptosToServer(delta, reason) {
+    if (typeof UserAccount === 'undefined' || !UserAccount.isLoggedIn()) return;
+    var token = (typeof UserAccount.getSessionToken === 'function') ? UserAccount.getSessionToken() : null;
+    if (!token) return;
+
+    try {
+      fetch('/api/user/cryptos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+        body: JSON.stringify({ delta: delta, reason: reason || 'gameplay' })
+      }).catch(function () { /* offline — localStorage has the truth */ });
+    } catch (_) {}
   }
 
   /**

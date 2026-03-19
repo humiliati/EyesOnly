@@ -394,48 +394,53 @@ userAuthRoutes.post('/merge-local-data', async (c) => {
   prefs.imports = prefs.imports || {};
   prefs.imports.localStorage = prefs.imports.localStorage || {};
 
-  if (prefs.imports.localStorage[deviceId]) {
-    return c.json({ ok: true, already_merged: true });
-  }
+  // Previously one-shot per device. Now always re-merge currency (MAX logic).
+  // Inventory merge is still idempotent (only runs on first merge per device).
+  const alreadyMerged = !!prefs.imports.localStorage[deviceId];
 
   const gs = body.gamestate || {};
   const localCryptos = Math.max(0, Math.floor(Number(gs.cryptos ?? 0) || 0));
 
-  // Build current inventory map
-  const currentInv = await getUserInventory(c.env.DB, session.user_id);
-  const invMap = new Map<string, number>();
-  for (const row of currentInv) {
-    const k = `${row.item_type}:${row.item_id}`;
-    invMap.set(k, (invMap.get(k) || 0) + (row.quantity || 0));
-  }
+  // Also merge puzzleCoins from eyesonly_account (non-gamestate currency)
+  const puzzleCoins = Math.max(0, Math.floor(Number(gs.puzzleCoins ?? 0) || 0));
+  const totalLocalCryptos = localCryptos + puzzleCoins;
 
-  // Merge inventory lists from gamestate
+  // Inventory merge: only on first merge per device (prevents duplicates)
   const changes: Array<{ item_id: string; item_type: 'persistent' | 'loose'; add: number }> = [];
 
-  function ingest(list: any, itemType: 'persistent' | 'loose') {
-    if (!Array.isArray(list)) return;
-    for (const r of list) {
-      const itemId = String(r?.id || '').trim();
-      if (!itemId) continue;
-      const qty = Math.max(1, Math.floor(Number(r?.qty ?? r?.quantity ?? 1) || 1));
-      const k = `${itemType}:${itemId}`;
-      const cur = invMap.get(k) || 0;
-      if (qty > cur) {
-        const diff = qty - cur;
-        invMap.set(k, cur + diff);
-        changes.push({ item_id: itemId, item_type: itemType, add: diff });
+  if (!alreadyMerged) {
+    const currentInv = await getUserInventory(c.env.DB, session.user_id);
+    const invMap = new Map<string, number>();
+    for (const row of currentInv) {
+      const k = `${row.item_type}:${row.item_id}`;
+      invMap.set(k, (invMap.get(k) || 0) + (row.quantity || 0));
+    }
+
+    function ingest(list: any, itemType: 'persistent' | 'loose') {
+      if (!Array.isArray(list)) return;
+      for (const r of list) {
+        const itemId = String(r?.id || '').trim();
+        if (!itemId) continue;
+        const qty = Math.max(1, Math.floor(Number(r?.qty ?? r?.quantity ?? 1) || 1));
+        const k = `${itemType}:${itemId}`;
+        const cur = invMap.get(k) || 0;
+        if (qty > cur) {
+          const diff = qty - cur;
+          invMap.set(k, cur + diff);
+          changes.push({ item_id: itemId, item_type: itemType, add: diff });
+        }
       }
     }
+
+    ingest(gs.inventoryPersistent, 'persistent');
+    ingest(gs.inventoryLoose, 'loose');
   }
 
-  ingest(gs.inventoryPersistent, 'persistent');
-  ingest(gs.inventoryLoose, 'loose');
-
-  // Apply cryptos max merge
-  if (localCryptos > 0) {
+  // Apply cryptos max merge (ALWAYS runs, even on re-merge)
+  if (totalLocalCryptos > 0) {
     const cur = (await getUserCryptos(c.env.DB, session.user_id)) || 0;
-    if (localCryptos > cur) {
-      await updateUserCryptos(c.env.DB, session.user_id, localCryptos - cur);
+    if (totalLocalCryptos > cur) {
+      await updateUserCryptos(c.env.DB, session.user_id, totalLocalCryptos - cur);
     }
   }
 
@@ -451,7 +456,7 @@ userAuthRoutes.post('/merge-local-data', async (c) => {
       eyesonly_gamestate: true,
     },
     gamestate_summary: {
-      cryptos: localCryptos,
+      cryptos: totalLocalCryptos,
       persistent_count: Array.isArray(gs.inventoryPersistent) ? gs.inventoryPersistent.length : 0,
       loose_count: Array.isArray(gs.inventoryLoose) ? gs.inventoryLoose.length : 0,
     },
@@ -460,6 +465,34 @@ userAuthRoutes.post('/merge-local-data', async (c) => {
   await setUserPreferences(c.env.DB, session.user_id, prefs);
 
   return c.json({ ok: true, merged: true, inventory_added: changes.length });
+});
+
+/**
+ * POST /api/user/cryptos
+ * Sync currency delta to server. Called by GAMESTATE.addCryptos/spendCryptos.
+ * Body: { delta: number, reason?: string }
+ */
+userAuthRoutes.post('/cryptos', async (c) => {
+  const sessionToken = c.req.header('X-Session-Token');
+  if (!sessionToken) return c.json({ error: 'UNAUTHORIZED', message: 'Session token required' }, 401);
+
+  const session = await getUserSession(c.env.DB, sessionToken);
+  if (!session) return c.json({ error: 'UNAUTHORIZED', message: 'Invalid or expired session' }, 401);
+
+  const body = await c.req.json<{ delta: number; reason?: string }>().catch(() => ({ delta: 0 }));
+  const delta = Math.floor(Number(body.delta) || 0);
+  if (delta === 0) return c.json({ error: 'BAD_REQUEST', message: 'Non-zero delta required' }, 400);
+
+  // Prevent going below zero: read current, clamp
+  const current = (await getUserCryptos(c.env.DB, session.user_id)) || 0;
+  const actualDelta = (current + delta < 0) ? -current : delta;
+
+  if (actualDelta !== 0) {
+    await updateUserCryptos(c.env.DB, session.user_id, actualDelta);
+  }
+
+  const newBalance = (await getUserCryptos(c.env.DB, session.user_id)) || 0;
+  return c.json({ cryptos: newBalance, delta: actualDelta });
 });
 
 /**

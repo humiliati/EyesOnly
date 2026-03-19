@@ -220,6 +220,13 @@
       gamestate = null;
     }
 
+    // Also grab puzzleCoins from eyesonly_account (non-gamestate currency from QR puzzles, constellations)
+    if (!gamestate) gamestate = {};
+    try {
+      var acct = JSON.parse(localStorage.getItem('eyesonly_account') || '{}');
+      gamestate.puzzleCoins = acct.puzzleCoins || 0;
+    } catch (_e) {}
+
     return fetch(API_BASE + '/merge-local-data', {
       method: 'POST',
       headers: {

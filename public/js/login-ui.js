@@ -370,6 +370,24 @@
         cryptos: user.cryptos,
       });
     }
+
+    // Pull authoritative server balance (async — updates after merge completes)
+    if (typeof UserAccount !== 'undefined' && typeof UserAccount.fetchMe === 'function') {
+      UserAccount.fetchMe().then(function (data) {
+        if (!data || !data.user) return;
+        var serverCryptos = data.user.cryptos || 0;
+
+        // Update GAMESTATE with server truth
+        if (typeof GAMESTATE !== 'undefined' && GAMESTATE.loadUserData) {
+          GAMESTATE.loadUserData({ cryptos: serverCryptos });
+        }
+
+        // Update header currency display
+        if (typeof UIControls !== 'undefined' && UIControls.updateCurrencyDisplay) {
+          UIControls.updateCurrencyDisplay(serverCryptos);
+        }
+      }).catch(function () { /* best-effort */ });
+    }
   }
 
   /**

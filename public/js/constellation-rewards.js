@@ -420,6 +420,33 @@
 
     console.log('[ConstellationRewards] Playing resolution — yield:', coinYield,
                 'tier:', tier.label, 'emitters:', activeEmitters.length);
+
+    // ── PERSIST COINS ──
+    // Route 1: GAMESTATE (available on terminal page with game modules loaded)
+    if (typeof GAMESTATE !== 'undefined' && GAMESTATE.addCryptos) {
+      GAMESTATE.addCryptos(coinYield);
+    } else {
+      // Route 2: Direct localStorage + server sync (booking/games pages without GAMESTATE)
+      try {
+        var acct = JSON.parse(localStorage.getItem('eyesonly_account') || '{}');
+        acct.puzzleCoins = (acct.puzzleCoins || 0) + coinYield;
+        localStorage.setItem('eyesonly_account', JSON.stringify(acct));
+      } catch (_) {}
+
+      // Also sync to server if logged in
+      if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
+        var token = (typeof UserAccount.getSessionToken === 'function') ? UserAccount.getSessionToken() : null;
+        if (token) {
+          try {
+            fetch('/api/user/cryptos', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+              body: JSON.stringify({ delta: coinYield, reason: 'constellation' })
+            }).catch(function () {});
+          } catch (_e) {}
+        }
+      }
+    }
   }
 
   /**
