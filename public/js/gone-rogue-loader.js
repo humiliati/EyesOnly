@@ -37,10 +37,7 @@
     'js/commerce-drag-drop-system.js',
     'js/passive-items-system.js',
     'js/passive-items-ui.js',
-    'js/mok-animation-cycles.js',
-    'js/mok-visual-engine.js',
-    'js/mok-state-machine.js',
-    'js/debrief-feed-controller.js?v=20260305i',
+    // mok-animation-cycles.js, mok-visual-engine.js, mok-state-machine.js, debrief-feed-controller.js — moved to sync in index.html
     'js/seeded-rng.js',
     'js/pet-follower.js',
     'js/gone-rogue-canvas.js?v=20260305d',

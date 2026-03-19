@@ -1399,10 +1399,13 @@ const DebriefFeedController = (function() {
    * @returns {string} HTML
    */
   function _renderKernelStatus() {
-    // TODO: Connect to actual kernel API system
-    var status = 'connected'; // 'connected', 'disconnected', 'error'
-    var statusIcon = status === 'connected' ? '🟢' : status === 'disconnected' ? '🔴' : '🟡';
-    var statusText = status === 'connected' ? 'Connected' : status === 'disconnected' ? 'Disconnected' : 'Error';
+    var status = 'disconnected';
+    if (typeof KernelManager !== 'undefined' && KernelManager.getState) {
+      var ks = KernelManager.getState();
+      status = (ks.state || 'DISCONNECTED').toLowerCase();
+    }
+    var statusIcon = (status === 'connected' || status === 'active_run') ? '🟢' : status === 'connecting' ? '🟡' : status === 'error' ? '🔴' : '⚫';
+    var statusText = status === 'connected' ? 'Connected' : status === 'active_run' ? 'Active' : status === 'connecting' ? 'Connecting...' : status === 'error' ? 'Error' : 'Offline';
 
     var html = '<div class="kernel-api-status">';
     html += '<span class="kernel-icon">' + statusIcon + '</span>';

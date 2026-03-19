@@ -548,7 +548,13 @@
     if (typeof LoginUI !== 'undefined' && LoginUI.init) LoginUI.init();
   </script>
 
-  <!-- Phase 2: Lazy game module loader (starts background fetch after first paint) -->
+  <!-- Debrief feed + MOK avatar — must load sync (theme video, avatar display) -->
+  <script src="js/mok-animation-cycles.js"></script>
+  <script src="js/mok-visual-engine.js"></script>
+  <script src="js/mok-state-machine.js"></script>
+  <script src="js/debrief-feed-controller.js?v=20260305i"></script>
+
+  <!-- Phase 2: Lazy game module loader (starts background fetch on AWOL launch) -->
   <script src="js/gone-rogue-loader.js"></script>
 
   <!-- Theme engine: must load before main.js which routes /theme command -->
