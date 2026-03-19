@@ -86,7 +86,7 @@
     flex-direction: column !important;
   }
 
-  .games-v2-desk {
+  .dossier-desk.games-v2-desk {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -268,7 +268,7 @@
   .games-v2-nav-link .nav-full { display: none; }
   .games-v2-nav-link .nav-abbr { display: inline; }
 
-  .games-v2-desk {
+  .dossier-desk.games-v2-desk {
     background: var(--bg, #0a0a0a) !important;
     padding: 0 !important;
     min-height: 0 !important;
@@ -462,10 +462,29 @@
     font-weight: 900;
     border-color: var(--theme-primary, #33ff33);
   }
+
+  /* ---- Mobile: hide doc-card IDs, fix title clipping ---- */
+  .doc-card-id { display: none !important; }
+
+  .doc-card-name {
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  /* Fix the abbreviator pseudo-element clipping: parent needs real line-height */
+  .doc-card-name[data-abbr] {
+    line-height: 1.2 !important;
+    font-size: 0 !important;
+  }
+  .doc-card-name[data-abbr]::after {
+    font-size: 9px;
+    line-height: 1.3;
+    display: block;
+  }
 }
 
 
-/* ---- 4. TAPE-ON-PAPER FOOTER ---- */
+/* ---- 4. TAPE-ON-PAPER FOOTER — single tight row ---- */
 
 .games-v2-footer {
   position: relative;
@@ -473,48 +492,53 @@
   flex-shrink: 0;
   background: var(--paper-bg, #f5f0e6);
   border-top: 1px solid rgba(0,0,0,0.08);
-  padding: 6px 16px;
+  padding: 3px 12px;
 }
 
 .games-v2-footer-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   font-family: 'Courier New', monospace;
   color: var(--paper-text-dim, #5a5040);
-  font-size: 10px;
+  font-size: 9px;
+  flex-wrap: nowrap;
 }
 
 .games-v2-footer-brand {
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.45;
-  font-size: 9px;
+  opacity: 0.4;
+  font-size: 8px;
+  white-space: nowrap;
 }
 
 .games-v2-footer-links {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
+
+/* Clock hidden — takes space for no value */
+.games-v2-footer-clock { display: none; }
 
 /* Clear tape button: transparent tape strip over paper */
 .games-v2-tape-btn {
   position: relative;
   font-family: 'Courier New', monospace;
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  font-size: 8px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--paper-text, #2a2418);
   text-decoration: none;
-  padding: 3px 10px;
+  padding: 2px 8px;
   background: rgba(255, 255, 255, 0.25);
   border: none;
   border-radius: 1px;
   cursor: pointer;
   transition: background 0.15s;
+  white-space: nowrap;
   /* Tape texture: slight frosted glass */
   backdrop-filter: blur(1px);
   box-shadow:
