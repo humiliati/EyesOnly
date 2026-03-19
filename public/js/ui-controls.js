@@ -87,7 +87,15 @@
 
     // Listen for custom auth events instead of polling
     if (typeof window !== 'undefined') {
-      window.addEventListener('auth-state-changed', _updateLoginButton);
+      window.addEventListener('auth-state-changed', function () {
+        _updateLoginButton();
+        // Sync kernel button with auth state
+        if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
+          enableKernelButton();
+        } else {
+          disableKernelButton();
+        }
+      });
 
       // Sync header active item display when GAMESTATE changes it (e.g. sidebar equip)
       window.addEventListener('rogue-active-item-changed', function(e) {
