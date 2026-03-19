@@ -17,9 +17,10 @@
    * Initialize login UI.
    */
   LoginUI.init = function () {
-    // Check if user is already logged in
+    // Check if user is already logged in — enable kernel + update header
     if (UserAccount.isLoggedIn()) {
       _updateHeaderDisplay();
+      _notifyLoginSuccess();
     }
   };
 

@@ -1,5 +1,11 @@
 # Kernel Server-Side Persistence TODO (Tutorial Alpha)
 
+> **Status:** IMPLEMENTED — March 2026
+> Migration: `0003_kernel_persistence.sql` (applied)
+> API routes: `src/worker/routes/kernel.ts` (5 endpoints live)
+> Client: `public/js/kernel-manager.js` (button state sync, server persist)
+> Remaining: highscore attribution (§5), rate limiting (§4)
+
 Goal: persist Kernel external-agent connection state server-side so that:
 - user stays connected across refresh/device
 - leaderboards can attribute runs to connected agents

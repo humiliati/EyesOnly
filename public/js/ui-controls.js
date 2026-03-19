@@ -80,6 +80,11 @@
     // Update login button based on auth state
     _updateLoginButton();
 
+    // If user is already logged in (returning session), enable kernel button
+    if (typeof UserAccount !== 'undefined' && UserAccount.isLoggedIn()) {
+      enableKernelButton();
+    }
+
     // Listen for custom auth events instead of polling
     if (typeof window !== 'undefined') {
       window.addEventListener('auth-state-changed', _updateLoginButton);
