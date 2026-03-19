@@ -156,13 +156,18 @@ const Terminal = (function () {
           target.id === 'mok-interjections' ||
           target.id === 'control-rail' ||
           target.id === 'mok-header' ||
-          target.id === 'nch-porthole-fan') {
+          target.id === 'nch-porthole-fan' ||
+          target.id === 'debrief-window' ||
+          target.id === 'debrief-screen') {
         return true;
       }
       if (target.classList && (target.classList.contains('rogue-grid-mobile') ||
                                target.classList.contains('rogue-cards-mobile') ||
                                target.classList.contains('nch-overlay-wrapper') ||
-                               target.classList.contains('nch-porthole-fan'))) {
+                               target.classList.contains('nch-porthole-fan') ||
+                               target.classList.contains('debrief-window') ||
+                               target.classList.contains('debrief-screen') ||
+                               target.classList.contains('debrief-label'))) {
         return true;
       }
       target = target.parentElement;

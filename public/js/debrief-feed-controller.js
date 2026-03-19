@@ -381,18 +381,12 @@ const DebriefFeedController = (function() {
     var body = document.body;
     var PREF_KEY = 'EYESONLY_ROGUE_PORTRAIT_DEBRIEF_PCT_V1';
 
-    function _isPortrait() {
-      try {
-        return window.matchMedia && window.matchMedia('(orientation: portrait)').matches;
-      } catch (e) { return false; }
-    }
-
     function _isRogue() {
       return body.classList.contains('mode-gone-rogue') || body.classList.contains('in-gone-rogue') || body.classList.contains('gone-rogue-active');
     }
 
     // ── Debrief width (portrait torso split) ──
-    var DEFAULT_PCT = 35; // Default: 65:35 buttons-to-debrief split (was 40, too large for newcomers)
+    var DEFAULT_PCT = 35;
 
     function _applyPct(pct) {
       pct = Math.max(25, Math.min(55, Number(pct || DEFAULT_PCT)));
@@ -409,39 +403,19 @@ const DebriefFeedController = (function() {
       else _applyPct(DEFAULT_PCT);
     } catch (e) { _applyPct(DEFAULT_PCT); }
 
-    // ── HUD scale (vertical drag drives header + torso + debrief scale) ──
     var label = win.querySelector('.debrief-label');
     if (!label) return;
 
-    var HUD_SCALE_KEY = 'EYESONLY_HUD_SCALE_V1';
-    var HUD_MIN = 0.65;
-    var HUD_MAX = 1.0;
-    var _hudScale = HUD_MAX;
+    // ── Two-state toggle: normal ↔ maximized ──
+    // 'normal'    = default % width, regular z-index
+    // 'maximized' = full overlay, z-index 700, position fixed
+    var _debriefState = 'normal';
 
-    function _applyHudScale(s) {
-      s = Math.max(HUD_MIN, Math.min(HUD_MAX, Number(s) || HUD_MAX));
-      _hudScale = s;
-      try {
-        body.style.setProperty('--hud-scale', s.toFixed(3));
-        localStorage.setItem(HUD_SCALE_KEY, s.toFixed(3));
-      } catch (e) {}
-    }
-
-    // Load saved scale
-    try {
-      var savedScale = parseFloat(localStorage.getItem(HUD_SCALE_KEY));
-      if (isFinite(savedScale)) _applyHudScale(savedScale);
-    } catch (e) {}
-
-    // ── Three-state cycle: normal → maximized → minimized → normal ──
-    // 'normal'    = default % (35), regular z-index
-    // 'maximized' = full overlay, z-index 25, position absolute
-    // 'minimized' = compact 25%, stays in flow
-    var _debriefState = 'normal'; // 'normal', 'maximized', 'minimized'
-
-    // If the window starts with the maximized class (e.g. from video push), detect it
+    // Detect initial state from class
     if (win.classList.contains('debrief-maximized')) _debriefState = 'maximized';
-    else if (win.classList.contains('debrief-minimized')) _debriefState = 'minimized';
+    // Clean up any legacy minimized class
+    win.classList.remove('debrief-minimized');
+    body.classList.remove('rogue-debrief-minimized');
 
     function _setDebriefState(state) {
       _debriefState = state;
@@ -450,15 +424,22 @@ const DebriefFeedController = (function() {
 
       if (state === 'maximized') {
         win.classList.add('debrief-maximized');
+        // Clamp maximized overlay within viewport
+        win.style.left = '0';
+        win.style.top = '0';
+        win.style.right = '';
+        win.style.bottom = '';
         try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
-      } else if (state === 'minimized') {
-        win.classList.add('debrief-minimized');
-        body.classList.add('rogue-debrief-minimized');
-        _applyPct(25);
-        try { window.dispatchEvent(new CustomEvent('debrief:minimized')); } catch (e) {}
       } else {
-        // normal
+        // normal — restore default width
         _applyPct(DEFAULT_PCT);
+        // Clear any inline position overrides from maximized drag
+        win.style.left = '';
+        win.style.top = '';
+        win.style.right = '';
+        win.style.bottom = '';
+        win.style.width = '';
+        win.style.height = '';
         try { window.dispatchEvent(new CustomEvent('debrief:restored')); } catch (e) {}
       }
     }
@@ -467,45 +448,62 @@ const DebriefFeedController = (function() {
     DebriefFeedController._setDebriefState = _setDebriefState;
     DebriefFeedController._getDebriefState = function() { return _debriefState; };
 
-    // ── Drag on label: vertical drag resizes HUD scale ──
-    // Works on BOTH desktop and mobile (removed portrait-only gate).
-    var _dragging = false;
-    var _dragStartY = 0;
-    var _dragStartScale = HUD_MAX;
+    // ── Tap/drag detection on debrief header ──
     var _dragMoved = false;
     var _tapStartX = 0;
     var _tapStartY = 0;
+    var _dragging = false;
 
-    function onMove(ev) {
+    // ── Maximized-state drag: vertical drag on label resizes the overlay ──
+    var _maxDragStartY = 0;
+    var _maxDragStartH = 0;
+    var MAX_DRAG_THRESHOLD = 8; // px before drag kicks in
+
+    function _onMaxDragMove(ev) {
       if (!_dragging) return;
-      var dy = ev.clientY - _dragStartY;
-      var h = window.innerHeight || 1;
-      // Map vertical drag to scale: 30% of screen height = full range
-      var delta = (dy / (h * 0.30)) * (HUD_MAX - HUD_MIN);
-      _applyHudScale(_dragStartScale + delta);
+      var dy = ev.clientY - _maxDragStartY;
+      if (Math.abs(dy) < MAX_DRAG_THRESHOLD && !_dragMoved) return;
+      _dragMoved = true;
+
+      // Dragging down from top = grow; dragging up = shrink
+      var newH = Math.max(120, Math.min(window.innerHeight, _maxDragStartH + dy));
+      win.style.height = newH + 'px';
+
+      // Clamp: don't let the bottom edge go off-screen
+      var rect = win.getBoundingClientRect();
+      if (rect.bottom > window.innerHeight) {
+        win.style.height = (window.innerHeight - rect.top) + 'px';
+      }
+      // Clamp: don't let right edge go off-screen
+      if (rect.right > window.innerWidth) {
+        win.style.width = (window.innerWidth - rect.left) + 'px';
+      }
+
       ev.preventDefault();
     }
 
-    function onUp() {
+    function _onMaxDragUp() {
       _dragging = false;
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('pointermove', _onMaxDragMove);
+      document.removeEventListener('pointerup', _onMaxDragUp);
+      document.removeEventListener('pointercancel', _onMaxDragUp);
     }
 
     label.addEventListener('pointerdown', function(ev) {
-      // Drag works on desktop AND mobile, only requires rogue mode
-      if (!_isRogue()) return;
-      _dragging = true;
-      _dragStartY = ev.clientY;
-      _dragStartScale = _hudScale;
-      _dragMoved = false;
       _tapStartX = ev.clientX || 0;
       _tapStartY = ev.clientY || 0;
-      try { label.setPointerCapture(ev.pointerId); } catch (e) {}
-      document.addEventListener('pointermove', onMove, { passive: false });
-      document.addEventListener('pointerup', onUp);
-      document.addEventListener('pointercancel', onUp);
+      _dragMoved = false;
+
+      // Only enable drag-to-resize in maximized state
+      if (_debriefState === 'maximized') {
+        _dragging = true;
+        _maxDragStartY = ev.clientY;
+        _maxDragStartH = win.offsetHeight || window.innerHeight;
+        try { label.setPointerCapture(ev.pointerId); } catch (e) {}
+        document.addEventListener('pointermove', _onMaxDragMove, { passive: false });
+        document.addEventListener('pointerup', _onMaxDragUp);
+        document.addEventListener('pointercancel', _onMaxDragUp);
+      }
       ev.preventDefault();
     });
 
@@ -515,23 +513,23 @@ const DebriefFeedController = (function() {
       if (dx > 6 || dy > 6) _dragMoved = true;
     });
 
-    // ── Tap-to-cycle: normal → maximized → minimized → normal ──
-    // Works on BOTH desktop and mobile (removed portrait-only gate).
+    // ── Tap-to-toggle: normal ↔ maximized ──
+    // Tap on the dead space in the header (between "debrief feed" label and
+    // play/volume widgets) toggles maximized. Tapping the label text also
+    // toggles. The only interaction we want to PREVENT is accidentally
+    // toggling while dragging.
     label.addEventListener('click', function(ev) {
-      // Don't toggle if user was dragging to resize
       if (_dragMoved) return;
 
-      // Cycle: normal → maximized → minimized → normal
+      // Two-state toggle: normal ↔ maximized
       if (_debriefState === 'normal') {
         _setDebriefState('maximized');
-      } else if (_debriefState === 'maximized') {
-        _setDebriefState('minimized');
       } else {
         _setDebriefState('normal');
       }
     });
 
-    // Double-tap always restores to normal (escape hatch from any state)
+    // Double-tap always restores to normal (escape hatch)
     label.addEventListener('dblclick', function(ev) {
       _setDebriefState('normal');
     });

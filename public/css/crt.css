@@ -370,26 +370,7 @@ body.in-gone-rogue .debrief-window {
   }
 }
 
-.debrief-window.expanded {
-  transform: scale(1.35);
-  transform-origin: top left;
-  box-shadow: 0 0 0 1px var(--panel-border), 0 12px 28px rgba(0, 0, 0, 0.45);
-
-  /* Default: above rail content */
-  position: relative;
-  z-index: 150;
-}
-
-body.mode-gone-rogue .debrief-window.expanded,
-body.in-gone-rogue .debrief-window.expanded {
-  /* Rogue: floating element expands above UI */
-  position: fixed;
-  z-index: 950;
-}
-
-.debrief-window.expanded .debrief-screen {
-  max-width: 100%; /* was 640px — fill container on expand */
-}
+/* .debrief-window.expanded — REMOVED (legacy dead code, replaced by debrief-maximized) */
 
 /* Responsive 4:3 scaling: landscape phones get wider debrief */
 @media (max-width: 900px) and (orientation: landscape) {
@@ -1930,14 +1911,33 @@ body.amber-mode #scanlines::after {
 
   /* Tighten control-rail padding in portrait to save vertical space */
   #control-rail {
-    padding: 6px;
-    gap: 6px;
+    padding: 4px;
+    gap: 4px;
     position: relative; /* anchor for debrief-maximized overlay */
   }
 
   /* Tighten MOK interjections (footer tooltip bar) in portrait */
   #mok-interjections {
     padding: 4px 6px;
+  }
+
+  /* Compact header as DEFAULT on mobile portrait — prevents jarring
+     tighten-on-first-click when keyboard pops. This is the "tight" state
+     that previously only appeared after keyboard-visible toggled on. */
+  #mok-header.monitor-header {
+    padding: 4px 8px;
+    min-height: 28px;
+    height: auto;
+    gap: 6px;
+  }
+
+  .mok-header-title {
+    font-size: 0.75em;
+  }
+
+  .currency-display {
+    font-size: 0.6em;
+    padding: 1px 4px;
   }
 
   /* Shrink equipped item slot frame + emoji further in portrait (all states) */
@@ -1966,8 +1966,8 @@ body.amber-mode #scanlines::after {
     align-items: stretch;
     height: auto;
     min-height: 0;
-    gap: 4px;
-    padding: 4px;
+    gap: 2px;
+    padding: 2px;
   }
 
   /* Buttons take minimum 51% width - ensure labels don't overflow */
@@ -2008,9 +2008,7 @@ body.amber-mode #scanlines::after {
   body.mode-gone-rogue,
   body.in-gone-rogue,
   body.gone-rogue-active {
-    /* ── HUD scale: driven by vertical drag on debrief header ──
-       Range: 0.65 (compact) → 1.0 (full). JS sets this on body.style.
-       Everything in the header + torso band cascades from this single value. */
+    /* ── HUD scale: fixed at 1.0 (drag-to-resize removed) ── */
     --hud-scale: 1;
     --rogue-emoji-scale: calc(0.5 * var(--hud-scale, 1));
     --header-chip-scale: calc(0.5 * var(--hud-scale, 1));
@@ -2267,14 +2265,7 @@ body.amber-mode #scanlines::after {
     -webkit-tap-highlight-color: rgba(28, 255, 155, 0.15);
   }
 
-  /* Debrief minimized: compact but still visible & tappable.
-     Keep the 4:3 screen rendered at reduced width so the feed
-     remains readable. Label stays tappable to restore. */
-  .debrief-window.debrief-minimized {
-    width: 25% !important;
-    overflow: hidden !important;
-  }
-  /* Buttons reclaim the extra space via the CSS variable (JS sets --rogue-debrief-pct: 25%) */
+  /* .debrief-window.debrief-minimized — REMOVED (broken transparent band state) */
 
   /* Debrief maximized: full overlay covering game viewport + torso.
      Uses position:fixed to escape the control-rail stacking context
@@ -2283,14 +2274,14 @@ body.amber-mode #scanlines::after {
   .debrief-window.debrief-maximized {
     position: fixed !important;
     left: 0;
-    right: 0;
     top: 0;
-    bottom: 0;
-    width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
     z-index: 700 !important; /* Above everything: control-rail(20), buttons(21), grid, log-frame */
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     background: rgba(6, 14, 9, 0.96) !important;
     border-radius: 0;
     pointer-events: auto;
@@ -2310,11 +2301,11 @@ body.amber-mode #scanlines::after {
     line-height: 1.1;
   }
 
-  /* Drag affordance: vertical resize cursor + grip handle */
+  /* Debrief label: tappable toggle (normal state = pointer, maximized = ns-resize for drag) */
   body.mode-gone-rogue .debrief-window .debrief-label,
   body.in-gone-rogue .debrief-window .debrief-label,
   body.gone-rogue-active .debrief-window .debrief-label {
-    cursor: ns-resize;
+    cursor: pointer;
     user-select: none;
     position: relative;
     display: flex;
@@ -2322,16 +2313,21 @@ body.amber-mode #scanlines::after {
     gap: 6px;
   }
 
-  /* Grip handle: three horizontal bars (⋮⋮ rotated) */
-  body.mode-gone-rogue .debrief-window .debrief-label::before,
-  body.in-gone-rogue .debrief-window .debrief-label::before,
-  body.gone-rogue-active .debrief-window .debrief-label::before {
+  /* Grip handle only visible in maximized state (drag-to-resize affordance) */
+  body.mode-gone-rogue .debrief-window.debrief-maximized .debrief-label,
+  body.in-gone-rogue .debrief-window.debrief-maximized .debrief-label,
+  body.gone-rogue-active .debrief-window.debrief-maximized .debrief-label {
+    cursor: ns-resize;
+  }
+
+  body.mode-gone-rogue .debrief-window.debrief-maximized .debrief-label::before,
+  body.in-gone-rogue .debrief-window.debrief-maximized .debrief-label::before,
+  body.gone-rogue-active .debrief-window.debrief-maximized .debrief-label::before {
     content: '';
     display: inline-block;
     width: 18px;
     height: 8px;
     flex-shrink: 0;
-    /* Three horizontal grip lines via gradient */
     background: repeating-linear-gradient(
       to bottom,
       rgba(28, 255, 155, 0.35) 0px,
@@ -2344,9 +2340,9 @@ body.amber-mode #scanlines::after {
     transition: opacity 0.15s ease;
   }
 
-  body.mode-gone-rogue .debrief-window .debrief-label:active::before,
-  body.in-gone-rogue .debrief-window .debrief-label:active::before,
-  body.gone-rogue-active .debrief-window .debrief-label:active::before {
+  body.mode-gone-rogue .debrief-window.debrief-maximized .debrief-label:active::before,
+  body.in-gone-rogue .debrief-window.debrief-maximized .debrief-label:active::before,
+  body.gone-rogue-active .debrief-window.debrief-maximized .debrief-label:active::before {
     opacity: 1;
     background: repeating-linear-gradient(
       to bottom,
@@ -2375,12 +2371,7 @@ body.amber-mode #scanlines::after {
     content: '▾';
     opacity: 0.7;
   }
-  body.mode-gone-rogue .debrief-window.debrief-minimized .debrief-label::after,
-  body.in-gone-rogue .debrief-window.debrief-minimized .debrief-label::after,
-  body.gone-rogue-active .debrief-window.debrief-minimized .debrief-label::after {
-    content: '▴';
-    opacity: 0.7;
-  }
+  /* .debrief-minimized arrow indicator — REMOVED (minimized state eliminated) */
   body.mode-gone-rogue .debrief-window .debrief-label:hover::after,
   body.in-gone-rogue .debrief-window .debrief-label:hover::after,
   body.gone-rogue-active .debrief-window .debrief-label:hover::after {
@@ -4000,17 +3991,7 @@ body.cascade-active {
   font-weight: bold;
 }
 
-/* Debrief feed states */
-.debrief-feed.minimized {
-  flex: 0 0 auto;
-  max-height: 100px;
-  overflow: hidden;
-}
-
-.debrief-feed.expanded {
-  flex: 1 1 auto;
-  min-height: 200px;
-}
+/* .debrief-feed.minimized/.expanded — REMOVED (legacy dead states) */
 
 /* Resource frame animations for gain/loss feedback */
 .resource-row {
