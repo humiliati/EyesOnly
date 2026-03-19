@@ -1714,5 +1714,37 @@
       "compass"
     ],
     "description": "A precision navigational instrument. Points to true north. Reveals the compass widget on all pages."
+  },
+  {
+    "id": "ITM-204",
+    "name": "Smart Watch",
+    "emoji": "⌚",
+    "type": "equipment",
+    "subtype": "communications",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "accessory",
+    "debrief_feed": true,
+    "effects": [
+      {
+        "type": "debrief_feed_widget",
+        "mode": "always"
+      }
+    ],
+    "synergyTags": [
+      "comms",
+      "audio",
+      "mok",
+      "debrief",
+      "platform"
+    ],
+    "description": "Worn leather-strap field watch with a micro CRT display. Provides access to the MOK debrief feed and audio controls from any location.",
+    "consumeOnUse": false,
+    "tier": null,
+    "_designNote": "Platform item (ITM-204). Seeded by default. Unlocks the smart watch widget site-wide. The debrief_feed: true meta tag can be applied to other items to also unlock this widget. Widget contains full debrief feed (MOK pyramid + interactive states) and audio controls (master mute, music volume, SFX volume, now playing).",
+    "_portalCategory": "platform",
+    "_platformItem": true,
+    "_defaultAccountItem": true
   }
 ]

@@ -1,0 +1,538 @@
+/* ============================================================
+   Smart Watch Widget — Pixel art wristwatch with debrief feed
+   Site-wide MOK interaction + audio controls overlay.
+   ============================================================ */
+
+/* ── Minimized: pixel art wristwatch sprite ──────────────── */
+
+.smart-watch-widget {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1800;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.smart-watch-widget:hover {
+  filter: brightness(1.2);
+}
+
+.smart-watch-sprite {
+  width: 44px;
+  height: 56px;
+  position: relative;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Wristband (top + bottom straps) ── */
+
+.sw-strap-top,
+.sw-strap-bottom {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  border-radius: 2px;
+}
+
+.sw-strap-top {
+  top: 0;
+  height: 10px;
+  background: linear-gradient(180deg,
+    #5c3a1e 0%, #8b5e3c 30%, #7a4f2e 60%, #5c3a1e 100%);
+  border: 1px solid #3d2510;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+}
+
+.sw-strap-bottom {
+  bottom: 0;
+  height: 14px;
+  background: linear-gradient(180deg,
+    #5c3a1e 0%, #8b5e3c 40%, #6b4428 70%, #4a2f15 100%);
+  border: 1px solid #3d2510;
+  border-top: none;
+  border-radius: 0 0 3px 3px;
+}
+
+/* Strap texture lines */
+.sw-strap-top::after,
+.sw-strap-bottom::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.sw-strap-top::after { top: 4px; }
+.sw-strap-bottom::after { top: 5px; }
+
+/* Buckle notch */
+.sw-strap-bottom::before {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 2px;
+  background: #9a7748;
+  border-radius: 1px;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Watch case (housing) ── */
+
+.sw-case {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 34px;
+  background: linear-gradient(145deg,
+    #4a4a4a 0%, #3a3a3a 40%, #2a2a2a 100%);
+  border: 2px solid #555;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* Side button (crown) */
+.sw-case::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 12px;
+  width: 3px;
+  height: 6px;
+  background: linear-gradient(90deg, #666, #888, #666);
+  border-radius: 0 2px 2px 0;
+  border: 1px solid #444;
+  border-left: none;
+}
+
+/* ── Green CRT screen ── */
+
+.sw-screen {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  background: #001a00;
+  border-radius: 2px;
+  border: 1px solid #111;
+  overflow: hidden;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Phosphor glow on screen */
+.sw-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    var(--phosphor-glow, rgba(51, 255, 51, 0.15)) 0%,
+    transparent 70%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Scanlines */
+.sw-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.15) 1px,
+    rgba(0, 0, 0, 0.15) 2px
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── Mini MOK glyph on screen ── */
+
+.sw-mok-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--phosphor, #33ff33);
+  filter: drop-shadow(0 0 2px var(--phosphor, #33ff33));
+  z-index: 3;
+  animation: sw-glyph-pulse 3s ease-in-out infinite;
+}
+
+@keyframes sw-glyph-pulse {
+  0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 2px var(--phosphor, #33ff33)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 4px var(--phosphor-bright, #66ff66)); }
+}
+
+/* ── Audio indicator dot ── */
+
+.sw-audio-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--phosphor, #33ff33);
+  z-index: 3;
+  animation: sw-dot-blink 2s ease-in-out infinite;
+}
+
+.sw-audio-dot.muted {
+  background: #660000;
+  animation: none;
+}
+
+@keyframes sw-dot-blink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   EXPANDED OVERLAY
+   ════════════════════════════════════════════════════════════ */
+
+.smart-watch-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.smart-watch-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ── Overlay frame (watch face expanded) ── */
+
+.sw-overlay-frame {
+  position: relative;
+  width: 320px;
+  max-width: 92vw;
+  max-height: 85dvh;
+  background: linear-gradient(170deg,
+    rgba(20, 20, 20, 0.95) 0%,
+    rgba(10, 10, 10, 0.98) 100%);
+  border: 2px solid rgba(100, 100, 100, 0.4);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 16px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header bar ── */
+
+.sw-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(30, 30, 30, 0.8);
+  border-bottom: 1px solid rgba(100, 100, 100, 0.2);
+  flex-shrink: 0;
+}
+
+.sw-overlay-title {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--phosphor-dim, #1a9c1a);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  flex: 1;
+}
+
+.sw-overlay-close {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(100, 100, 100, 0.3);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(200, 200, 200, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+.sw-overlay-close:hover {
+  background: rgba(255, 60, 60, 0.2);
+  color: #ff6666;
+}
+
+/* ── Debrief feed viewport ── */
+
+.sw-debrief-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000a00;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* CRT effect on viewport */
+.sw-debrief-viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* MOK pyramid container inside viewport */
+.sw-mok-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Clone of the pyramid loader for the overlay */
+.sw-mok-container .mok-pyramid-loader {
+  transform: scale(1.1);
+}
+
+/* Video container for theme background */
+.sw-video-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.sw-video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Audio controls panel ── */
+
+.sw-audio-panel {
+  padding: 12px;
+  border-top: 1px solid rgba(100, 100, 100, 0.15);
+  flex-shrink: 0;
+}
+
+.sw-audio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sw-audio-row:last-child {
+  margin-bottom: 0;
+}
+
+.sw-audio-label {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--phosphor-dim, #1a9c1a);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.sw-audio-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: rgba(100, 100, 100, 0.3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sw-audio-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--phosphor, #33ff33);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 4px var(--phosphor-glow, rgba(51, 255, 51, 0.3));
+  cursor: pointer;
+}
+
+.sw-audio-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--phosphor, #33ff33);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 4px var(--phosphor-glow, rgba(51, 255, 51, 0.3));
+  cursor: pointer;
+}
+
+.sw-audio-val {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--phosphor, #33ff33);
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Master mute row */
+
+.sw-mute-btn {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border: 1px solid var(--phosphor-dim, #1a9c1a);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--phosphor, #33ff33);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sw-mute-btn:hover {
+  background: rgba(51, 255, 51, 0.1);
+}
+
+.sw-mute-btn.muted {
+  color: #ff4444;
+  border-color: #660000;
+}
+
+/* Now playing row */
+
+.sw-track-row {
+  padding-top: 8px;
+  border-top: 1px solid rgba(100, 100, 100, 0.1);
+  margin-top: 4px;
+}
+
+.sw-track-label {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: rgba(150, 150, 150, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+
+.sw-track-title {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--phosphor-dim, #1a9c1a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sw-track-artist {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: rgba(150, 150, 150, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Disabled state for sliders when muted */
+.sw-audio-row.disabled .sw-audio-slider {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.sw-audio-row.disabled .sw-audio-val {
+  opacity: 0.3;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .sw-overlay-frame {
+    width: 90vw;
+    max-height: 80dvh;
+    border-radius: 10px;
+  }
+
+  .sw-overlay-header {
+    padding: 8px 10px;
+  }
+
+  .sw-audio-panel {
+    padding: 10px;
+  }
+
+  .smart-watch-sprite {
+    width: 38px;
+    height: 48px;
+  }
+
+  .sw-strap-top { width: 18px; height: 8px; }
+  .sw-strap-bottom { width: 18px; height: 12px; }
+  .sw-case { width: 28px; height: 28px; top: 7px; }
+  .sw-mok-glyph {
+    border-left-width: 5px;
+    border-right-width: 5px;
+    border-bottom-width: 8px;
+  }
+}
+
+/* Hide on terminal page where debrief feed is already in the sidebar */
+body.terminal-active .smart-watch-widget {
+  /* Widget still available but debrief feed is in sidebar already */
+}

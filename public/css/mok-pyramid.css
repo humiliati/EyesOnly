@@ -51,7 +51,7 @@ body[data-theme="panther"] {
   align-items: center;
   justify-content: center;
   transform-style: preserve-3d;
-  perspective: 400px;
+  perspective: 340px;   /* was 400px — 15% closer to viewer */
   cursor: pointer;
   overflow: visible;
 }
@@ -59,8 +59,8 @@ body[data-theme="panther"] {
 /* ---- Spinning wrapper ---- */
 .mok-pyramid-wrapper {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 80px;          /* was 70px — 15% larger */
+  height: 80px;
   transform-style: preserve-3d;
   transform: rotateX(-20deg);
   animation: mok-spin var(--mok-spin-duration, 6s) linear infinite;
@@ -72,8 +72,8 @@ body[data-theme="panther"] {
 
 /* ---- Pyramid faces ---- */
 .mok-pyramid-side {
-  width: 70px;
-  height: 70px;
+  width: 80px;          /* was 70px — match wrapper */
+  height: 80px;
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   margin: auto;
@@ -102,8 +102,8 @@ body[data-theme="panther"] {
 
 /* ---- Shadow underneath ---- */
 .mok-pyramid-shadow {
-  width: 60px;
-  height: 60px;
+  width: 68px;          /* was 60px — proportional to 80px wrapper */
+  height: 68px;
   background: linear-gradient(var(--mok-glow), rgba(0, 0, 0, 0.2));
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -272,16 +272,19 @@ body[data-theme="panther"] {
 
 /* ---- Responsive sizing ---- */
 @media (max-width: 768px) {
+  .mok-pyramid-loader {
+    perspective: 290px;   /* was 340px — 15% closer on mobile too */
+  }
   .mok-pyramid-wrapper {
-    width: 50px;
-    height: 50px;
+    width: 58px;          /* was 50px — 15% larger */
+    height: 58px;
   }
   .mok-pyramid-side {
-    width: 50px;
-    height: 50px;
+    width: 58px;
+    height: 58px;
   }
   .mok-pyramid-shadow {
-    width: 42px;
-    height: 42px;
+    width: 48px;          /* was 42px — proportional */
+    height: 48px;
   }
 }

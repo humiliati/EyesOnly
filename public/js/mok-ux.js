@@ -1,4 +1,8 @@
-/* Lightweight MOK avatar driver for the landing CRT */
+/* ============================================================
+   Lightweight MOK avatar driver for the landing CRT
+   Routes all state changes through MOKStateMachine when available.
+   Falls back to direct class manipulation pre-init.
+   ============================================================ */
 (function () {
   'use strict';
 
@@ -11,20 +15,49 @@
     if (interject && text) interject.textContent = text;
   }
 
-  // All MOK state classes (old SVG + new pyramid)
+  // ── State event map: mok-ux state names → MOKStateMachine event types ──
+  var STATE_TO_EVENT = {
+    'idle':    'idle_timer',
+    'typing':  'tooltip_open',
+    'output':  'card_played',
+    'active':  'player_input',
+    'ping':    'item_acquired',
+    'combat':  'combat_start'
+  };
+
+  // All MOK state classes (for direct fallback only)
   var ALL_STATES = ['idle', 'typing', 'output', 'active',
     'mok-state-idle', 'mok-state-typing', 'mok-state-output',
     'mok-state-active', 'mok-state-ping', 'mok-state-combat',
     'mok-state-kernel-connected', 'mok-state-kernel-active', 'mok-state-kernel-error'];
 
+  /**
+   * Set avatar state — routes through MOKStateMachine if available,
+   * falls back to direct class manipulation otherwise.
+   */
   function setAvatarState(state, message, ttl) {
     if (!avatar) return;
-    // Remove all state classes
-    for (var i = 0; i < ALL_STATES.length; i++) avatar.classList.remove(ALL_STATES[i]);
-    // Add both old-style and new pyramid-style class
+    updateInterject(message);
+
+    // Route through unified state machine when available
+    if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.handleEvent) {
+      var eventType = STATE_TO_EVENT[state];
+      if (eventType) {
+        MOKStateMachine.handleEvent({ type: eventType });
+        return;
+      }
+      // For tooltip_close / idle, just reset
+      if (state === 'idle') {
+        MOKStateMachine.resetToIdle();
+        return;
+      }
+    }
+
+    // Fallback: direct class manipulation (pre-init)
+    var i;
+    for (i = 0; i < ALL_STATES.length; i++) avatar.classList.remove(ALL_STATES[i]);
     avatar.classList.add(state || 'idle');
     avatar.classList.add('mok-state-' + (state || 'idle'));
-    updateInterject(message);
     if (interjectTimer) clearTimeout(interjectTimer);
     interjectTimer = window.setTimeout(function () {
       for (var j = 0; j < ALL_STATES.length; j++) avatar.classList.remove(ALL_STATES[j]);
@@ -89,19 +122,25 @@
         return;
       }
 
-      // Use the unified debrief-maximized class via DebriefFeedController if available,
-      // otherwise fall back to direct class toggle for pre-controller state.
+      // Only EXPAND (normal → maximized). Never collapse from inside the feed.
+      // Dismissing back to normal is handled by the background-tap handler
+      // in debrief-feed-controller.js (_onBackgroundTap) so users can interact
+      // with the maximized feed content without accidentally closing it.
       if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController._setDebriefState) {
         var currentState = DebriefFeedController._getDebriefState();
-        DebriefFeedController._setDebriefState(currentState === 'maximized' ? 'normal' : 'maximized');
+        if (currentState !== 'maximized') {
+          DebriefFeedController._setDebriefState('maximized');
+        }
       } else {
-        // Fallback: toggle debrief-maximized directly
-        debriefWindow.classList.toggle('debrief-maximized');
+        // Fallback: only add, never remove
+        if (!debriefWindow.classList.contains('debrief-maximized')) {
+          debriefWindow.classList.add('debrief-maximized');
+        }
       }
     });
   }
 
-  // Input listeners to signal gentle animation
+  // Input listeners to signal gentle animation via state machine
   var mobileInput = document.getElementById('mobile-input');
   if (mobileInput) {
     mobileInput.addEventListener('input', markTyping);
@@ -115,7 +154,7 @@
     }
   });
 
-  // Patch Terminal output methods to drive avatar state
+  // Patch Terminal output methods to drive avatar state via MOKStateMachine
   if (typeof Terminal !== 'undefined') {
     var originalWriteLine = Terminal.writeLine;
     Terminal.writeLine = function () {

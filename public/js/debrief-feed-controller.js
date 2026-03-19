@@ -129,6 +129,11 @@ const DebriefFeedController = (function() {
     // Wire up debrief video controls widget
     _initVideoWidget();
 
+    // Initialize the unified MOK state machine (CSS class driven)
+    if (typeof MOKStateMachine !== 'undefined') {
+      MOKStateMachine.init(document.getElementById('mok-avatar'));
+    }
+
     // Deferred theme-video: derive from current theme, lowest-priority
     // Waits for init dust to settle before the CRT "clicks on"
     _scheduleThemeVideo();
@@ -535,20 +540,20 @@ const DebriefFeedController = (function() {
       if (dx > 6 || dy > 6) _dragMoved = true;
     });
 
-    // ── Tap-to-toggle: normal ↔ maximized ──
-    // Tap on dead space in debrief header toggles. The only interaction
-    // we PREVENT is accidentally toggling while dragging.
+    // ── Tap label: only EXPAND (normal → maximized) ──
+    // Dismissing back to normal is exclusively via background tap or
+    // double-tap escape hatch. This prevents accidental close when
+    // interacting with feed content.
     label.addEventListener('click', function(ev) {
       if (_dragMoved) return;
 
       if (_debriefState === 'normal') {
         _setDebriefState('maximized');
-      } else {
-        _setDebriefState('normal');
       }
+      // If already maximized, do nothing — background tap dismisses
     });
 
-    // Double-tap always restores to normal (escape hatch)
+    // Double-tap on label always restores to normal (escape hatch)
     label.addEventListener('dblclick', function(ev) {
       _setDebriefState('normal');
     });
@@ -1493,8 +1498,24 @@ const DebriefFeedController = (function() {
     var DOUBLE_TAP_MS = 350;   // max gap for double-tap
     var HOLD_MS = 400;         // ms before long-press squish activates
 
+    // ── Gate: check if MOKStateMachine allows interaction ──
+    function _canInteract() {
+      if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.canInteract) {
+        return MOKStateMachine.canInteract();
+      }
+      return true; // fallback: always allow
+    }
+
+    // ── Notify state machine of interactive event ──
+    function _notifySM(eventType) {
+      if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.handleEvent) {
+        MOKStateMachine.handleEvent({ type: eventType });
+      }
+    }
+
     // ── Poke: determine direction from tap position ──
     function _pokeFromTap(clientY) {
+      if (!_canInteract()) return;
       var rect = loader.getBoundingClientRect();
       var midY = rect.top + rect.height / 2;
       _clearPoke();
@@ -1505,19 +1526,21 @@ const DebriefFeedController = (function() {
       } else {
         loader.classList.add('mok-poke-up');
       }
+      _notifySM('poke');
       // Auto-clear after animation completes (600ms)
       if (_pokeTimer) clearTimeout(_pokeTimer);
       _pokeTimer = setTimeout(function() {
         _clearPoke();
-        // Re-enable idle spin by ensuring no interaction class is set
       }, 650);
     }
 
     // ── Spin burst (double-tap) ──
     function _spinBurst() {
+      if (!_canInteract()) return;
       _clearPoke();
       void loader.offsetWidth;
       loader.classList.add('mok-spin-burst');
+      _notifySM('spin_burst');
       if (_pokeTimer) clearTimeout(_pokeTimer);
       _pokeTimer = setTimeout(function() {
         _clearPoke();
@@ -1526,8 +1549,10 @@ const DebriefFeedController = (function() {
 
     // ── Long-press squish ──
     function _startSquish() {
+      if (!_canInteract()) return;
       _clearPoke();
       loader.classList.add('mok-squish');
+      _notifySM('squish');
     }
     function _releaseSquish(clientY) {
       loader.classList.remove('mok-squish');
@@ -1935,7 +1960,7 @@ const DebriefFeedController = (function() {
    * @param {*} eventData - Event data
    */
   function triggerMOKEvent(eventType, eventData) {
-    if (_mokInitialized && MOKStateMachine) {
+    if (_mokInitialized && typeof MOKStateMachine !== 'undefined' && MOKStateMachine) {
       MOKStateMachine.handleEvent({
         type: eventType,
         data: eventData

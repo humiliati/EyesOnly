@@ -1,173 +1,129 @@
-# MOK Avatar Unification & WebGL Roadmap
+# MOK Avatar Unification & Interactivity Roadmap
 
-> **Status:** Planning — March 18, 2026
-> **Priority:** MEDIUM — visual inconsistency, not data loss
+> **Status:** Phase 1 — In Progress (March 19, 2026)
+> **Priority:** MEDIUM — visual consistency + interactivity
 > **Depends on:** Debrief feed controller, theme video system, kernel manager
 
 ---
 
-## Current State (Broken)
+## Current State (Working)
 
-There are at least 3 competing MOK avatar implementations rendering into the debrief feed:
+The MOK avatar is a **CSS 3D spinning pyramid** (`mok-pyramid.css`) rendered inside `#mok-avatar` in the debrief feed. Three JS modules coordinate to drive it:
 
-### 1. Static SVG Avatar (index.html lines 304-321)
-The HTML contains a hardcoded SVG MOK glyph (equilateral triangle with inner triangle):
-```html
-<button id="mok-avatar" class="mok-avatar idle">
-  <svg viewBox="0 0 220 120"><!-- pentagram-like triangle glyph --></svg>
-</button>
-```
-This renders when no game module has loaded and the DebriefFeedController hasn't initialized.
+### 1. MOKStateMachine (`mok-state-machine.js`)
+Central state authority. Maps game/system events to CSS classes on `#mok-avatar` via a priority queue. Higher-priority events interrupt lower ones. Interactive states (poke, spin, squish) are priority 1 — any game event overrides them.
 
-### 2. MOKVisualEngine (mok-visual-engine.js, lazy-loaded)
-A canvas-based renderer that draws the MOK glyph with animated glow effects. Initialized by `DebriefFeedController._renderMOK()` into `#mok-visual-container`. The kernel manager can override its glow colors via `setCustomGlowColors()`.
+**Cycle → CSS class map:**
+| Cycle ID | CSS Class | Trigger |
+|----------|-----------|---------|
+| idle_breathe | mok-state-idle | Default / decay |
+| talking_active | mok-state-typing | Tooltip open |
+| processing_think | mok-state-output | Card played, item disposed |
+| alert_pulse | mok-state-active | Player input, poke |
+| happy_response | mok-state-ping | Card success, combat victory, spin burst |
+| warning_flash | mok-state-kernel-error | Card failed, resource low |
+| error_critical | mok-state-kernel-error | Error, combat defeat |
+| combat | mok-state-combat | Combat start |
+| kernel_connected | mok-state-kernel-connected | Kernel connect |
+| kernel_active | mok-state-kernel-active | Kernel running |
 
-### 3. DebriefFeedController Video Display (debrief-feed-controller.js, lazy-loaded)
-The theme video system (`_scheduleThemeVideo`) renders a `<video>` element into `#debrief-screen`, replacing the MOK display entirely. This is the intended default for non-game mode.
+**Priority levels:** 0 (idle) → 1 (interactive poke/spin) → 3–4 (game events) → 5–7 (errors/warnings)
 
-### The Conflict
-- On fresh page load (no game): Static SVG shows, video controls are visible but nonfunctional
-- After game loader finishes: DebriefFeedController.init() replaces the static SVG, schedules theme video after 3s
-- On login: KernelManager.init() → _syncButton() → _syncMOKToKernelButton() tries to drive MOKVisualEngine colors (which may not exist yet)
-- After deferring game loader: DebriefFeedController NEVER loads unless user launches a game → static SVG stays forever → video controls are dead UI
+### 2. DebriefFeedController interactive system (`debrief-feed-controller.js`)
+Handles pointer/keyboard input on the pyramid. Drives CSS poke/spin/squish classes directly on `#mok-avatar`. Notifies MOKStateMachine of interactive events via `triggerMOKEvent()`. Sets `loader._mokInteractionBound = true` flag so mok-ux.js defers to it.
 
----
+**Interactions:**
+- **Single tap** (upper/lower half) → `mok-poke-down` / `mok-poke-up` (spring boing, 600ms)
+- **Double tap** (350ms gap) → `mok-spin-burst` (720° rotation, 850ms)
+- **Long press** (400ms hold) → `mok-squish` (held scale deformation), release into directional boing
+- **Drag** (8px threshold) → `mok-dragging` (manual spin via `--mok-drag-y`), release with momentum coast
+- **Keyboard** Enter/Space → alternating poke-down and spin-burst (QuadStick accessible)
 
-## Immediate Fix (This Sprint)
+### 3. mok-ux.js (lightweight fallback driver)
+Pre-interactive-system fallback. Patches Terminal.writeLine/typeText/typeLines to drive avatar states. Click/keydown handlers defer to DebriefFeedController when `_mokInteractionBound` is set. Also handles debrief window click-to-expand (one-way: expand only, background tap dismisses).
 
-### Problem: Deferred loader means no theme video, dead controls
-Since we deferred `gone-rogue-loader.js` to only load on AWOL, the entire debrief feed controller system never initializes for visitors who don't play games.
-
-### Solution: Extract DebriefFeedController from the lazy loader
-Move `debrief-feed-controller.js` to the sync phase in index.html (same as we did for user-account.js). It has no game dependencies — it only needs the DOM `#debrief-screen` element.
-
-Also extract `mok-visual-engine.js` and `mok-state-machine.js` if they have no game dependencies.
-
-Then the theme video will schedule on page load regardless of whether the user plays games.
-
-### Additional: Hide video controls until controller is ready
-The inline video/audio controls in the debrief label bar should be hidden until DebriefFeedController has initialized and a video is playing:
-```css
-.video-controls-inline,
-.audio-controls-inline {
-  display: none;
-}
-.debrief-video-active .video-controls-inline,
-.debrief-video-active .audio-controls-inline {
-  display: flex;
-}
-```
-
-### Additional: Kernel status should read from KernelManager
-`_renderKernelStatus()` at line 1403 has `var status = 'connected'` HARDCODED. It should read from `KernelManager.getState().state` instead.
+### Static SVG Fallback (index.html)
+The `#mok-avatar` button contains a hardcoded SVG triangle glyph that renders with zero JS. The CSS pyramid layers over it when CSS loads. This is the no-JS / pre-init fallback.
 
 ---
 
-## Phase 1: Unified Avatar (Simple)
+## Completed Work
 
-### Goal
-One consistent MOK avatar that renders in all states: pre-login, post-login, game mode, and idle. The current SVG pentagram-with-triangle is the placeholder.
+### Debrief Feed States (Fixed)
+- **Default state**: Content taps don't change surrounding CSS layout
+- **Maximized state**: `transform: scale(var(--debrief-zoom, 1.35))` — keeps frame, widgets, 4:3 ratio, background visible
+- **Mobile portrait**: `transform-origin: top right` prevents right-edge bleed; `--debrief-zoom: 1.25`
+- **Dismiss**: Background-tap only (document pointerdown capture phase, 200ms delay)
+- **One-way expand**: Clicking inside debrief only expands, never collapses
+- **Removed**: Transparent band state (broken), drag-to-resize HUD scale (ineffective), legacy `.expanded` toggle
 
-### Implementation
-1. Keep the static SVG as the default (zero-JS fallback)
-2. DebriefFeedController renders into `#mok-visual-container` OVER the SVG
-3. When no game is active, show the SVG with gentle CSS pulse animation
-4. When DebriefFeedController loads, it crossfades from SVG to canvas
-5. KernelManager color overrides only apply to the canvas layer
-6. Theme video replaces the entire debrief screen (correct current behavior)
+### Mobile Layout Stability (Fixed)
+- Compact header is now the DEFAULT on mobile portrait (not gated by `keyboard-visible` class)
+- Eliminated jarring padding/spacing shift when tapping between debrief feed and log-column
 
-### CSS States
-```css
-#mok-avatar.idle        { /* default gentle pulse */ }
-#mok-avatar.kernel-connected { /* green accent glow */ }
-#mok-avatar.kernel-active    { /* cyan-green fast pulse */ }
-#mok-avatar.kernel-error     { /* red warning pulse */ }
-```
+### CSS 3D Pyramid Sizing (Adjusted)
+- Perspective: 340px desktop / 290px mobile (was 400px/340px — 15% closer)
+- Wrapper/sides: 80px desktop / 58px mobile (was 70px/50px — 15% larger)
+- Shadow: 68px / 48px (proportional)
+
+### Unified State Machine (Complete)
+- `mok-state-machine.js` rewritten to drive CSS classes directly (no MOKVisualEngine dependency)
+- Priority system: interactive states (1) < game events (3-7)
+- Auto-decay back to idle after event duration
+- Event queue for lower-priority events
+- `canInteract()` gate for interactive system
+- 30s idle timer → sleep_dormant state
+- Backward compatible `init(target)` — accepts element or legacy visualEngine (ignored)
+
+### SM64-Inspired Interactive States (Complete)
+- All CSS keyframe animations in `mok-pyramid.css`
+- Pointer event handling in `debrief-feed-controller.js` `_setupMokInteraction()`
+- QuadStick/keyboard accessibility
+- Focus-visible ring on `#mok-avatar`
+
+### Hardcoded Kernel Status Bug
+- `debrief-feed-controller.js` `_renderKernelStatus()` — status was hardcoded to `'connected'`
+- Fixed: reads from `KernelManager.getState().state` with disconnected fallback
 
 ---
 
-## Phase 2: Layered 3D WebGL Avatar
+## Phase 1: Remaining Work
 
-### Vision
-Replace the 2D SVG/canvas with a WebGL renderer (Three.js or raw WebGL). The MOK glyph becomes a 3D object that:
+### Wire MOKStateMachine into interactive system
+The interactive poke/spin/squish handlers in `_setupMokInteraction()` should:
+1. Check `MOKStateMachine.canInteract()` before allowing interaction
+2. Call `MOKStateMachine.handleEvent({ type: 'poke' })` etc. so the state machine tracks interactive state
+3. Let the state machine's decay timer handle returning to idle (instead of manual `setTimeout` in each handler)
 
-1. **Idle state:** Slowly rotates on Y-axis, pentagram with equilateral triangle layers
-2. **Porthole interaction:** When a magnifying glass or coin-card porthole passes over the debrief feed, the avatar reveals different hidden layers (like the porthole system reveals starfield)
-3. **Drag spin:** Player can pointer-drag to spin the avatar on its axis inside the feed
-4. **Kernel states:** 3D glow layers change color/intensity based on kernel connection
-5. **Super Mario 64 stretch:** Vertex-deformable mesh — touch/drag to pull the face (stretch vertices)
-6. **API-connected squishy:** When an external agent is connected, the avatar responds to agent state changes with squishy deformations + special tooltips
+### Wire MOKStateMachine into mok-ux.js
+`mok-ux.js` `setAvatarState()` should route through `MOKStateMachine.handleEvent()` instead of direct class manipulation, so the priority system applies consistently. Terminal patches (writeLine, typeText, typeLines) should emit events to MOKStateMachine.
 
-### Architecture
-```
-┌────────────────────────────────────┐
-│  #debrief-screen                    │
-│  ┌──────────────────────────────┐  │
-│  │  WebGL Canvas (Three.js)     │  │
-│  │                              │  │
-│  │  Layers:                     │  │
-│  │   0. Deep glyph (pentagram)  │  │
-│  │   1. Mid glyph (triangle)   │  │
-│  │   2. Core glyph (inner △)   │  │
-│  │   3. Glow shell (emissive)  │  │
-│  │   4. Wire frame (outline)   │  │
-│  │                              │  │
-│  │  Interactions:               │  │
-│  │   - Y-axis drag rotation    │  │
-│  │   - Porthole reveal (layers)│  │
-│  │   - Vertex deformation      │  │
-│  │   - Kernel color drive      │  │
-│  └──────────────────────────────┘  │
-└────────────────────────────────────┘
-```
+### MOKStateMachine.init() call
+Currently `init()` is available but not called during page load. Should be called in `DebriefFeedController.init()` or on DOMContentLoaded, targeting `#mok-avatar`.
 
-### Porthole Layer Reveal
-When a `.starfield-window` canvas overlaps the debrief feed area:
-- The porthole "X-rays" through the outer layers
-- Inner layers become visible only through the porthole aperture
-- Uses the same `getBoundingClientRect()` blit pipeline as the existing starfield system
-- The 3D avatar becomes a magnifying glass target — different layers visible at different depths
+---
 
-### Super Mario 64 Face Stretch
-- Vertex buffer stores rest positions
-- Pointer drag applies radial displacement from drag point
-- Spring physics snaps vertices back when released
-- Heavier deformation = bigger bounceback animation
-- API agent gets responsive stretch (agent sends deformation vectors)
+## Phase 2: WebGL Avatar (Future — No Current Plans)
 
-### Implementation Order
-1. Three.js scene setup in `#mok-visual-container`
-2. Basic pentagram + triangle geometry (extruded shapes)
-3. Y-axis rotation (idle + drag)
-4. Glow material driven by kernel state
-5. Porthole interaction (layer masking via stencil buffer)
-6. Vertex deformation (stretch face)
-7. API agent responsive mode
+### Vision (Deferred)
+Replace the CSS 3D pyramid with a Three.js WebGL renderer. The MOK glyph becomes a proper 3D object with:
+- Layered pentagram + triangle geometry
+- Porthole layer reveal (stencil buffer masking)
+- Vertex-deformable mesh (SM64 face stretch)
+- API agent responsive deformations
+
+This is documented for reference but not actively planned.
 
 ---
 
 ## Files Reference
 
-| File | Current State | Target |
-|------|--------------|--------|
-| `index.html` #mok-avatar SVG | Static fallback | Keep as no-JS fallback |
-| `js/mok-ux.js` | Lightweight state driver | Keep for tooltip integration |
-| `js/mok-visual-engine.js` | Canvas glyph renderer | Replace with WebGL in Phase 2 |
-| `js/mok-state-machine.js` | Animation state machine | Extend for 3D states |
-| `js/debrief-feed-controller.js` | Manages display mode | Extract from lazy loader |
-| `js/kernel-manager.js` | Drives MOK colors | Wire to 3D glow materials |
-
----
-
-## Hardcoded Kernel Status Bug
-
-`debrief-feed-controller.js` line 1403:
-```javascript
-var status = 'connected'; // HARDCODED — always shows connected
-```
-Should be:
-```javascript
-var status = (typeof KernelManager !== 'undefined' && KernelManager.getState)
-  ? KernelManager.getState().state.toLowerCase()
-  : 'disconnected';
-```
+| File | Role | Status |
+|------|------|--------|
+| `index.html` #mok-avatar SVG | No-JS fallback | ✅ Stable |
+| `css/mok-pyramid.css` | 3D pyramid + state animations + interactive keyframes | ✅ Complete |
+| `js/mok-ux.js` | Lightweight fallback driver, Terminal patches | ✅ Working (needs SM wire) |
+| `js/mok-state-machine.js` | Central state authority (CSS class driven) | ✅ Rewritten |
+| `js/debrief-feed-controller.js` | Feed management + interactive poke system | ✅ Working (needs SM wire) |
+| `js/mok-visual-engine.js` | Legacy canvas renderer | ⚠️ Deprecated (still loaded) |
+| `js/kernel-manager.js` | Drives kernel state colors | ✅ Compatible |

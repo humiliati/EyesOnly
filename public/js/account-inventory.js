@@ -72,6 +72,23 @@ var AccountInventory = (function () {
         effects: [{ type: 'compass_widget', mode: 'always' }],
         synergyTags: ['navigation', 'telescope', 'exploration', 'compass']
       }
+    },
+    {
+      id: 'ITM-204',
+      qty: 1,
+      meta: {
+        name: 'Smart Watch',
+        emoji: '⌚',
+        type: 'equipment',
+        subtype: 'communications',
+        rarity: 'common',
+        equipSlot: 'accessory',
+        debrief_feed: true,
+        platformItem: true,
+        description: 'Worn leather-strap field watch with a micro CRT display. Provides MOK debrief feed and audio controls from any location.',
+        effects: [{ type: 'debrief_feed_widget', mode: 'always' }],
+        synergyTags: ['comms', 'audio', 'mok', 'debrief', 'platform']
+      }
     }
   ];
 
