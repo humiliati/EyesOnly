@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOK Avatar Designer</title>
+  <link rel="stylesheet" href="../css/crt.css">
+  <link rel="stylesheet" href="../css/themes.css">
+  <link rel="stylesheet" href="css/portal-shared.css">
+  <link rel="stylesheet" href="css/mok-avatar-designer.css">
+  <style>
+    body { background: #0a0a0a; }
+  </style>
+</head>
+<body data-theme="phosphor">
+
+  <header class="portal-header">
+    <h1>MOK Avatar Designer</h1>
+    <div class="header-controls">
+      <button id="preview-btn" class="btn">Preview in Debrief</button>
+      <button id="export-btn" class="btn btn-primary">Export Config</button>
+    </div>
+  </header>
+
+  <main class="designer-main">
+    <!-- Left Panel: Controls -->
+    <aside class="controls-panel">
+      
+      <!-- Theme Section -->
+      <section class="control-section">
+        <h3>Theme Colors</h3>
+        <div class="color-pickers">
+          <div class="picker-group">
+            <label>Side 1 (Red)</label>
+            <input type="color" id="side1-color-a" value="#ff6d70">
+            <input type="color" id="side1-color-b" value="#ff6d70">
+          </div>
+          <div class="picker-group">
+            <label>Side 2 (Yellow)</label>
+            <input type="color" id="side2-color-a" value="#ffe600">
+            <input type="color" id="side2-color-b" value="#ffe600">
+          </div>
+          <div class="picker-group">
+            <label>Side 3 (Cyan)</label>
+            <input type="color" id="side3-color-a" value="#6cffd6">
+            <input type="color" id="side3-color-b" value="#6cffd6">
+          </div>
+          <div class="picker-group">
+            <label>Shadow</label>
+            <input type="color" id="shadow-color" value="#ff6d70">
+          </div>
+        </div>
+        <div class="preset-themes">
+          <button class="preset-btn" data-theme="phosphor">Phosphor</button>
+          <button class="preset-btn" data-theme="amber">Amber</button>
+          <button class="preset-btn" data-theme="silver">Silver</button>
+          <button class="preset-btn" data-theme="panther">Panther</button>
+          <button class="preset-btn" data-theme="pentagram">Pentagram</button>
+        </div>
+      </section>
+
+      <!-- Animation Section -->
+      <section class="control-section">
+        <h3>Animation</h3>
+        <div class="control-group">
+          <label>Spin Speed</label>
+          <input type="range" id="spin-speed" min="0" max="20" value="6">
+          <span class="value-display" id="spin-speed-val">6s</span>
+        </div>
+        <div class="control-group">
+          <label>Rotation X</label>
+          <input type="range" id="rotate-x" min="-90" max="90" value="-20">
+          <span class="value-display" id="rotate-x-val">-20°</span>
+        </div>
+        <div class="control-group">
+          <label>Tilt Amount</label>
+          <input type="range" id="tilt-amount" min="0" max="45" value="30">
+          <span class="value-display" id="tilt-amount-val">30°</span>
+        </div>
+      </section>
+
+      <!-- Emotion State Machine -->
+      <section class="control-section">
+        <h3>Emotional State</h3>
+        <div class="emotion-grid">
+          <button class="emotion-btn active" data-emotion="neutral">Neutral</button>
+          <button class="emotion-btn" data-emotion="happy">Happy</button>
+          <button class="emotion-btn" data-emotion="alert">Alert</button>
+          <button class="emotion-btn" data-emotion="angry">Angry</button>
+          <button class="emotion-btn" data-emotion="sad">Sad</button>
+          <button class="emotion-btn" data-emotion="suspicious">Suspicious</button>
+        </div>
+        <div class="emotion-settings">
+          <div class="control-group">
+            <label>Pulse Intensity</label>
+            <input type="range" id="pulse-intensity" min="0" max="100" value="50">
+          </div>
+          <div class="control-group">
+            <label>Shake Amount</label>
+            <input type="range" id="shake-amount" min="0" max="20" value="0">
+          </div>
+        </div>
+      </section>
+
+      <!-- Speech Pattern -->
+      <section class="control-section">
+        <h3>Speech Pattern</h3>
+        <div class="control-group">
+          <label>Tooltip Animation</label>
+          <select id="tooltip-anim">
+            <option value="none">None</option>
+            <option value="bounce">Bounce</option>
+            <option value="pulse">Pulse</option>
+            <option value="wave">Wave</option>
+            <option value="glitch">Glitch</option>
+            <option value="typewriter">Typewriter</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Speech Rate</label>
+          <input type="range" id="speech-rate" min="50" max="200" value="100">
+          <span class="value-display" id="speech-rate-val">1.0x</span>
+        </div>
+        <div class="control-group">
+          <label>Pitch</label>
+          <input type="range" id="speech-pitch" min="50" max="150" value="100">
+          <span class="value-display" id="speech-pitch-val">1.0x</span>
+        </div>
+      </section>
+
+      <!-- Size & Scale -->
+      <section class="control-section">
+        <h3>Size</h3>
+        <div class="control-group">
+          <label>Scale</label>
+          <input type="range" id="avatar-scale" min="50" max="200" value="100">
+          <span class="value-display" id="avatar-scale-val">100%</span>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- Center: Preview -->
+    <div class="preview-area">
+      <div class="preview-container">
+        <div id="avatar-preview" class="pyramid-loader">
+          <div class="wrapper">
+            <span class="side side1"></span>
+            <span class="side side2"></span>
+            <span class="side side3"></span>
+            <span class="side side4"></span>
+            <span class="shadow"></span>
+          </div>
+        </div>
+      </div>
+      <div class="preview-info">
+        <span id="current-state">State: neutral</span>
+        <span id="preview-dimensions">300×300</span>
+      </div>
+    </div>
+
+    <!-- Right Panel: Output -->
+    <aside class="output-panel">
+      <h3>Generated CSS</h3>
+      <textarea id="css-output" readonly></textarea>
+      <h3>State Config</h3>
+      <textarea id="config-output" readonly></textarea>
+      <div class="output-actions">
+        <button id="copy-css" class="btn">Copy CSS</button>
+        <button id="copy-config" class="btn">Copy Config</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast" hidden>Copied to clipboard!</div>
+
+  <script src="../js/mok-avatar-designer.js"></script>
+</body>
+</html>
