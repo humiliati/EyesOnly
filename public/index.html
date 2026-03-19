@@ -47,6 +47,7 @@
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260316a">
   <link rel="stylesheet" href="css/terminal-polish.css?v=20260318a">
+  <link rel="stylesheet" href="css/mok-pyramid.css?v=20260318a">
 
   <!-- Prevent text selection for immersion -->
   <style>
@@ -340,22 +341,16 @@
                 </div>
               </div>
               <div class="debrief-screen" id="debrief-screen">
-                <button id="mok-avatar" class="mok-avatar idle" type="button" aria-label="MOK avatar; click to ping advisory link">
-                  <svg viewBox="0 0 220 120" class="mok-avatar-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="mokDebriefGlow" x1="0" x2="1">
-                        <stop offset="0" stop-color="#1cff9b" stop-opacity="0.85"/>
-                        <stop offset="1" stop-color="#0d3f22" stop-opacity="0.65"/>
-                      </linearGradient>
-                    </defs>
-                    <g transform="translate(110,60)" class="mok-avatar-glyph">
-                      <path d="M-65 18 L0 -68 L65 18 Z" fill="none" stroke="url(#mokDebriefGlow)" stroke-width="4" stroke-linejoin="round" opacity="0.85"/>
-                      <path d="M0 -58 L-20 22 L20 22 Z" fill="#21ff90" opacity="0.75" class="mok-avatar-core"/>
-                      <line x1="0" y1="-78" x2="0" y2="-108" stroke="url(#mokDebriefGlow)" stroke-width="3" opacity="0.5"/>
-                      <line x1="0" y1="34" x2="0" y2="84" stroke="url(#mokDebriefGlow)" stroke-width="3" opacity="0.5"/>
-                    </g>
-                  </svg>
-                </button>
+                <!-- MOK 3D Pyramid Avatar -->
+                <div id="mok-avatar" class="mok-pyramid-loader" role="button" tabindex="0" aria-label="MOK avatar">
+                  <div class="mok-pyramid-wrapper" id="mok-pyramid-wrapper">
+                    <span class="mok-pyramid-side mok-side-1"></span>
+                    <span class="mok-pyramid-side mok-side-2"></span>
+                    <span class="mok-pyramid-side mok-side-3"></span>
+                    <span class="mok-pyramid-side mok-side-4"></span>
+                    <span class="mok-pyramid-shadow"></span>
+                  </div>
+                </div>
               </div>
             </div>
           </aside>

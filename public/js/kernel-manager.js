@@ -567,46 +567,35 @@ const KernelManager = (function () {
    * Sync MOK triangle color to kernel button status color
    */
   function _syncMOKToKernelButton() {
-    // Check if MOK visual engine is available
-    if (typeof MOKVisualEngine === 'undefined' || !MOKVisualEngine.setCustomGlowColors) {
-      return;
-    }
+    // Drive the 3D pyramid avatar via CSS state classes
+    const avatar = document.getElementById('mok-avatar');
+    if (!avatar) return;
 
-    const btn = document.querySelector('button[data-action="kernel"]');
-    if (!btn) return;
-
-    // Map kernel state to MOK colors
-    let primaryColor = null;
-    let secondaryColor = null;
-    let pulseSpeed = null;
+    // Remove all kernel state classes
+    avatar.classList.remove('mok-state-kernel-connected', 'mok-state-kernel-active', 'mok-state-kernel-error');
 
     if (_state === STATES.CONNECTED) {
-      // Connected: Use green tones
-      primaryColor = '#00FF88';  // Bright green
-      secondaryColor = '#00CC66'; // Mid green
-      pulseSpeed = 3000;
+      avatar.classList.add('mok-state-kernel-connected');
     } else if (_state === STATES.ACTIVE_RUN) {
-      // Active run: Bright cyan/green
-      primaryColor = '#00FFCC';  // Cyan-green
-      secondaryColor = '#00FFAA'; // Bright green
-      pulseSpeed = 1000;  // Faster pulse
+      avatar.classList.add('mok-state-kernel-active');
     } else if (_state === STATES.ERROR) {
-      // Error: Red tones
-      primaryColor = '#FF4444';
-      secondaryColor = '#CC0000';
-      pulseSpeed = 500;  // Rapid pulse
-    } else if (_state === STATES.CONNECTING) {
-      // Connecting: Yellow/orange
-      primaryColor = '#FFCC00';
-      secondaryColor = '#FF8800';
-      pulseSpeed = 2000;
-    } else {
-      // Disconnected: Use default (don't override)
-      return;
+      avatar.classList.add('mok-state-kernel-error');
     }
+    // DISCONNECTED / CONNECTING: no override, pyramid uses default theme colors
 
-    // Apply colors to MOK
-    MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
+    // Also drive legacy MOKVisualEngine if loaded (backward compat)
+    if (typeof MOKVisualEngine !== 'undefined' && MOKVisualEngine.setCustomGlowColors) {
+      const colorMap = {
+        CONNECTED: ['#00FF88', '#00CC66', 3000],
+        ACTIVE_RUN: ['#00FFCC', '#00FFAA', 1000],
+        ERROR: ['#FF4444', '#CC0000', 500],
+        CONNECTING: ['#FFCC00', '#FF8800', 2000],
+      };
+      const colors = colorMap[_state];
+      if (colors) {
+        MOKVisualEngine.setCustomGlowColors(colors[0], colors[1], colors[2]);
+      }
+    }
   }
 
   /**

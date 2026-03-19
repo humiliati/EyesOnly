@@ -11,15 +11,25 @@
     if (interject && text) interject.textContent = text;
   }
 
+  // All MOK state classes (old SVG + new pyramid)
+  var ALL_STATES = ['idle', 'typing', 'output', 'active',
+    'mok-state-idle', 'mok-state-typing', 'mok-state-output',
+    'mok-state-active', 'mok-state-ping', 'mok-state-combat',
+    'mok-state-kernel-connected', 'mok-state-kernel-active', 'mok-state-kernel-error'];
+
   function setAvatarState(state, message, ttl) {
     if (!avatar) return;
-    avatar.classList.remove('idle', 'typing', 'output', 'active');
+    // Remove all state classes
+    for (var i = 0; i < ALL_STATES.length; i++) avatar.classList.remove(ALL_STATES[i]);
+    // Add both old-style and new pyramid-style class
     avatar.classList.add(state || 'idle');
+    avatar.classList.add('mok-state-' + (state || 'idle'));
     updateInterject(message);
     if (interjectTimer) clearTimeout(interjectTimer);
     interjectTimer = window.setTimeout(function () {
-      avatar.classList.remove('typing', 'output', 'active');
+      for (var j = 0; j < ALL_STATES.length; j++) avatar.classList.remove(ALL_STATES[j]);
       avatar.classList.add('idle');
+      avatar.classList.add('mok-state-idle');
     }, ttl || decayMs);
   }
 
@@ -33,8 +43,8 @@
 
   if (avatar) {
     avatar.addEventListener('click', function (e) {
-      e.stopPropagation(); // Prevent debrief window expansion when clicking MOK
-      setAvatarState('active', 'MOK is processing...', 1700);
+      e.stopPropagation();
+      setAvatarState('ping', 'MOK is processing...', 1200);
     });
     avatar.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {

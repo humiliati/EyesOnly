@@ -1,0 +1,204 @@
+/* ============================================================
+   MOK 3D PYRAMID AVATAR — CSS-only spinning pyramid
+   ============================================================
+   Theme-aware: reads --phosphor, --mok-color-1/2/3 from themes.
+   State-driven: animation speed/colors change via .mok-state-* classes.
+   Source: adapted from uiverse.io/mRcOol7/happy-shrimp-77
+   ============================================================ */
+
+/* ---- Theme color mapping ---- */
+:root {
+  /* Default pyramid colors (phosphor theme) */
+  --mok-color-1: #1cff9b;  /* green — primary */
+  --mok-color-2: #ffe600;  /* gold — secondary */
+  --mok-color-3: #4a8aff;  /* blue — accent */
+  --mok-glow: rgba(28, 255, 155, 0.5);
+  --mok-spin-duration: 6s;
+}
+
+/* Theme overrides */
+body[data-theme="phosphor"] {
+  --mok-color-1: #1cff9b;
+  --mok-color-2: #ffe600;
+  --mok-color-3: #4a8aff;
+  --mok-glow: rgba(28, 255, 155, 0.5);
+}
+body[data-theme="silver"] {
+  --mok-color-1: #b0c4de;
+  --mok-color-2: #e0e8f0;
+  --mok-color-3: #6090c0;
+  --mok-glow: rgba(176, 196, 222, 0.5);
+}
+body[data-theme="amber"] {
+  --mok-color-1: #ffb000;
+  --mok-color-2: #ff6b35;
+  --mok-color-3: #ffd700;
+  --mok-glow: rgba(255, 176, 0, 0.5);
+}
+body[data-theme="panther"] {
+  --mok-color-1: #ff3090;
+  --mok-color-2: #00ffcc;
+  --mok-color-3: #cc44ff;
+  --mok-glow: rgba(255, 48, 144, 0.5);
+}
+
+/* ---- Container ---- */
+.mok-pyramid-loader {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  perspective: 400px;
+  cursor: pointer;
+  overflow: visible;
+}
+
+/* ---- Spinning wrapper ---- */
+.mok-pyramid-wrapper {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  transform-style: preserve-3d;
+  transform: rotateX(-20deg);
+  animation: mok-spin var(--mok-spin-duration, 6s) linear infinite;
+}
+
+@keyframes mok-spin {
+  100% { transform: rotateX(-20deg) rotateY(360deg); }
+}
+
+/* ---- Pyramid faces ---- */
+.mok-pyramid-side {
+  width: 70px;
+  height: 70px;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+  transform-origin: center top;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  box-shadow: 0 0 10px var(--mok-glow);
+  transition: background 0.5s ease, box-shadow 0.5s ease;
+}
+
+.mok-side-1 {
+  transform: rotateZ(-30deg) rotateY(90deg);
+  background: conic-gradient(var(--mok-color-1), var(--mok-color-1), var(--mok-color-2), var(--mok-color-2));
+}
+.mok-side-2 {
+  transform: rotateZ(30deg) rotateY(90deg);
+  background: conic-gradient(var(--mok-color-2), var(--mok-color-2), var(--mok-color-3), var(--mok-color-3));
+}
+.mok-side-3 {
+  transform: rotateX(30deg);
+  background: conic-gradient(var(--mok-color-3), var(--mok-color-3), var(--mok-color-1), var(--mok-color-1));
+}
+.mok-side-4 {
+  transform: rotateX(-30deg);
+  background: conic-gradient(var(--mok-color-1), var(--mok-color-1), var(--mok-color-2), var(--mok-color-2));
+}
+
+/* ---- Shadow underneath ---- */
+.mok-pyramid-shadow {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(var(--mok-glow), rgba(0, 0, 0, 0.2));
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+  transform: rotateX(90deg) translateZ(-40px);
+  filter: blur(8px);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--mok-glow);
+  transition: background 0.5s ease, box-shadow 0.5s ease;
+}
+
+/* ---- State-driven overrides ---- */
+
+/* Idle: default gentle spin (6s) */
+.mok-pyramid-loader.mok-state-idle {
+  --mok-spin-duration: 6s;
+}
+
+/* Typing: faster spin */
+.mok-pyramid-loader.mok-state-typing {
+  --mok-spin-duration: 3s;
+}
+
+/* Output: pulse glow */
+.mok-pyramid-loader.mok-state-output {
+  --mok-spin-duration: 4s;
+}
+.mok-pyramid-loader.mok-state-output .mok-pyramid-side {
+  box-shadow: 0 0 20px var(--mok-glow);
+}
+
+/* Active: fast spin + bright glow */
+.mok-pyramid-loader.mok-state-active {
+  --mok-spin-duration: 1.5s;
+}
+.mok-pyramid-loader.mok-state-active .mok-pyramid-side {
+  box-shadow: 0 0 30px var(--mok-glow);
+}
+
+/* Kernel connected: green override */
+.mok-pyramid-loader.mok-state-kernel-connected {
+  --mok-color-1: #00FF88;
+  --mok-color-2: #00CC66;
+  --mok-color-3: #00FFAA;
+  --mok-glow: rgba(0, 255, 136, 0.6);
+  --mok-spin-duration: 4s;
+}
+
+/* Kernel active run: cyan-green, fast */
+.mok-pyramid-loader.mok-state-kernel-active {
+  --mok-color-1: #00FFCC;
+  --mok-color-2: #00FFAA;
+  --mok-color-3: #00FF88;
+  --mok-glow: rgba(0, 255, 204, 0.7);
+  --mok-spin-duration: 1s;
+}
+
+/* Kernel error: red warning */
+.mok-pyramid-loader.mok-state-kernel-error {
+  --mok-color-1: #FF4444;
+  --mok-color-2: #CC0000;
+  --mok-color-3: #FF6666;
+  --mok-glow: rgba(255, 68, 68, 0.7);
+  --mok-spin-duration: 0.5s;
+}
+
+/* Combat: warm aggressive colors */
+.mok-pyramid-loader.mok-state-combat {
+  --mok-color-1: #ff6d70;
+  --mok-color-2: #ffe600;
+  --mok-color-3: #ff3030;
+  --mok-glow: rgba(255, 109, 112, 0.6);
+  --mok-spin-duration: 2s;
+}
+
+/* Click interaction: brief fast spin */
+.mok-pyramid-loader.mok-state-ping {
+  --mok-spin-duration: 0.8s;
+}
+.mok-pyramid-loader.mok-state-ping .mok-pyramid-side {
+  box-shadow: 0 0 40px var(--mok-glow);
+}
+
+/* ---- Responsive sizing ---- */
+@media (max-width: 768px) {
+  .mok-pyramid-wrapper {
+    width: 50px;
+    height: 50px;
+  }
+  .mok-pyramid-side {
+    width: 50px;
+    height: 50px;
+  }
+  .mok-pyramid-shadow {
+    width: 42px;
+    height: 42px;
+  }
+}
