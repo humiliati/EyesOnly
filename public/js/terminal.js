@@ -98,18 +98,21 @@ const Terminal = (function () {
       });
     }
 
-    // Focus hidden input on tap/click for mobile keyboard
+    // Focus hidden input on tap/click for mobile keyboard — only when
+    // the tap lands inside the terminal area (log-frame, terminal output,
+    // input-line).  Taps on header, control-rail, overlays, or game UI
+    // should NOT pop the keyboard.
     document.addEventListener('click', function (e) {
       if (_inputEnabled && !_mobileKeyboardSuppressed) {
-        // Don't focus keyboard if tapping on Gone Rogue grid or cards
         if (_isEventInRogueUI(e)) return;
+        if (!_isEventInTerminalArea(e)) return;
         _focusMobileInput();
       }
     });
     document.addEventListener('touchstart', function (e) {
       if (_inputEnabled && !_mobileKeyboardSuppressed) {
-        // Don't focus keyboard if tapping on Gone Rogue grid or cards
         if (_isEventInRogueUI(e)) return;
+        if (!_isEventInTerminalArea(e)) return;
         _focusMobileInput();
       }
     });
@@ -145,20 +148,42 @@ const Terminal = (function () {
       return true;
     }
 
-    // 2. Known game-UI containers
+    // 2. Known game-UI containers and overlay widgets
     while (target) {
       if (target.id === 'rogue-grid-mobile' ||
           target.id === 'rogue-cards-mobile' ||
           target.id === 'splash-screen' ||
           target.id === 'mok-interjections' ||
           target.id === 'control-rail' ||
-          target.id === 'mok-header') {
+          target.id === 'mok-header' ||
+          target.id === 'nch-porthole-fan') {
         return true;
       }
       if (target.classList && (target.classList.contains('rogue-grid-mobile') ||
-                               target.classList.contains('rogue-cards-mobile'))) {
+                               target.classList.contains('rogue-cards-mobile') ||
+                               target.classList.contains('nch-overlay-wrapper') ||
+                               target.classList.contains('nch-porthole-fan'))) {
         return true;
       }
+      target = target.parentElement;
+    }
+    return false;
+  }
+
+  /**
+   * Check if the tap/click landed inside the terminal text area — the
+   * only zone where popping the on-screen keyboard makes sense.
+   * Returns true for taps on .log-frame, #terminal, #input-line, or
+   * their children.  Everything else (header, control-rail, overlays)
+   * returns false so the keyboard stays down.
+   */
+  function _isEventInTerminalArea(e) {
+    var target = e.target;
+    if (!target) return false;
+    // Walk up the DOM looking for the terminal container
+    while (target) {
+      if (target.id === 'terminal' || target.id === 'input-line') return true;
+      if (target.classList && target.classList.contains('log-frame')) return true;
       target = target.parentElement;
     }
     return false;

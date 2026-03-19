@@ -409,10 +409,37 @@
     right: -4px;
   }
 
-  /* ALL card dimensions, nth-child stacking transforms, hover scales,
-     selected scales, and grid layouts are inherited directly from
-     splash-screen.css — no NCH-specific overrides. This keeps
-     both fans visually identical. */
+  /* Card dimensions and grid layout inherited from splash-screen.css.
+     Stacking transforms overridden here to fix 3D clipping: the
+     rotateY(-8deg) from splash-screen causes z-fighting when cards
+     are stacked vertically and the user interacts with them.
+     NCH flattens the Y rotation while keeping the vertical cascade. */
+
+  .nch-porthole-fan .splash-card-fan {
+    perspective: 900px;
+    transform-style: flat;  /* z-index takes priority over 3D depth */
+  }
+
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(1) {
+    transform: perspective(800px) rotateX(2deg) translateZ(0px);
+    z-index: 4;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(2) {
+    transform: perspective(800px) rotateX(2deg) translateY(-10px) translateX(6px);
+    z-index: 3;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(3) {
+    transform: perspective(800px) rotateX(2deg) translateY(-20px) translateX(12px);
+    z-index: 2;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card:nth-child(4) {
+    transform: perspective(800px) rotateX(2deg) translateY(-30px) translateX(18px);
+    z-index: 1;
+  }
+  .nch-porthole-fan .splash-dossier.coin-card.coin-card-hovered {
+    transform: perspective(800px) rotateX(1deg) translateY(-15px) translateX(0px) scale(1.03) !important;
+    z-index: 10 !important;
+  }
 }
 
 /* ── 8. PUZZLE BADGE (Phase 7) ─────────────────────────────

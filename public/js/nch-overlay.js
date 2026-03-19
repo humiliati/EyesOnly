@@ -762,9 +762,10 @@ var NchOverlay = (function () {
         if (_cardDrag.moved) {
           _endCardDrag(false);
         } else {
-          // Tap — treat as click → select mission
+          // Tap — select/hover the card (apply theme, visual highlight)
+          // Does NOT navigate. Only the BOOK/PLAY button navigates.
           _cardDrag = null;
-          _selectMission(cardEl);
+          _tapSelectCard(cardEl);
         }
       });
 
@@ -1405,6 +1406,46 @@ var NchOverlay = (function () {
       if (byId[idOrder[i]]) MISSIONS[i] = byId[idOrder[i]];
     }
     _saveCardOrder();
+  }
+
+  /**
+   * Tap-select a card: apply its theme + visual hover state.
+   * Does NOT navigate — only the BOOK/PLAY button or drag-to-edge navigates.
+   * This gives mobile users a way to preview themes and interact with cards
+   * without accidentally triggering navigation.
+   */
+  function _tapSelectCard(cardEl) {
+    var missionId = cardEl.dataset.mission;
+
+    // Clear any existing hover/selection
+    var allCards = _fanPanel ? _fanPanel.querySelectorAll('.splash-dossier') : [];
+    allCards.forEach(function (c) { c.classList.remove('coin-card-hovered'); });
+
+    // Hover this card (raises it visually, shows full detail)
+    cardEl.classList.add('coin-card-hovered');
+    _hoveredCard = cardEl;
+
+    // Easter egg check: if amber (scenario-2) is in the last card position
+    // and partner card is tapped, apply white theme (no navigation)
+    var selectedTheme = THEME_MAP[missionId] || 'phosphor';
+    var lastMission = MISSIONS.length > 0 ? MISSIONS[MISSIONS.length - 1] : null;
+    if (missionId === 'partner' && lastMission && lastMission.id === 'scenario-2') {
+      selectedTheme = 'white';
+    }
+
+    // Apply theme (visual preview — user can browse themes by tapping cards)
+    if (typeof ThemeWidget !== 'undefined' && ThemeWidget.apply) {
+      ThemeWidget.apply(selectedTheme);
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+    } else {
+      document.body.setAttribute('data-theme', selectedTheme);
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+      try { localStorage.setItem('eyesonly_theme', selectedTheme); } catch (e) {}
+    }
+
+    // Hover SFX
+    var idx = parseInt(cardEl.dataset.index, 10) || 0;
+    _playAudio(HOVER_SOUNDS[idx % HOVER_SOUNDS.length], { volume: 0.5 });
   }
 
   function _selectMission(cardEl) {

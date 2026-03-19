@@ -2695,32 +2695,11 @@ body.amber-mode #scanlines::after {
     font-size: 1em;
   }
 
-  /* Accountability ticker becomes nested dot indicator */
-  .accountability-indicator {
-    position: absolute;
-    right: -4px;
-    top: -4px;
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--bg);
-    border-radius: 50%;
-    padding: 0;
-    background: rgba(6, 14, 8, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  /* Accountability indicator (AWOL) — bar layout defined in UX patch
+     block below (line ~4771). These legacy overrides removed to prevent
+     cascade conflicts; the !important UX patch rules are canonical. */
   .mok-header-right {
     position: relative;
-  }
-  .accountability-label {
-    display: none;
-  }
-  .accountability-icon {
-    font-size: 0.9em;
-  }
-  .awol-chevron {
-    display: none;
   }
 
   /* AWOL dropdown adjustments for mobile */
@@ -2781,18 +2760,8 @@ body.amber-mode #scanlines::after {
     font-size: 0.55em;
   }
   
-  body.mode-gone-rogue .accountability-indicator,
-  body.in-gone-rogue .accountability-indicator {
-    width: 12px;
-    height: 12px;
-    right: -2px;
-    top: -2px;
-  }
-  
-  body.mode-gone-rogue .accountability-icon,
-  body.in-gone-rogue .accountability-icon {
-    font-size: 0.7em;
-  }
+  /* Accountability indicator (AWOL) — canonical rules in UX patch block (~4771).
+     Gone-rogue overrides removed: the !important bar layout applies uniformly. */
 }
 
 /* --- Landscape Mobile (height < 500px) --- */
@@ -3190,8 +3159,9 @@ body.in-gone-rogue #log-column {
   body.keyboard-visible #mok-header.monitor-header {
     padding: 2px 6px;
     min-height: 24px;
+    height: auto;  /* release UX patch's min-height: 44px so keyboard compaction works */
     gap: 4px;
-    transition: all 0.2s ease;
+    transition: padding 0.2s ease, gap 0.15s ease;
   }
 
   body.keyboard-visible .mok-header-title {
@@ -3217,15 +3187,13 @@ body.in-gone-rogue #log-column {
     display: none; /* Hide label to save space */
   }
 
-  body.keyboard-visible .accountability-indicator {
-    width: 10px;
-    height: 10px;
-  }
+  /* Accountability indicator keyboard override removed — UX patch
+     at ~4771 uses !important bar layout that applies uniformly. */
 
-  /* Minimize control rail when keyboard visible */
+  /* Minimize control rail when keyboard visible — match or tighten base */
   body.keyboard-visible #control-rail {
-    padding: 4px;
-    gap: 4px;
+    padding: 2px;
+    gap: 2px;
     min-height: auto;
   }
 
@@ -4787,7 +4755,7 @@ body.cascade-active {
   .accountability-icon,
   body.mode-gone-rogue .accountability-icon,
   body.in-gone-rogue .accountability-icon { font-size: 10px !important; }
-  #mok-header.monitor-header { height: 44px; padding: 4px 8px; gap: 4px; align-items: center; }
+  #mok-header.monitor-header { min-height: 44px; padding: 4px 8px; gap: 4px; align-items: center; }
 }
 
 /* Show AWOL label on tablet */
