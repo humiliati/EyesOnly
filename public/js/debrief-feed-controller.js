@@ -424,24 +424,44 @@ const DebriefFeedController = (function() {
 
       if (state === 'maximized') {
         win.classList.add('debrief-maximized');
-        // Clamp maximized overlay within viewport
-        win.style.left = '0';
-        win.style.top = '0';
-        win.style.right = '';
-        win.style.bottom = '';
+        // Listen for background taps to dismiss
+        _addBackgroundDismiss();
         try { window.dispatchEvent(new CustomEvent('debrief:maximized')); } catch (e) {}
       } else {
-        // normal — restore default width
+        // normal — restore default width, clear any drag-zoom override
         _applyPct(DEFAULT_PCT);
-        // Clear any inline position overrides from maximized drag
-        win.style.left = '';
-        win.style.top = '';
-        win.style.right = '';
-        win.style.bottom = '';
-        win.style.width = '';
-        win.style.height = '';
+        win.style.removeProperty('--debrief-zoom');
+        _removeBackgroundDismiss();
         try { window.dispatchEvent(new CustomEvent('debrief:restored')); } catch (e) {}
       }
+    }
+
+    // ── Background tap to dismiss maximized debrief ──
+    // When maximized, tapping anything OUTSIDE the debrief-window returns to normal.
+    function _onBackgroundTap(ev) {
+      if (_debriefState !== 'maximized') return;
+      // Walk up from target: if inside debrief-window, ignore
+      var el = ev.target;
+      while (el) {
+        if (el === win) return; // tap was inside debrief — don't dismiss
+        el = el.parentElement;
+      }
+      // Tap was on background — dismiss
+      _setDebriefState('normal');
+    }
+
+    function _addBackgroundDismiss() {
+      // Use capture phase + slight delay so the maximizing click doesn't
+      // immediately dismiss
+      setTimeout(function() {
+        if (_debriefState === 'maximized') {
+          document.addEventListener('pointerdown', _onBackgroundTap, true);
+        }
+      }, 200);
+    }
+
+    function _removeBackgroundDismiss() {
+      document.removeEventListener('pointerdown', _onBackgroundTap, true);
     }
 
     // Expose state setter for video system and external callers
@@ -454,10 +474,12 @@ const DebriefFeedController = (function() {
     var _tapStartY = 0;
     var _dragging = false;
 
-    // ── Maximized-state drag: vertical drag on label resizes the overlay ──
+    // ── Maximized-state drag: vertical drag on label changes zoom level ──
     var _maxDragStartY = 0;
-    var _maxDragStartH = 0;
-    var MAX_DRAG_THRESHOLD = 8; // px before drag kicks in
+    var _maxDragStartZoom = 1.35;
+    var ZOOM_MIN = 1.0;   // normal = no zoom (back to normal state effectively)
+    var ZOOM_MAX = 2.0;   // max zoom
+    var MAX_DRAG_THRESHOLD = 8;
 
     function _onMaxDragMove(ev) {
       if (!_dragging) return;
@@ -465,19 +487,11 @@ const DebriefFeedController = (function() {
       if (Math.abs(dy) < MAX_DRAG_THRESHOLD && !_dragMoved) return;
       _dragMoved = true;
 
-      // Dragging down from top = grow; dragging up = shrink
-      var newH = Math.max(120, Math.min(window.innerHeight, _maxDragStartH + dy));
-      win.style.height = newH + 'px';
-
-      // Clamp: don't let the bottom edge go off-screen
-      var rect = win.getBoundingClientRect();
-      if (rect.bottom > window.innerHeight) {
-        win.style.height = (window.innerHeight - rect.top) + 'px';
-      }
-      // Clamp: don't let right edge go off-screen
-      if (rect.right > window.innerWidth) {
-        win.style.width = (window.innerWidth - rect.left) + 'px';
-      }
+      // Dragging down = zoom in; dragging up = zoom out
+      var h = window.innerHeight || 1;
+      var delta = (dy / (h * 0.3)) * (ZOOM_MAX - ZOOM_MIN);
+      var newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, _maxDragStartZoom + delta));
+      win.style.setProperty('--debrief-zoom', newZoom.toFixed(3));
 
       ev.preventDefault();
     }
@@ -487,6 +501,12 @@ const DebriefFeedController = (function() {
       document.removeEventListener('pointermove', _onMaxDragMove);
       document.removeEventListener('pointerup', _onMaxDragUp);
       document.removeEventListener('pointercancel', _onMaxDragUp);
+
+      // If user dragged zoom below threshold, snap back to normal
+      var currentZoom = parseFloat(win.style.getPropertyValue('--debrief-zoom')) || 1.35;
+      if (currentZoom <= 1.05) {
+        _setDebriefState('normal');
+      }
     }
 
     label.addEventListener('pointerdown', function(ev) {
@@ -494,11 +514,13 @@ const DebriefFeedController = (function() {
       _tapStartY = ev.clientY || 0;
       _dragMoved = false;
 
-      // Only enable drag-to-resize in maximized state
+      // Only enable drag-to-zoom in maximized state
       if (_debriefState === 'maximized') {
         _dragging = true;
         _maxDragStartY = ev.clientY;
-        _maxDragStartH = win.offsetHeight || window.innerHeight;
+        _maxDragStartZoom = parseFloat(win.style.getPropertyValue('--debrief-zoom'))
+          || parseFloat(getComputedStyle(win).getPropertyValue('--debrief-zoom'))
+          || 1.35;
         try { label.setPointerCapture(ev.pointerId); } catch (e) {}
         document.addEventListener('pointermove', _onMaxDragMove, { passive: false });
         document.addEventListener('pointerup', _onMaxDragUp);
@@ -514,14 +536,11 @@ const DebriefFeedController = (function() {
     });
 
     // ── Tap-to-toggle: normal ↔ maximized ──
-    // Tap on the dead space in the header (between "debrief feed" label and
-    // play/volume widgets) toggles maximized. Tapping the label text also
-    // toggles. The only interaction we want to PREVENT is accidentally
-    // toggling while dragging.
+    // Tap on dead space in debrief header toggles. The only interaction
+    // we PREVENT is accidentally toggling while dragging.
     label.addEventListener('click', function(ev) {
       if (_dragMoved) return;
 
-      // Two-state toggle: normal ↔ maximized
       if (_debriefState === 'normal') {
         _setDebriefState('maximized');
       } else {
@@ -1432,6 +1451,238 @@ const DebriefFeedController = (function() {
         toggleDisplay();
       });
     }
+
+    // ── MOK avatar interactivity ──
+    _setupMokInteraction();
+  }
+
+  /* ============================================================
+     MOK AVATAR INTERACTIVITY
+     SM64-inspired poke/squish/spin on the CSS 3D pyramid.
+     Mobile-first: single-tap, double-tap, tap+drag.
+     QuadStick accessible: Enter/Space keys.
+     ============================================================ */
+  function _setupMokInteraction() {
+    var loader = document.getElementById('mok-avatar');
+    if (!loader || loader._mokInteractionBound) return;
+    loader._mokInteractionBound = true;
+
+    var wrapper = loader.querySelector('.mok-pyramid-wrapper');
+    if (!wrapper) return;
+
+    // Interaction classes (only one active at a time)
+    var POKE_CLASSES = ['mok-poke-down', 'mok-poke-up', 'mok-spin-burst',
+                        'mok-dragging', 'mok-drag-release', 'mok-squish'];
+
+    function _clearPoke() {
+      for (var i = 0; i < POKE_CLASSES.length; i++) {
+        loader.classList.remove(POKE_CLASSES[i]);
+      }
+    }
+
+    // ── State ──
+    var _pointerDown = false;
+    var _startX = 0;
+    var _startY = 0;
+    var _dragActive = false;
+    var _dragAngle = 0;        // cumulative Y rotation during drag (degrees)
+    var _lastTapTime = 0;
+    var _holdTimer = null;
+    var _pokeTimer = null;
+    var DRAG_THRESHOLD = 8;    // px before drag activates (mobile-friendly)
+    var DOUBLE_TAP_MS = 350;   // max gap for double-tap
+    var HOLD_MS = 400;         // ms before long-press squish activates
+
+    // ── Poke: determine direction from tap position ──
+    function _pokeFromTap(clientY) {
+      var rect = loader.getBoundingClientRect();
+      var midY = rect.top + rect.height / 2;
+      _clearPoke();
+      // Force reflow so animation restarts
+      void loader.offsetWidth;
+      if (clientY < midY) {
+        loader.classList.add('mok-poke-down');
+      } else {
+        loader.classList.add('mok-poke-up');
+      }
+      // Auto-clear after animation completes (600ms)
+      if (_pokeTimer) clearTimeout(_pokeTimer);
+      _pokeTimer = setTimeout(function() {
+        _clearPoke();
+        // Re-enable idle spin by ensuring no interaction class is set
+      }, 650);
+    }
+
+    // ── Spin burst (double-tap) ──
+    function _spinBurst() {
+      _clearPoke();
+      void loader.offsetWidth;
+      loader.classList.add('mok-spin-burst');
+      if (_pokeTimer) clearTimeout(_pokeTimer);
+      _pokeTimer = setTimeout(function() {
+        _clearPoke();
+      }, 850);
+    }
+
+    // ── Long-press squish ──
+    function _startSquish() {
+      _clearPoke();
+      loader.classList.add('mok-squish');
+    }
+    function _releaseSquish(clientY) {
+      loader.classList.remove('mok-squish');
+      // Boing back: use poke direction based on where the finger was
+      _pokeFromTap(clientY);
+    }
+
+    // ── Drag spin ──
+    function _startDrag() {
+      _dragActive = true;
+      _clearPoke();
+      loader.classList.add('mok-dragging');
+      // Get current rotation from the wrapper's computed transform
+      _dragAngle = _getCurrentYRotation();
+    }
+
+    function _moveDrag(clientX) {
+      if (!_dragActive) return;
+      var dx = clientX - _startX;
+      // Map horizontal drag to Y rotation: 200px = 360 degrees
+      var angle = _dragAngle + (dx / 200) * 360;
+      loader.style.setProperty('--mok-drag-y', angle.toFixed(1) + 'deg');
+    }
+
+    function _endDrag(clientX) {
+      if (!_dragActive) return;
+      _dragActive = false;
+      loader.classList.remove('mok-dragging');
+
+      // Calculate momentum from last drag delta
+      var dx = clientX - _startX;
+      var momentum = (dx / 200) * 360;
+      var finalAngle = _dragAngle + momentum + (momentum * 0.3); // coast 30% extra
+      loader.style.setProperty('--mok-drag-y', finalAngle.toFixed(1) + 'deg');
+
+      // Apply coast animation class
+      loader.classList.add('mok-drag-release');
+
+      // After coast, return to idle spin
+      if (_pokeTimer) clearTimeout(_pokeTimer);
+      _pokeTimer = setTimeout(function() {
+        _clearPoke();
+        loader.style.removeProperty('--mok-drag-y');
+      }, 1300);
+    }
+
+    // ── Get current Y rotation from computed transform matrix ──
+    function _getCurrentYRotation() {
+      try {
+        var cs = getComputedStyle(wrapper);
+        var tr = cs.transform || cs.webkitTransform || '';
+        if (tr && tr !== 'none') {
+          // Parse matrix3d or approximate from matrix
+          // For simplicity, use the drag variable if set
+          var dragVar = loader.style.getPropertyValue('--mok-drag-y');
+          if (dragVar) return parseFloat(dragVar) || 0;
+        }
+      } catch (e) {}
+      return 0;
+    }
+
+    // ── Pointer handlers ──
+    loader.addEventListener('pointerdown', function(ev) {
+      if (ev.button && ev.button !== 0) return; // left/touch only
+      _pointerDown = true;
+      _startX = ev.clientX;
+      _startY = ev.clientY;
+      _dragActive = false;
+
+      // Start hold timer for long-press squish
+      if (_holdTimer) clearTimeout(_holdTimer);
+      _holdTimer = setTimeout(function() {
+        if (_pointerDown && !_dragActive) {
+          _startSquish();
+        }
+      }, HOLD_MS);
+
+      try { loader.setPointerCapture(ev.pointerId); } catch (e) {}
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+
+    loader.addEventListener('pointermove', function(ev) {
+      if (!_pointerDown) return;
+      var dx = Math.abs(ev.clientX - _startX);
+      var dy = Math.abs(ev.clientY - _startY);
+
+      if (!_dragActive && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
+        // Cancel hold timer — this is a drag
+        if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+        // Cancel squish if active
+        loader.classList.remove('mok-squish');
+        _startDrag();
+      }
+
+      if (_dragActive) {
+        _moveDrag(ev.clientX);
+        ev.preventDefault();
+      }
+    }, { passive: false });
+
+    loader.addEventListener('pointerup', function(ev) {
+      if (!_pointerDown) return;
+      _pointerDown = false;
+      if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+
+      // If squishing, release with boing
+      if (loader.classList.contains('mok-squish')) {
+        _releaseSquish(ev.clientY);
+        return;
+      }
+
+      // If dragging, end with momentum
+      if (_dragActive) {
+        _endDrag(ev.clientX);
+        return;
+      }
+
+      // Tap (no drag) — check for double-tap
+      var now = Date.now();
+      if (now - _lastTapTime < DOUBLE_TAP_MS) {
+        _lastTapTime = 0;
+        _spinBurst();
+      } else {
+        _lastTapTime = now;
+        _pokeFromTap(ev.clientY);
+      }
+    });
+
+    loader.addEventListener('pointercancel', function() {
+      _pointerDown = false;
+      _dragActive = false;
+      if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+      _clearPoke();
+      loader.style.removeProperty('--mok-drag-y');
+    });
+
+    // ── Keyboard accessibility (QuadStick / Enter / Space) ──
+    loader.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Alternate between poke-down and spin-burst
+        if (loader.classList.contains('mok-poke-down') ||
+            loader.classList.contains('mok-poke-up')) {
+          _spinBurst();
+        } else {
+          _clearPoke();
+          void loader.offsetWidth;
+          loader.classList.add('mok-poke-down');
+          if (_pokeTimer) clearTimeout(_pokeTimer);
+          _pokeTimer = setTimeout(_clearPoke, 650);
+        }
+      }
+    });
   }
 
   /**

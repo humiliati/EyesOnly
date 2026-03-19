@@ -44,10 +44,17 @@
   if (avatar) {
     avatar.addEventListener('click', function (e) {
       e.stopPropagation();
+      // If DebriefFeedController has wired interactive poke/spin handlers,
+      // defer to those (they drive animation classes directly).
+      // Only fall back to the basic ping state when the interactive system
+      // hasn't bound yet (pre-controller init).
+      if (avatar._mokInteractionBound) return;
       setAvatarState('ping', 'MOK is processing...', 1200);
     });
     avatar.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
+        // Defer to interactive system if bound
+        if (avatar._mokInteractionBound) return;
         e.preventDefault();
         setAvatarState('active', 'MOK is processing...', 1700);
       }
@@ -57,12 +64,12 @@
   var debriefWindow = document.getElementById('debrief-window');
   if (debriefWindow) {
     debriefWindow.addEventListener('click', function (e) {
-      // Gone Rogue owns debrief behavior; don't toggle global "expanded" here.
+      // Gone Rogue owns debrief behavior via DebriefFeedController; don't toggle here.
       if (document.body && (document.body.classList.contains('mode-gone-rogue') || document.body.classList.contains('in-gone-rogue') || document.body.classList.contains('gone-rogue-active'))) {
         return;
       }
       // Only toggle expansion when it won't conflict with in-window UI.
-      // If the debrief is showing resources, clicks should interact with resources (cycle, select lines, etc.).
+      // If the debrief is showing resources, clicks should interact with resources.
       try {
         var display = (typeof DebriefFeedController !== 'undefined' && DebriefFeedController.getCurrentDisplay)
           ? DebriefFeedController.getCurrentDisplay()
@@ -77,12 +84,20 @@
         return;
       }
 
-      // Only toggle when clicking non-interactive chrome (avoid hijacking clicks on buttons/inputs)
+      // Only toggle when clicking non-interactive chrome (avoid hijacking buttons/inputs)
       if (e.target && (e.target.closest && e.target.closest('button, a, input, select, textarea'))) {
         return;
       }
 
-      debriefWindow.classList.toggle('expanded');
+      // Use the unified debrief-maximized class via DebriefFeedController if available,
+      // otherwise fall back to direct class toggle for pre-controller state.
+      if (typeof DebriefFeedController !== 'undefined' && DebriefFeedController._setDebriefState) {
+        var currentState = DebriefFeedController._getDebriefState();
+        DebriefFeedController._setDebriefState(currentState === 'maximized' ? 'normal' : 'maximized');
+      } else {
+        // Fallback: toggle debrief-maximized directly
+        debriefWindow.classList.toggle('debrief-maximized');
+      }
     });
   }
 

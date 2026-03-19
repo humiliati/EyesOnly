@@ -187,6 +187,89 @@ body[data-theme="panther"] {
   box-shadow: 0 0 40px var(--mok-glow);
 }
 
+/* ============================================================
+   INTERACTIVE POKE STATES — SM64-inspired squishy responses
+   Single-tap: poke from above/below → spring boing back
+   Double-tap: accelerated spin burst
+   Tap+drag: manual spin override (JS drives --mok-drag-y)
+   QuadStick: Enter/Space trigger poke-down
+   ============================================================ */
+
+/* ---- Poke down (tap on upper half) ---- */
+.mok-pyramid-loader.mok-poke-down .mok-pyramid-wrapper {
+  animation: mok-poke-down-boing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes mok-poke-down-boing {
+  0%   { transform: rotateX(-20deg) translateY(0) scaleY(1); }
+  18%  { transform: rotateX(-15deg) translateY(8px) scaleY(0.78) scaleX(1.12); }
+  40%  { transform: rotateX(-22deg) translateY(-5px) scaleY(1.1) scaleX(0.95); }
+  60%  { transform: rotateX(-19deg) translateY(2px) scaleY(0.96) scaleX(1.03); }
+  80%  { transform: rotateX(-20deg) translateY(-1px) scaleY(1.02); }
+  100% { transform: rotateX(-20deg) translateY(0) scaleY(1) scaleX(1); }
+}
+
+/* ---- Poke up (tap on lower half) ---- */
+.mok-pyramid-loader.mok-poke-up .mok-pyramid-wrapper {
+  animation: mok-poke-up-boing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes mok-poke-up-boing {
+  0%   { transform: rotateX(-20deg) translateY(0) scaleY(1); }
+  18%  { transform: rotateX(-25deg) translateY(-8px) scaleY(0.78) scaleX(1.12); }
+  40%  { transform: rotateX(-18deg) translateY(5px) scaleY(1.1) scaleX(0.95); }
+  60%  { transform: rotateX(-21deg) translateY(-2px) scaleY(0.96) scaleX(1.03); }
+  80%  { transform: rotateX(-20deg) translateY(1px) scaleY(1.02); }
+  100% { transform: rotateX(-20deg) translateY(0) scaleY(1) scaleX(1); }
+}
+
+/* ---- Spin burst (double-tap) ---- */
+.mok-pyramid-loader.mok-spin-burst .mok-pyramid-wrapper {
+  animation: mok-spin-burst 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes mok-spin-burst {
+  0%   { transform: rotateX(-20deg) rotateY(0deg); }
+  100% { transform: rotateX(-20deg) rotateY(720deg); }
+}
+/* Enhanced glow during burst */
+.mok-pyramid-loader.mok-spin-burst .mok-pyramid-side {
+  box-shadow: 0 0 35px var(--mok-glow);
+  transition: box-shadow 0.15s ease;
+}
+.mok-pyramid-loader.mok-spin-burst .mok-pyramid-shadow {
+  filter: blur(12px);
+  box-shadow: 0 0 40px var(--mok-glow);
+}
+
+/* ---- Drag spin (user manually spinning via pointer drag) ---- */
+/* When dragging, pause the idle animation and use JS-driven rotation */
+.mok-pyramid-loader.mok-dragging .mok-pyramid-wrapper {
+  animation: none !important;
+  transform: rotateX(-20deg) rotateY(var(--mok-drag-y, 0deg));
+  transition: none;
+}
+
+/* ---- Drag release (momentum coast) ---- */
+.mok-pyramid-loader.mok-drag-release .mok-pyramid-wrapper {
+  animation: none !important;
+  transform: rotateX(-20deg) rotateY(var(--mok-drag-y, 0deg));
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---- Squish (held press / long-press) ---- */
+.mok-pyramid-loader.mok-squish .mok-pyramid-wrapper {
+  animation: mok-squish-hold 0.3s ease forwards;
+}
+@keyframes mok-squish-hold {
+  0%   { transform: rotateX(-20deg) scaleY(1) scaleX(1); }
+  100% { transform: rotateX(-15deg) scaleY(0.7) scaleX(1.2); }
+}
+
+/* ---- Accessibility: focus-visible ring ---- */
+.mok-pyramid-loader:focus-visible {
+  outline: 2px solid var(--mok-color-1, #1cff9b);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
 /* ---- Responsive sizing ---- */
 @media (max-width: 768px) {
   .mok-pyramid-wrapper {

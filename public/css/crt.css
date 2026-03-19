@@ -370,7 +370,8 @@ body.in-gone-rogue .debrief-window {
   }
 }
 
-/* .debrief-window.expanded — REMOVED (legacy dead code, replaced by debrief-maximized) */
+/* debrief-window.debrief-maximized — transform-based zoom (keeps frame + widgets visible,
+   overlaps as higher z-layer, background stays visible behind it) */
 
 /* Responsive 4:3 scaling: landscape phones get wider debrief */
 @media (max-width: 900px) and (orientation: landscape) {
@@ -1966,8 +1967,8 @@ body.amber-mode #scanlines::after {
     align-items: stretch;
     height: auto;
     min-height: 0;
-    gap: 2px;
-    padding: 2px;
+    gap: 4px;
+    padding: 4px;
   }
 
   /* Buttons take minimum 51% width - ensure labels don't overflow */
@@ -1997,6 +1998,14 @@ body.amber-mode #scanlines::after {
     min-width: 0;
     max-width: 49%;
     overflow: hidden;
+  }
+
+  /* When debrief is maximized, allow it to overflow its parent control-rail */
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) .debrief-window.debrief-maximized {
+    overflow: visible;
+  }
+  body:not(.mode-gone-rogue):not(.in-gone-rogue):not(.gone-rogue-active) #control-rail:has(.debrief-maximized) {
+    overflow: visible;
   }
 
   /* Compact debrief content in portrait — row sizing now handled by cqh in debrief-scale.css */
@@ -2267,30 +2276,37 @@ body.amber-mode #scanlines::after {
 
   /* .debrief-window.debrief-minimized — REMOVED (broken transparent band state) */
 
-  /* Debrief maximized: full overlay covering game viewport + torso.
-     Uses position:fixed to escape the control-rail stacking context
-     (which has overflow:hidden + z-index:20 on mobile portrait).
-     z-index 700 matches the desktop floating debrief layer. */
+  /* Debrief maximized: transform-zoom to pop out of control-rail.
+     Keeps frame, header widgets, and 4:3 aspect ratio visible.
+     Background remains visible behind the zoomed feed.
+     Scale factor 1.35 on desktop, clamped on mobile via transform-origin. */
   .debrief-window.debrief-maximized {
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    width: 100vw !important;
-    height: 100dvh !important;
-    max-width: 100vw !important;
-    max-height: 100dvh !important;
-    z-index: 700 !important; /* Above everything: control-rail(20), buttons(21), grid, log-frame */
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    background: rgba(6, 14, 9, 0.96) !important;
-    border-radius: 0;
+    transform: scale(var(--debrief-zoom, 1.35));
+    transform-origin: top left;
+    z-index: 700 !important; /* Above control-rail(20), buttons(21), log-frame */
+    position: relative;
+    box-shadow:
+      0 0 0 1px var(--panel-border, rgba(51, 255, 51, 0.15)),
+      0 12px 28px rgba(0, 0, 0, 0.45),
+      0 0 60px rgba(0, 255, 90, 0.08);
     pointer-events: auto;
+    transition: transform 180ms ease, box-shadow 180ms ease;
   }
-  /* In maximized state, remove the 4:3 constraint so content fills the overlay */
-  .debrief-window.debrief-maximized .debrief-screen {
-    aspect-ratio: auto;
-    max-width: 100%;
-    height: 100%;
+  /* Mobile portrait: debrief is on the RIGHT side of control-rail.
+     Anchor scale from top-right so it grows leftward, not off-screen right. */
+  @media (max-width: 600px) and (orientation: portrait) {
+    .debrief-window.debrief-maximized {
+      transform-origin: top right;
+      /* Slightly lower zoom on small screens to prevent vertical overflow */
+      --debrief-zoom: 1.25;
+    }
+  }
+  /* Gone Rogue: maximized debrief becomes fixed to escape overflow:hidden parent */
+  body.mode-gone-rogue .debrief-window.debrief-maximized,
+  body.in-gone-rogue .debrief-window.debrief-maximized,
+  body.gone-rogue-active .debrief-window.debrief-maximized {
+    position: fixed;
+    z-index: 950;
   }
 
   body.mode-gone-rogue .debrief-window .debrief-label,
