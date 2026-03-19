@@ -169,6 +169,14 @@ var CompassWidget = (function() {
     // Drag functionality for minimized widget
     _setupDrag();
 
+    // Re-clamp on viewport resize (orientation change, etc.)
+    window.addEventListener('resize', function () {
+      if (!_state.initialized || !_elements.widget) return;
+      _clampPosition();
+      _elements.widget.style.right = _state.position.x + 'px';
+      _elements.widget.style.bottom = _state.position.y + 'px';
+    });
+
     // Keyboard shortcut (C key)
     document.addEventListener('keydown', function(e) {
       var tag = document.activeElement && document.activeElement.tagName;
@@ -231,8 +239,11 @@ var CompassWidget = (function() {
       }
 
       if (_state.isDragging) {
-        _state.position.x = Math.max(0, initialX - dx);
-        _state.position.y = Math.max(0, initialY - dy);
+        var widgetSize = 40;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        _state.position.x = Math.max(0, Math.min(initialX - dx, vw - widgetSize));
+        _state.position.y = Math.max(0, Math.min(initialY - dy, vh - widgetSize));
 
         widget.style.right = _state.position.x + 'px';
         widget.style.bottom = _state.position.y + 'px';
@@ -433,6 +444,16 @@ var CompassWidget = (function() {
         _state.position = JSON.parse(saved);
       }
     } catch (e) {}
+    // Clamp to current viewport so desktop-saved positions don't spawn off-screen on mobile
+    _clampPosition();
+  }
+
+  function _clampPosition() {
+    var widgetSize = 40; // minimized widget diameter
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    _state.position.x = Math.max(0, Math.min(_state.position.x, vw - widgetSize));
+    _state.position.y = Math.max(0, Math.min(_state.position.y, vh - widgetSize));
   }
 
   // ═══════════════════════════════════════════════════════════════

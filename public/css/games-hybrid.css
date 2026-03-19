@@ -553,23 +553,37 @@
 /* Mobile footer: compact, no brand text, centered buttons */
 @media (max-width: 768px) {
   .games-v2-footer {
-    padding: 6px 8px;
+    padding: 4px 6px;
   }
   .games-v2-footer-content {
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
   }
   .games-v2-footer-brand {
     display: none; /* Remove "EYES ONLY // CNTCT" on mobile */
   }
   .games-v2-footer-links {
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap; /* single row — designer button is icon-only to fit */
   }
   .games-v2-tape-btn {
-    padding: 5px 10px;
+    padding: 4px 8px;
     font-size: 9px;
+  }
+  /* Designer button: crosshairs icon only, no text label */
+  .games-v2-tape-btn[href*="designer"] {
+    font-size: 0;       /* hide text */
+    padding: 4px 8px;
+    line-height: 0;
+  }
+  .games-v2-tape-btn[href*="designer"]::before {
+    content: "\2316";   /* ⌖ crosshairs / position indicator */
+    font-size: 14px;
+    line-height: 1;
+  }
+  .games-v2-tape-btn[href*="designer"] .tape-tooltip {
+    /* tooltip still works normally on hover/long-press */
   }
   /* Straighten buttons on mobile — rotation wastes space */
   .games-v2-tape-btn:nth-child(1),
@@ -577,6 +591,10 @@
   .games-v2-tape-btn:nth-child(3),
   .games-v2-tape-btn:nth-child(4) {
     transform: none;
+  }
+  /* Clock: slightly smaller */
+  .games-v2-footer-clock {
+    font-size: 0.7em;
   }
 }
 
