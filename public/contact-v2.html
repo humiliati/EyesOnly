@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="CONTACT — EyesOnly Spy Games help library, contact form, and ops channel.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#000000">
+  <title>EYES ONLY // CONTACT</title>
+
+  <link rel="stylesheet" href="css/crt.css?v=20260314e">
+  <link rel="stylesheet" href="css/themes.css?v=20260314a">
+  <link rel="stylesheet" href="css/dossier-page.css?v=20260318c">
+  <link rel="stylesheet" href="css/games.css?v=20260314e">
+  <link rel="stylesheet" href="css/contact.css?v=20260314a">
+  <link rel="stylesheet" href="css/games-hybrid.css?v=20260318b">
+  <link rel="stylesheet" href="css/nch-overlay.css?v=20260316c">
+  <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
+  <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
+
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('eyesonly_theme');
+        if (t) {
+          document.documentElement.setAttribute('data-theme', t);
+          if (document.body) {
+            document.body.setAttribute('data-theme', t);
+          } else {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.body.setAttribute('data-theme', t);
+            });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
+
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Allow text selection inside form fields */
+    input, textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════ WOODEN HEADER ═══════ -->
+  <nav class="games-v2-nav">
+    <a href="/" class="games-v2-nav-brand">EYES ONLY</a>
+    <div class="games-v2-nav-links">
+      <a href="/booking.html" class="games-v2-nav-link">&#9824; <span class="nav-full">Booking</span><span class="nav-abbr">BKNG</span></a>
+      <a href="/partners.html" class="games-v2-nav-link">&#9829; <span class="nav-full">Partners</span><span class="nav-abbr">PRTNRS</span></a>
+      <a href="/contact-v2.html" class="games-v2-nav-link active">&#9827; <span class="nav-full">Contact</span><span class="nav-abbr">CNTCT</span></a>
+      <a href="/games-v2.html" class="games-v2-nav-link">&#9830; <span class="nav-full">Arcade</span><span class="nav-abbr">ARCD</span></a>
+    </div>
+  </nav>
+
+  <!-- ═══════ DESK SURFACE ═══════ -->
+  <div class="dossier-desk games-v2-desk">
+    <div class="dossier-folder games-v2-folder">
+      <div class="dossier-folder-tab">Contact</div>
+      <div class="dossier-paper games-v2-paper">
+
+        <!-- ═══════ LEFT: Sticky note nav (desktop only) ═══════ -->
+        <aside class="games-v2-postit-nav">
+          <div class="postit games-v2-nav-postit">
+            <div class="postit-label">SECTIONS</div>
+            <a class="games-v2-nav-item" data-target="row-documents">&#9670; Document Library</a>
+            <a class="games-v2-nav-item" data-target="row-contact-form">&#9670; Submit a Message</a>
+            <a class="games-v2-nav-item" data-target="row-raw-contact">&#9670; Ops Channel</a>
+          </div>
+          <div class="postit games-v2-nav-postit">
+            <div class="postit-label">QUICK LINKS</div>
+            <a href="mailto:Ops@flapsandseals.com" class="games-v2-nav-item">&#9993; Email Ops</a>
+            <a href="/booking.html" class="games-v2-nav-item">&#9824; Book a Mission</a>
+            <a href="/partners.html" class="games-v2-nav-item">&#9829; Partner Sign-Up</a>
+          </div>
+        </aside>
+
+        <!-- ═══════ MOBILE: Paper torso ═══════ -->
+        <div class="games-v2-torso">
+          <button class="games-v2-torso-btn" data-target="row-documents" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">DOCS</span></button>
+          <button class="games-v2-torso-btn" data-target="row-contact-form" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">MSG</span></button>
+          <button class="games-v2-torso-btn" data-target="row-raw-contact" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">OPS CH</span></button>
+        </div>
+
+        <!-- ═══════ CRT MONITOR ═══════ -->
+        <div class="games-v2-monitor">
+          <div id="crt-screen">
+            <div id="phosphor-glow"></div>
+            <div id="scanlines"></div>
+            <div id="vignette"></div>
+
+            <div id="crt-frame">
+              <header id="mok-header" class="monitor-header" style="display:none;"></header>
+
+              <div id="monitor-shell">
+                <div class="log-frame games-log-frame" id="contact-log-frame">
+
+          <!-- Scanline overlay for inner screen feel -->
+          <div class="games-scanlines"></div>
+
+          <!-- Scrollable content area -->
+          <div class="games-content" id="contact-content">
+
+            <!-- ═══════════════ DOCUMENT LIBRARY (default expanded) ═══════════════ -->
+            <div class="games-row" id="row-documents">
+              <button class="games-row-header" data-target="documents-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
+                <span class="games-row-label">DOCUMENT LIBRARY</span>
+                <span class="games-row-count" id="doc-count">LOADING</span>
+                <span class="games-row-status">REFERENCE</span>
+              </button>
+              <div class="games-row-body games-row-body-open" id="documents-body">
+                <div class="doc-library-grid" id="doc-library-grid">
+                  <!-- Populated from documents.json -->
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══════════════ CONTACT FORM (default expanded) ═══════════════ -->
+            <div class="games-row" id="row-contact-form">
+              <button class="games-row-header" data-target="contact-form-body" aria-expanded="true">
+                <span class="games-row-chevron">&#9662;</span>
+                <span class="games-row-label">SUBMIT A MESSAGE</span>
+                <span class="games-row-count">SECURE</span>
+                <span class="games-row-status">OPEN</span>
+              </button>
+              <div class="games-row-body games-row-body-open" id="contact-form-body">
+                <form class="contact-form" id="contact-form" autocomplete="off">
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-name">Callsign / Name</label>
+                    <input type="text" class="contact-field-input" id="contact-name" name="name"
+                           placeholder="Agent designation or real name" required>
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-email">Email</label>
+                    <input type="email" class="contact-field-input" id="contact-email" name="email"
+                           placeholder="your@email.com" required>
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-subject">Subject</label>
+                    <input type="text" class="contact-field-input" id="contact-subject" name="subject"
+                           placeholder="Mission inquiry, bug report, partnership...">
+                  </div>
+                  <div class="contact-field">
+                    <label class="contact-field-label" for="contact-message">Message</label>
+                    <textarea class="contact-field-textarea" id="contact-message" name="message"
+                              placeholder="Transmit your message..." rows="5" required></textarea>
+                  </div>
+                  <div class="contact-status" id="contact-status"></div>
+                  <button type="submit" class="contact-submit-btn" data-sound="ui-04">
+                    <span class="contact-submit-icon">&#9654;</span>
+                    <span>TRANSMIT</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- ═══════════════ RAW CONTACT INFO (collapsed by default) ═══════════════ -->
+            <div class="games-row" id="row-raw-contact">
+              <button class="games-row-header" data-target="raw-contact-body" aria-expanded="false">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">OPS CHANNEL</span>
+                <span class="games-row-count">DIRECT</span>
+                <span class="games-row-status">STANDBY</span>
+              </button>
+              <div class="games-row-body" id="raw-contact-body">
+                <div class="contact-raw-info">
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#9993;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Email</div>
+                      <div class="contact-raw-value">
+                        <a href="mailto:Ops@flapsandseals.com">Ops@flapsandseals.com</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#127968;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Address</div>
+                      <div class="contact-raw-value">
+                        123 Sandpoint Way NE<br>
+                        Sandpoint, ID 83864
+                      </div>
+                    </div>
+                  </div>
+                  <div class="contact-raw-row">
+                    <span class="contact-raw-icon">&#128222;</span>
+                    <div class="contact-raw-detail">
+                      <div class="contact-raw-label">Phone</div>
+                      <div class="contact-raw-value">
+                        <a href="tel:+12085551234">(208) 555-1234</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /contact-content -->
+
+          <!-- Bottom status bar -->
+          <div class="games-footer-strip">
+            <span class="games-footer-sig">EYES ONLY // CONTACT v1.0</span>
+            <span class="games-footer-time" id="contact-clock">00:00:00</span>
+          </div>
+
+        </div><!-- /contact-log-frame -->
+      </div><!-- /monitor-shell -->
+    </div><!-- /crt-frame -->
+  </div><!-- /crt-screen -->
+        </div><!-- /games-v2-monitor -->
+
+      </div><!-- /dossier-paper -->
+    </div><!-- /dossier-folder -->
+  </div><!-- /dossier-desk -->
+
+  <!-- ═══════ TAPE-ON-PAPER FOOTER ═══════ -->
+  <footer class="games-v2-footer">
+    <div class="games-v2-footer-content">
+      <span class="games-v2-footer-brand">EYES ONLY // CNTCT</span>
+      <div class="games-v2-footer-links">
+        <a href="/booking.html" class="games-v2-tape-btn">&#9824; BKNG<span class="tape-tooltip">Book a Mission</span></a>
+        <a href="/partners.html" class="games-v2-tape-btn">&#9829; PRTNRS<span class="tape-tooltip">Partner Sign-Up</span></a>
+        <a href="/games-v2.html" class="games-v2-tape-btn">&#9830; ARCD<span class="tape-tooltip">Field Kit &amp; Arcade</span></a>
+      </div>
+      <span class="games-v2-footer-clock" id="contact-clock">00:00:00</span>
+    </div>
+  </footer>
+
+  <!-- Sticky note nav + torso controller -->
+  <script src="js/games-nav.js"></script>
+
+  <script src="js/theme-widget.js"></script>
+  <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>
+
+  <script src="js/puzzle-state.js?v=20260316c"></script>
+
+  <!-- Shared item renderer (abbreviateName, resolve, etc.) -->
+  <script src="js/shared-item-renderer.js"></script>
+
+  <!-- Audio system for SFX -->
+  <script src="js/audio-system.js?v=20260309d"></script>
+
+  <script src="js/starfield.js"></script>
+  <script src="js/lens-state.js?v=20260317e"></script>
+  <script src="js/suit-node-renderer.js?v=20260317a"></script>
+  <script src="js/constellation-gamestate.js?v=20260317b"></script>
+  <script src="js/constellation-rewards.js?v=20260317a"></script>
+  <script src="js/constellation-tracer.js?v=20260317a"></script>
+  <script src="js/constellation-validator.js?v=20260317c"></script>
+  <script src="js/suit-transformer.js?v=20260317d"></script>
+  <script src="js/satellite-scrubber.js?v=20260317d"></script>
+  <script src="js/constellation-generator.js?v=20260317e"></script>
+  <script src="js/constellation-procgen.js?v=20260317c"></script>
+  <script src="js/star-destroyer.js?v=20260317e"></script>
+  <script src="js/constellation-cascade.js?v=20260317e"></script>
+  <script src="js/constellation-loader.js?v=20260317a"></script>
+  <script src="js/audio-mini-widget.js"></script>
+  <script src="js/nch-overlay.js?v=20260316d"></script>
+  <!-- Account inventory + compass widget -->
+  <script src="js/account-inventory.js"></script>
+  <script src="js/compass-widget.js?v=20260318a"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof PuzzleState !== 'undefined') PuzzleState.init();
+      if (typeof NchOverlay !== 'undefined') NchOverlay.init({ autoStarfield: true });
+      if (typeof CompassWidget !== 'undefined') CompassWidget.init();
+    });
+  </script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- Clock ---- */
+    function tickClock() {
+      var el = document.getElementById('contact-clock');
+      if (!el) return;
+      var d = new Date();
+      el.textContent =
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0') + ':' +
+        String(d.getSeconds()).padStart(2, '0');
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    /* ---- Expandable rows with localStorage persistence ---- */
+    var EXPAND_KEY = 'eyesonly_contact_expanded';
+
+    function getSavedExpanded() {
+      try {
+        var raw = localStorage.getItem(EXPAND_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    }
+
+    function saveExpanded() {
+      try {
+        var state = {};
+        document.querySelectorAll('.games-row-header').forEach(function (btn) {
+          var id = btn.getAttribute('data-target');
+          state[id] = btn.getAttribute('aria-expanded') === 'true';
+        });
+        localStorage.setItem(EXPAND_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    /* Restore saved expand state (documents + form default open, raw-contact closed) */
+    var saved = getSavedExpanded();
+    if (saved) {
+      document.querySelectorAll('.games-row-header').forEach(function (btn) {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+        var shouldOpen = saved[targetId];
+        if (shouldOpen === undefined) {
+          shouldOpen = (targetId === 'documents-body' || targetId === 'contact-form-body');
+        }
+        if (shouldOpen) {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        } else {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        }
+      });
+    }
+
+    var headers = document.querySelectorAll('.games-row-header');
+    headers.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var body = document.getElementById(targetId);
+        if (!body) return;
+
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          btn.setAttribute('aria-expanded', 'false');
+          body.classList.remove('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9656;';
+        } else {
+          btn.setAttribute('aria-expanded', 'true');
+          body.classList.add('games-row-body-open');
+          btn.querySelector('.games-row-chevron').innerHTML = '&#9662;';
+        }
+
+        saveExpanded();
+
+        if (window.AudioSystem && AudioSystem.playSFX) {
+          AudioSystem.playSFX('ui-04');
+        }
+      });
+    });
+
+    /* ---- Data-sound delegate ---- */
+    document.addEventListener('click', function (e) {
+      var target = e.target.closest('[data-sound]');
+      if (target && window.AudioSystem && AudioSystem.playSFX) {
+        AudioSystem.playSFX(target.getAttribute('data-sound'));
+      }
+    });
+
+    /* ---- Vowel-drop abbreviator (matches SharedItemRenderer.abbreviateName) ---- */
+    function abbreviateName(name) {
+      if (!name || name.length <= 2) return name;
+      if (typeof SharedItemRenderer !== 'undefined' && SharedItemRenderer.abbreviateName) {
+        return SharedItemRenderer.abbreviateName(name, 14).toUpperCase();
+      }
+      var words = name.split(/\s+/);
+      var result = [];
+      for (var w = 0; w < words.length; w++) {
+        var word = words[w];
+        if (word.length <= 2) { result.push(word); continue; }
+        var out = word.charAt(0);
+        for (var c = 1; c < word.length; c++) {
+          var ch = word.charAt(c).toLowerCase();
+          if (ch !== 'a' && ch !== 'e' && ch !== 'i' && ch !== 'o' && ch !== 'u') {
+            out += word.charAt(c);
+          }
+        }
+        result.push(out);
+      }
+      return result.join(' ').toUpperCase();
+    }
+
+    /* ---- Load document library from documents.json ---- */
+    (function loadDocLibrary() {
+      var grid = document.getElementById('doc-library-grid');
+      var countEl = document.getElementById('doc-count');
+      if (!grid) return;
+
+      fetch('/data/documents.json?v=20260314a')
+        .then(function (r) { return r.json(); })
+        .then(function (docs) {
+          // Filter to public documents only
+          var publicDocs = docs.filter(function (d) { return d.public && d.href; });
+          if (countEl) countEl.textContent = publicDocs.length + ' DOCS';
+
+          publicDocs.forEach(function (doc) {
+            var card = document.createElement('a');
+            card.className = 'doc-card';
+            card.href = doc.href;
+            card.target = '_blank';
+            card.rel = 'noopener';
+            card.setAttribute('data-doc-id', doc.id);
+            card.setAttribute('data-sound', 'ui-01');
+
+            var abbrName = abbreviateName(doc.name);
+
+            card.innerHTML =
+              '<span class="doc-card-emoji">' + doc.emoji + '</span>' +
+              '<span class="doc-card-id">' + doc.id + '</span>' +
+              '<span class="doc-card-name" data-abbr="' + abbrName + '">' +
+                doc.name.toUpperCase() +
+              '</span>';
+
+            grid.appendChild(card);
+          });
+        })
+        .catch(function (err) {
+          console.warn('[CONTACT] Failed to load documents.json:', err);
+          if (countEl) countEl.textContent = 'ERROR';
+          grid.innerHTML = '<div style="color:var(--phosphor-dim);font-size:0.75em;padding:8px;">Failed to load document library.</div>';
+        });
+    })();
+
+    /* ---- Contact form submission ---- */
+    (function initContactForm() {
+      var form = document.getElementById('contact-form');
+      var status = document.getElementById('contact-status');
+      if (!form) return;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        var data = {
+          name: form.elements.name.value.trim(),
+          email: form.elements.email.value.trim(),
+          subject: form.elements.subject.value.trim(),
+          message: form.elements.message.value.trim()
+        };
+
+        if (!data.name || !data.email || !data.message) {
+          status.className = 'contact-status contact-status-err';
+          status.textContent = 'REQUIRED FIELDS MISSING — name, email, and message are mandatory.';
+          return;
+        }
+
+        // POST to existing /api/partners/apply with form_type: 'contact'
+        var submitBtn = form.querySelector('.contact-submit-btn');
+        if (submitBtn) submitBtn.disabled = true;
+
+        status.className = 'contact-status contact-status-ok';
+        status.textContent = 'TRANSMITTING...';
+
+        fetch('/api/partners/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            form_type: 'contact',
+            contact_name: data.name,
+            contact_email: data.email,
+            subject: data.subject,
+            message: data.message
+          })
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Server returned ' + r.status);
+          return r.json();
+        })
+        .then(function () {
+          status.className = 'contact-status contact-status-ok';
+          status.textContent = 'MESSAGE TRANSMITTED — Ops will respond within 24 hours.';
+          form.reset();
+          if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('ui-04');
+        })
+        .catch(function (err) {
+          console.warn('[CONTACT] Submit failed:', err);
+          status.className = 'contact-status contact-status-err';
+          status.textContent = 'TRANSMISSION FAILED — Try the direct email below or retry later.';
+        })
+        .finally(function () {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      });
+    })();
+
+  })();
+  </script>
+
+</body>
+</html>
