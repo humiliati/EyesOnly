@@ -370,11 +370,13 @@
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 6px 8px;
-    padding: 8px 10px;
+    padding: 12px 10px;
     background: var(--postit-bg, rgba(255, 248, 200, 0.92));
     border-bottom: 2px solid rgba(0,0,0,0.08);
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     flex-shrink: 0;
+    /* Allow star burst to escape grid cells */
+    overflow: visible;
   }
 
   /* Torso buttons: porthole-style with subtle glow + starfield on tap */
@@ -395,7 +397,8 @@
     white-space: nowrap;
     text-align: center;
     text-overflow: clip;
-    overflow: hidden;
+    /* CRITICAL: overflow visible so stars can burst outside button bounds */
+    overflow: visible;
     /* Subtle shadow with thin glow ring — not overpowering */
     box-shadow:
       0 2px 4px rgba(0, 0, 0, 0.15),
@@ -435,7 +438,7 @@
     transition-duration: 0.08s;
   }
 
-  /* Starfield canvas inside torso button (injected by games-nav.js) */
+  /* Starfield canvas: clipped to button shape (doesn't overflow) */
   .games-v2-torso-btn .torso-starfield {
     position: absolute;
     inset: 0;
@@ -447,6 +450,8 @@
     opacity: 0;
     transition: opacity 0.2s ease;
     background: #060808;
+    /* Clip starfield to button bounds — stars burst OUTSIDE via overflow:visible on parent */
+    clip-path: inset(0 round 4px);
   }
 
   .games-v2-torso-btn:active .torso-starfield,
@@ -699,7 +704,7 @@ body[data-theme] .games-v2-torso-btn {
 @media (min-width: 769px) {
   .games-v2-nav-postit {
     position: relative;
-    overflow: visible;
+    overflow: visible !important; /* Stars must burst outside post-it bounds */
   }
 
   .games-v2-nav-postit .postit-starfield {
