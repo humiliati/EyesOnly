@@ -200,6 +200,7 @@
   .games-v2-monitor #crt-screen {
     position: relative !important;
     height: 100% !important;
+    min-height: 0 !important;
     flex: 1;
     border-radius: 8px;
     overflow: hidden !important;
@@ -213,6 +214,7 @@
 
   .games-v2-monitor #crt-frame {
     flex: 1;
+    min-height: 0 !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -322,6 +324,7 @@
   .games-v2-monitor #crt-screen {
     position: relative !important;
     height: 100% !important;
+    min-height: 0 !important;
     flex: 1;
     padding: 0 !important;
     overflow: hidden !important;
@@ -331,6 +334,7 @@
 
   .games-v2-monitor #crt-frame {
     flex: 1;
+    min-height: 0 !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -484,80 +488,84 @@
 }
 
 
-/* ---- 4. TAPE-ON-PAPER FOOTER — single tight row ---- */
+/* ---- 4. PAPER FOOTER with post-it buttons ---- */
 
 .games-v2-footer {
   position: relative;
   z-index: 50;
   flex-shrink: 0;
-  background: var(--paper-bg, #f5f0e6);
-  border-top: 1px solid rgba(0,0,0,0.08);
-  padding: 3px 12px;
+  padding: 14px 32px;
+  border-top: 2px solid rgba(0, 0, 0, 0.12);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 27px,
+      var(--paper-line, rgba(0, 0, 0, 0.04)) 27px,
+      var(--paper-line, rgba(0, 0, 0, 0.04)) 28px
+    ),
+    var(--paper-bg, #f5f0e6);
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 240, 200, 0.3);
 }
 
 .games-v2-footer-content {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: 'Courier New', monospace;
-  color: var(--paper-text-dim, #5a5040);
-  font-size: 9px;
-  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 .games-v2-footer-brand {
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.4;
-  font-size: 8px;
+  opacity: 0.45;
+  font-size: 9px;
   white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  color: var(--paper-text-dim, #5a5040);
 }
 
 .games-v2-footer-links {
   display: flex;
-  gap: 4px;
+  gap: 10px;
   flex-wrap: nowrap;
 }
 
-/* Clock hidden — takes space for no value */
 .games-v2-footer-clock { display: none; }
 
-/* Clear tape button: transparent tape strip over paper */
+/* Post-it note style buttons */
 .games-v2-tape-btn {
   position: relative;
+  padding: 8px 18px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
   font-family: 'Courier New', monospace;
-  font-size: 8px;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--paper-text, #2a2418);
   text-decoration: none;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.25);
-  border: none;
-  border-radius: 1px;
+  background: var(--postit-bg, rgba(255, 248, 200, 0.92));
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
   white-space: nowrap;
-  /* Tape texture: slight frosted glass */
-  backdrop-filter: blur(1px);
-  box-shadow:
-    0 0.5px 0 rgba(0,0,0,0.04),
-    inset 0 0 0 0.5px rgba(255,255,255,0.3);
 }
 
+.games-v2-tape-btn:nth-child(1) { transform: rotate(-0.5deg); }
+.games-v2-tape-btn:nth-child(2) { transform: rotate(0.3deg); }
+.games-v2-tape-btn:nth-child(3) { transform: rotate(-0.8deg); }
+
 .games-v2-tape-btn:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 252, 220, 1);
+  box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+  transform: rotate(0deg) translateY(-2px) !important;
   color: var(--paper-heading, #1a1610);
 }
 
-.games-v2-footer-clock {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  opacity: 0.4;
-}
-
-/* Tooltip for tape buttons */
+/* Tooltip for footer buttons */
 .games-v2-tape-btn .tape-tooltip {
   display: none;
   position: absolute;
@@ -567,9 +575,9 @@
   margin-bottom: 6px;
   padding: 4px 10px;
   background: var(--paper-bg, #f5f0e6);
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 3px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   font-size: 10px;
   color: var(--paper-text, #2a2418);
   white-space: nowrap;
