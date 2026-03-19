@@ -503,12 +503,21 @@
   padding: 14px 32px;
   border-top: 2px solid rgba(0, 0, 0, 0.12);
   background:
+    /* Horizontal ruled lines */
     repeating-linear-gradient(
       0deg,
       transparent,
       transparent 27px,
-      var(--paper-line, rgba(0, 0, 0, 0.04)) 27px,
-      var(--paper-line, rgba(0, 0, 0, 0.04)) 28px
+      var(--paper-line, rgba(51, 255, 51, 0.08)) 27px,
+      var(--paper-line, rgba(51, 255, 51, 0.08)) 28px
+    ),
+    /* Left margin line (matches dossier-paper) */
+    linear-gradient(
+      90deg,
+      transparent 48px,
+      var(--paper-margin, rgba(220, 80, 80, 0.15)) 48px,
+      var(--paper-margin, rgba(220, 80, 80, 0.15)) 49px,
+      transparent 49px
     ),
     var(--paper-bg, #f5f0e6);
   box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 240, 200, 0.3);
@@ -540,6 +549,36 @@
 }
 
 .games-v2-footer-clock { display: none; }
+
+/* Mobile footer: compact, no brand text, centered buttons */
+@media (max-width: 768px) {
+  .games-v2-footer {
+    padding: 6px 8px;
+  }
+  .games-v2-footer-content {
+    justify-content: center;
+    gap: 6px;
+  }
+  .games-v2-footer-brand {
+    display: none; /* Remove "EYES ONLY // CNTCT" on mobile */
+  }
+  .games-v2-footer-links {
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .games-v2-tape-btn {
+    padding: 5px 10px;
+    font-size: 9px;
+  }
+  /* Straighten buttons on mobile — rotation wastes space */
+  .games-v2-tape-btn:nth-child(1),
+  .games-v2-tape-btn:nth-child(2),
+  .games-v2-tape-btn:nth-child(3),
+  .games-v2-tape-btn:nth-child(4) {
+    transform: none;
+  }
+}
 
 /* Post-it note style buttons */
 .games-v2-tape-btn {
