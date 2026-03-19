@@ -46,6 +46,7 @@
   <link rel="stylesheet" href="css/inventory-ui.css">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260316a">
+  <link rel="stylesheet" href="css/terminal-polish.css?v=20260318a">
 
   <!-- Prevent text selection for immersion -->
   <style>
@@ -216,6 +217,43 @@
           }
           /* data-text for sidebar buttons is set statically in HTML (FIG 3) */
         })();
+      </script>
+
+      <!-- Inject starfield canvases into control rail buttons -->
+      <script>
+      (function () {
+        var btns = document.querySelectorAll('.control-buttons button');
+        btns.forEach(function (btn) {
+          var c = document.createElement('canvas');
+          c.className = 'btn-starfield';
+          c.width = 140;
+          c.height = 40;
+          btn.insertBefore(c, btn.firstChild);
+
+          var ctx = c.getContext('2d');
+          if (!ctx) return;
+          var stars = [];
+          for (var i = 0; i < 20; i++) {
+            stars.push({ x: Math.random() * 140, y: Math.random() * 40, r: Math.random() * 0.9 + 0.3, a: Math.random() * 0.6 + 0.3, s: Math.random() * 0.2 + 0.08 });
+          }
+          function draw() {
+            ctx.clearRect(0, 0, 140, 40);
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, 140, 40);
+            for (var j = 0; j < stars.length; j++) {
+              var st = stars[j];
+              ctx.beginPath();
+              ctx.arc(st.x, st.y, st.r, 0, 6.28);
+              ctx.fillStyle = 'rgba(255,255,255,' + st.a + ')';
+              ctx.fill();
+              st.x -= st.s;
+              if (st.x < 0) { st.x = 140; st.y = Math.random() * 40; }
+            }
+            requestAnimationFrame(draw);
+          }
+          draw();
+        });
+      })();
       </script>
 
       <div id="monitor-shell">

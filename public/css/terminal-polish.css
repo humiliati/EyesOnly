@@ -1,0 +1,91 @@
+/* ============================================================
+   TERMINAL POLISH — CRT overlay reduction + button starfield
+   ============================================================
+   Loaded AFTER crt.css on index.html only.
+   Reduces the heavy vignette/glow darkening and adds porthole
+   starfield blowthrough to control rail buttons on hover.
+   ============================================================ */
+
+/* ---- 1. Reduce CRT overlay darkening ---- */
+
+/* Vignette: 150px 60px at 0.7 alpha is too aggressive — halve it */
+#vignette {
+  box-shadow: inset 0 0 100px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Phosphor glow: dial back from 0.3 to 0.15 */
+#phosphor-glow {
+  opacity: 0.15 !important;
+}
+
+
+/* ---- 2. Control rail button starfield porthole ---- */
+
+.control-buttons button {
+  position: relative;
+  overflow: visible; /* Stars burst outside button bounds */
+}
+
+/* Starfield canvas inside each button (added by JS) */
+.control-buttons button .btn-starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  clip-path: inset(0 round 5px);
+  background: #050a06;
+}
+
+/* On hover: dissolve background, show starfield */
+.control-buttons button:hover .btn-starfield,
+.control-buttons button:focus-visible .btn-starfield {
+  opacity: 1;
+}
+
+.control-buttons button:hover {
+  background: transparent !important;
+  border-color: var(--phosphor-bright, #66ff66);
+  box-shadow:
+    0 0 0 1px var(--phosphor-bright, #66ff66),
+    0 0 8px var(--porthole-btn-contrast-glow, rgba(255, 100, 40, 0.3)),
+    inset 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Button label sits above starfield */
+.control-buttons button span,
+.control-buttons button {
+  position: relative;
+  z-index: 2;
+}
+
+.control-buttons button:hover {
+  color: #fff;
+  text-shadow:
+    0 0 6px var(--phosphor-glow, rgba(51, 255, 51, 0.4)),
+    0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Active/press: deeper porthole */
+.control-buttons button:active {
+  transform: translateY(1px) scale(0.97) !important;
+  box-shadow:
+    0 0 0 1px var(--phosphor, #33ff33),
+    inset 0 0 14px rgba(0, 0, 0, 0.6) !important;
+  transition-duration: 0.06s;
+}
+
+/* Don't apply porthole to disabled kernel button */
+.control-buttons button.kernel-btn:disabled:hover .btn-starfield {
+  opacity: 0;
+}
+.control-buttons button.kernel-btn:disabled:hover {
+  background: rgba(8, 24, 12, 0.5) !important;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 255, 90, 0.06) !important;
+  color: #555 !important;
+  text-shadow: none !important;
+}
