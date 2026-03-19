@@ -10,10 +10,8 @@
 
   <link rel="stylesheet" href="css/crt.css?v=20260314e">
   <link rel="stylesheet" href="css/themes.css?v=20260314a">
-  <link rel="stylesheet" href="css/dossier-page.css?v=20260318c">
   <link rel="stylesheet" href="css/games.css?v=20260314e">
   <link rel="stylesheet" href="css/contact.css?v=20260314a">
-  <link rel="stylesheet" href="css/games-hybrid.css?v=20260318b">
   <link rel="stylesheet" href="css/nch-overlay.css?v=20260316c">
   <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
@@ -54,58 +52,75 @@
 </head>
 <body>
 
-  <!-- ═══════ WOODEN HEADER ═══════ -->
-  <nav class="games-v2-nav">
-    <a href="/" class="games-v2-nav-brand">EYES ONLY</a>
-    <div class="games-v2-nav-links">
-      <a href="/booking.html" class="games-v2-nav-link">&#9824; <span class="nav-full">Booking</span><span class="nav-abbr">BKNG</span></a>
-      <a href="/partners.html" class="games-v2-nav-link">&#9829; <span class="nav-full">Partners</span><span class="nav-abbr">PRTNRS</span></a>
-      <a href="/contact-v2.html" class="games-v2-nav-link active">&#9827; <span class="nav-full">Contact</span><span class="nav-abbr">CNTCT</span></a>
-      <a href="/games-v2.html" class="games-v2-nav-link">&#9830; <span class="nav-full">Arcade</span><span class="nav-abbr">ARCD</span></a>
-    </div>
-  </nav>
+  <!-- CRT Screen Container -->
+  <div id="crt-screen">
 
-  <!-- ═══════ DESK SURFACE ═══════ -->
-  <div class="dossier-desk games-v2-desk">
-    <div class="dossier-folder games-v2-folder">
-      <div class="dossier-folder-tab">Contact</div>
-      <div class="dossier-paper games-v2-paper">
+    <!-- CRT Effect Layers -->
+    <div id="phosphor-glow"></div>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
 
-        <!-- ═══════ LEFT: Sticky note nav (desktop only) ═══════ -->
-        <aside class="games-v2-postit-nav">
-          <div class="postit games-v2-nav-postit">
-            <div class="postit-label">SECTIONS</div>
-            <a class="games-v2-nav-item" data-target="row-documents">&#9670; Document Library</a>
-            <a class="games-v2-nav-item" data-target="row-contact-form">&#9670; Submit a Message</a>
-            <a class="games-v2-nav-item" data-target="row-raw-contact">&#9670; Ops Channel</a>
+    <div id="crt-frame">
+      <header id="mok-header" class="monitor-header">
+        <a href="/" class="mok-header-copy" style="text-decoration:none;color:inherit;">
+          <div class="mok-header-title">EyesOnly Spy Games:</div>
+          <div class="mok-header-sub"><span id="actor-name-display">Contact</span></div>
+        </a>
+        <nav class="mok-header-nav" aria-label="Quick links">
+          <a href="/booking.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Book a Mission">
+            <span class="header-nav-icon">&#9824;</span><span class="header-nav-label" data-abbr="BKNG">BOOKING</span>
+          </a>
+          <a href="/partners.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Partner Sign-Up">
+            <span class="header-nav-icon header-nav-icon-heart">&#9829;</span><span class="header-nav-label" data-abbr="PRTNRS">PARTNERS</span>
+          </a>
+          <a href="/contact.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Contact" aria-current="page">
+            <span class="header-nav-icon">&#9827;</span><span class="header-nav-label" data-abbr="CNTCT">CONTACT</span>
+          </a>
+          <a href="/games.html" class="header-chip header-nav-btn" data-sound="ui-01" title="Arcade &amp; Field Kit">
+            <span class="header-nav-icon">&#9830;</span><span class="header-nav-label" data-abbr="ARCD">ARCADE</span>
+          </a>
+        </nav>
+        <div class="mok-header-right">
+          <div class="mok-header-item-stack" id="active-item-slot" title="Active Item &mdash; Click to unequip">
+            <div id="active-item-display" class="active-item-display">
+              <span class="empty-slot-indicator">&middot;</span>
+            </div>
+            <div id="currency-display" class="currency-display" title="Cryptos">
+              <span class="currency-symbol">&cent;</span>
+              <span id="currency-value" class="currency-value">00000000</span>
+            </div>
           </div>
-          <div class="postit games-v2-nav-postit">
-            <div class="postit-label">QUICK LINKS</div>
-            <a href="mailto:Ops@flapsandseals.com" class="games-v2-nav-item">&#9993; Email Ops</a>
-            <a href="/booking.html" class="games-v2-nav-item">&#9824; Book a Mission</a>
-            <a href="/partners.html" class="games-v2-nav-item">&#9829; Partner Sign-Up</a>
-          </div>
-        </aside>
-
-        <!-- ═══════ MOBILE: Paper torso ═══════ -->
-        <div class="games-v2-torso">
-          <button class="games-v2-torso-btn" data-target="row-documents" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">DOCS</span></button>
-          <button class="games-v2-torso-btn" data-target="row-contact-form" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">MSG</span></button>
-          <button class="games-v2-torso-btn" data-target="row-raw-contact" data-sound="ui-01"><canvas class="torso-starfield" width="120" height="36"></canvas><span class="torso-label">OPS CH</span></button>
         </div>
+      </header>
+      <script>
+        /* Vowel-drop abbreviator for nav labels (matches SharedItemRenderer.abbreviateName convention):
+           Keep first char of each word (even if vowel), drop remaining vowels. */
+        (function () {
+          var labels = document.querySelectorAll('.header-nav-label');
+          for (var i = 0; i < labels.length; i++) {
+            var text = labels[i].textContent.trim();
+            if (!text || text.length <= 2) continue;
+            var words = text.split(/\s+/);
+            var abbr = [];
+            for (var w = 0; w < words.length; w++) {
+              var word = words[w];
+              if (word.length <= 2) { abbr.push(word); continue; }
+              var out = word.charAt(0);
+              for (var c = 1; c < word.length; c++) {
+                var ch = word.charAt(c).toLowerCase();
+                if (ch !== 'a' && ch !== 'e' && ch !== 'i' && ch !== 'o' && ch !== 'u') {
+                  out += word.charAt(c);
+                }
+              }
+              abbr.push(out);
+            }
+            labels[i].setAttribute('data-abbr', abbr.join(' ').toUpperCase());
+          }
+        })();
+      </script>
 
-        <!-- ═══════ CRT MONITOR ═══════ -->
-        <div class="games-v2-monitor">
-          <div id="crt-screen">
-            <div id="phosphor-glow"></div>
-            <div id="scanlines"></div>
-            <div id="vignette"></div>
-
-            <div id="crt-frame">
-              <header id="mok-header" class="monitor-header" style="display:none;"></header>
-
-              <div id="monitor-shell">
-                <div class="log-frame games-log-frame" id="contact-log-frame">
+      <div id="monitor-shell">
+        <div class="log-frame games-log-frame" id="contact-log-frame">
 
           <!-- Scanline overlay for inner screen feel -->
           <div class="games-scanlines"></div>
@@ -221,27 +236,6 @@
       </div><!-- /monitor-shell -->
     </div><!-- /crt-frame -->
   </div><!-- /crt-screen -->
-        </div><!-- /games-v2-monitor -->
-
-      </div><!-- /dossier-paper -->
-    </div><!-- /dossier-folder -->
-  </div><!-- /dossier-desk -->
-
-  <!-- ═══════ TAPE-ON-PAPER FOOTER ═══════ -->
-  <footer class="games-v2-footer">
-    <div class="games-v2-footer-content">
-      <span class="games-v2-footer-brand">EYES ONLY // CNTCT</span>
-      <div class="games-v2-footer-links">
-        <a href="/booking.html" class="games-v2-tape-btn">&#9824; BKNG<span class="tape-tooltip">Book a Mission</span></a>
-        <a href="/partners.html" class="games-v2-tape-btn">&#9829; PRTNRS<span class="tape-tooltip">Partner Sign-Up</span></a>
-        <a href="/games-v2.html" class="games-v2-tape-btn">&#9830; ARCD<span class="tape-tooltip">Field Kit &amp; Arcade</span></a>
-      </div>
-      <span class="games-v2-footer-clock" id="contact-clock">00:00:00</span>
-    </div>
-  </footer>
-
-  <!-- Sticky note nav + torso controller -->
-  <script src="js/games-nav.js"></script>
 
   <script src="js/theme-widget.js"></script>
   <script>if (typeof ThemeWidget !== 'undefined') ThemeWidget.initEarly();</script>

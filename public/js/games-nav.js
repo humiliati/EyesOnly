@@ -92,6 +92,11 @@
     draw();
   }
 
+  // ---- Desktop: init post-it starfield canvases ----
+  document.querySelectorAll('.postit-starfield').forEach(function (canvas) {
+    initTorsoStarfield(canvas);
+  });
+
   // ---- Scroll-spy: track which section is in view ----
   var navItems = document.querySelectorAll('.games-v2-nav-item[data-target]');
   var torsoButtons = document.querySelectorAll('.games-v2-torso-btn[data-target]');
