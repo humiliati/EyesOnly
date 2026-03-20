@@ -1400,7 +1400,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 22px;
+    gap: 32px;
     padding: 12px 28px 18px;
     /* Angled toward viewer like a real cocktail table control face */
     perspective: 500px;
@@ -1511,23 +1511,25 @@ html, body {
 
 .minigame-cab-depth.cab-right {
   top: 0;
-  left: 0;             /* JS sets left = cabinet width */
+  right: 0;
+  left: auto;
   width: 80px;
   height: 100%;
-  transform-origin: left center;
-  transform: rotateY(90deg);
+  transform-origin: right center;
+  transform: rotateY(-90deg);
   background: linear-gradient(to left, #0c0c1a 0%, #070710 100%);
   border-left: 1px solid #1a1a2a;
 }
 
 .minigame-cab-depth.cab-bottom {
-  top: 0;              /* JS sets top = cabinet height */
+  bottom: 0;
   left: 0;
+  top: auto;
   width: 100%;
   height: 80px;
-  transform-origin: top center;
-  transform: rotateX(-90deg);
-  background: linear-gradient(to bottom, #0c0c18 0%, #050509 100%);
+  transform-origin: center bottom;
+  transform: rotateX(90deg);
+  background: linear-gradient(180deg, #0c0c18 0%, #050509 100%);
   border-top: 2px solid #1a1a2a;
 }
 

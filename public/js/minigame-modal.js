@@ -56,8 +56,6 @@ window.MinigameModal = (function () {
           '<div class="minigame-control-panel">' +
             '<div class="minigame-joystick"></div>' +
             '<div class="minigame-arcade-btn btn-red"></div>' +
-            '<div class="minigame-arcade-btn btn-yellow"></div>' +
-            '<div class="minigame-arcade-btn btn-white"></div>' +
             '<div class="minigame-arcade-btn btn-blue"></div>' +
           '</div>' +
           /* 3D box faces — visible only while the cabinet is tilted */
@@ -189,8 +187,8 @@ window.MinigameModal = (function () {
     var cabBottom = scene.querySelector('.cab-bottom');
     var cabBack   = scene.querySelector('.cab-back');
     if (cabLeft)   { cabLeft.style.height = h + 'px'; }
-    if (cabRight)  { cabRight.style.height = h + 'px'; cabRight.style.left = w + 'px'; }
-    if (cabBottom) { cabBottom.style.width = w + 'px'; cabBottom.style.top = h + 'px'; }
+    if (cabRight)  { cabRight.style.height = h + 'px'; }
+    if (cabBottom) { cabBottom.style.width = w + 'px'; }
     if (cabBack)   { cabBack.style.width = w + 'px'; cabBack.style.height = h + 'px'; }
   }
 
@@ -254,7 +252,7 @@ window.MinigameModal = (function () {
       a: 'left', A: 'left', d: 'right', D: 'right',
       w: 'up', W: 'up', s: 'down', S: 'down'
     };
-    var btnKeys = { ' ': 0, Enter: 0, z: 1, Z: 1, x: 2, X: 2, c: 3, C: 3 };
+    var btnKeys = { ' ': 0, Enter: 0, z: 1, Z: 1, x: 1, X: 1 };
     var held = {};
     var joyTimer = null;
 
@@ -306,8 +304,8 @@ window.MinigameModal = (function () {
     _lastOverlayClick = 0;
 
     // ── Reset 3D transform state for the roll-in animation ──
-    // 1. Restore perspective on overlay (tighter = more dramatic depth)
-    overlay.style.perspective = '800px';
+    // 1. Let CSS perspective: 1400px rule take effect (don't override)
+    overlay.style.perspective = '';
     // 2. Force scene to the tilted starting pose (no transition)
     scene.style.transition     = 'none';
     scene.style.transformStyle = 'preserve-3d';
@@ -321,21 +319,24 @@ window.MinigameModal = (function () {
     overlay.classList.add('minigame-overlay-open');
     document.body.style.overflow = 'hidden';
 
-    // 3. Force reflow so the browser registers the tilted pose
-    void scene.offsetHeight;
-
-    // 4. Re-enable transition and animate to flat
-    _animating = true;
-    scene.style.transition = 'transform 1s cubic-bezier(0.22, 1, 0.36, 1)';
-    scene.style.transform  = 'rotateX(0deg) rotateZ(0deg) scale(1)';
-
     // Size canvas with viewport fallback (transforms still active)
     sizeCanvas();
     currentGame = game;
     game.start(canvas);
 
+    // Double-rAF: first rAF lets the browser apply the tilted pose,
+    // second rAF fires after the first paint frame, so the transition
+    // genuinely starts from the tilted pose (not batched to identity).
+    _animating = true;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        scene.style.transition = 'transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)';
+        scene.style.transform  = 'rotateX(0deg) rotateZ(0deg) scale(1)';
+      });
+    });
+
     // Safety: if transitionend never fires (e.g. reduced-motion),
-    // strip transforms after 1.2s anyway
+    // strip transforms after 1.4s anyway
     setTimeout(function () {
       if (_animating) {
         _animating = false;
@@ -351,7 +352,7 @@ window.MinigameModal = (function () {
           currentGame.resize(canvas);
         }
       }
-    }, 1200);
+    }, 1400);
 
     // Wire control-panel visual feedback (joystick + button presses)
     wireControlPanel();
