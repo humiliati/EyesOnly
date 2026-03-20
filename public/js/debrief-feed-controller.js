@@ -1844,14 +1844,12 @@ const DebriefFeedController = (function() {
       stopBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         if (_videoPlaying) {
+          // Video is in feed → stop it, show MOK avatar, button goes red
           stopVideo();
-          // Enter "stopped" red state
           stopBtn.classList.add('video-stopped');
-        } else if (stopBtn.classList.contains('video-stopped')) {
-          // Second click: return to theme color (clear stopped state)
-          stopBtn.classList.remove('video-stopped');
         } else {
-          // Not playing, not stopped — start theme video
+          // MOK avatar is in feed → start video, button returns to theme color
+          stopBtn.classList.remove('video-stopped');
           playThemeVideo();
         }
         _updateVideoWidget();
@@ -1890,8 +1888,9 @@ const DebriefFeedController = (function() {
       }
       stopIcon.textContent = '\u25A0'; // ■
       if (stopBtn) {
+        // Red = MOK avatar showing; click will start video
         stopBtn.title = stopBtn.classList.contains('video-stopped')
-          ? 'Click to reset' : 'Stop / return to MOK';
+          ? 'Play video' : 'Stop / return to MOK';
       }
     }
   }

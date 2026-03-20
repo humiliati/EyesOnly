@@ -322,10 +322,10 @@
 
 .nch-porthole-fan {
   position: fixed;
-  /* Anchor to bottom-center, above the capsule widget */
-  bottom: 80px;
+  /* Vertically center the fan, matching splash-screen alignment */
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 1900;
   /* Pass-through: page stays interactive everywhere
      except on the cards and close button themselves */
@@ -393,7 +393,10 @@
   }
 
   .nch-porthole-fan {
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    /* Keep vertically centered on mobile too */
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
   }
 
   /* Match splash-screen fan layout properties that the NCH fan

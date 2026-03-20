@@ -1531,8 +1531,8 @@ var NchOverlay = (function () {
   }
 
   function _getFanCenter() {
-    // Fan is centered horizontally, bottom: 80px
-    return { x: window.innerWidth / 2, y: window.innerHeight - 80 };
+    // Fan is centered both horizontally and vertically (matches CSS top:50% left:50%)
+    return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }
 
   function _openFan() {
