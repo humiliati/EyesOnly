@@ -158,6 +158,10 @@ window.SkiFreeGame = (function () {
     this._extractionDist = 7000;
     this._extracted = false;
     this._extractionTimer = 0;  // animation timer for motorcycle sequence
+
+    // Entity scale: player + pursuers spawn at 50% size so they can
+    // thread between obstacles.  Grows to 1.0 during extraction exit.
+    this._entityScale = 0.5;
   }
 
   SkiFree.prototype = Object.create(ArcadeEngine.prototype);
@@ -176,8 +180,10 @@ window.SkiFreeGame = (function () {
     if (this._tileSize < 12) this._tileSize = 12;
     var T = this._tileSize;
 
+    this._entityScale = 0.5;  // reset early so player/pursuer sizes are correct
     this._playerRestY = H * 0.3;
-    this._player = { x: W / 2, y: -T * 2, w: T * 0.8, h: T * 1.0, hp: 100 };
+    var S = this._entityScale;
+    this._player = { x: W / 2, y: -T * 2, w: T * 0.8 * S, h: T * 1.0 * S, hp: 100 };
 
     this._obstacles = [];
     this._icePatches = [];
@@ -268,8 +274,12 @@ window.SkiFreeGame = (function () {
       this._tuck = false;
     }
 
-    // Tap = fire projectile toward tap position (omnidirectional)
-    if (type === 'tap') {
+    // Tap / double-tap = fire projectile toward tap position (omnidirectional)
+    // Both must be handled: arcade-input emits 'doubletap' (not 'tap') on fast
+    // clicks, but still emits 'keyaction:action' — which would fire straight
+    // down instead of toward the click.  Handling doubletap here ensures the
+    // aimed shot always wins (cooldown blocks the subsequent keyaction).
+    if (type === 'tap' || type === 'doubletap') {
       this._fireProjectileAt(data.x, data.y);
     }
   };
@@ -284,6 +294,12 @@ window.SkiFreeGame = (function () {
     // ── Extraction animation ──
     if (this._extracted) {
       this._extractionTimer++;
+      // Grow entities back to full size for the victory sequence
+      if (this._entityScale < 1.0) {
+        this._entityScale = Math.min(1.0, this._entityScale + 0.02);
+        this._player.w = T * 0.8 * this._entityScale;
+        this._player.h = T * 1.0 * this._entityScale;
+      }
       // Scroll terrain continues slowly
       this._scrollTerrain(0.5, H);
       // Update particles
@@ -377,7 +393,7 @@ window.SkiFreeGame = (function () {
       if (this._overlaps(this._player, obs)) { this._hitObstacle(obs, i); continue; }
       if (!obs.nearMissed && obs.y < this._player.y && obs.y > this._player.y - T * 2) {
         var odx = Math.abs(obs.x - this._player.x);
-        if (odx < T * 1.2 && odx > T * 0.3) { nearMiss = true; obs.nearMissed = true; }
+        if (odx < T * 1.2 * this._entityScale && odx > T * 0.3 * this._entityScale) { nearMiss = true; obs.nearMissed = true; }
       }
     }
     if (nearMiss) {
@@ -459,9 +475,10 @@ window.SkiFreeGame = (function () {
 
       // Check hit on pursuers
       var projHit = false;
+      var hitR = T * 0.8 * this._entityScale;
       for (var pk = this._pursuers.length - 1; pk >= 0; pk--) {
         var pur = this._pursuers[pk];
-        if (Math.abs(proj.x - pur.x) < T * 0.8 && Math.abs(proj.y - pur.y) < T * 0.8) {
+        if (Math.abs(proj.x - pur.x) < hitR && Math.abs(proj.y - pur.y) < hitR) {
           pur.hp--;
           this._projectiles.splice(pr, 1);
           this.playSFX('hit');
@@ -518,10 +535,11 @@ window.SkiFreeGame = (function () {
     // HP scales with distance: 1 at start, up to 4 at high distance
     var hp = 1 + Math.floor(this._distance / 2500);
     if (hp > 4) hp = 4;
+    var S = this._entityScale;
     this._pursuers.push({
       x: W * 0.3 + Math.random() * W * 0.4,
       y: -T * 4,       // enters from top (player's spawn)
-      w: T * 0.9, h: T * 1.0,
+      w: T * 0.9 * S, h: T * 1.0 * S,
       hp: hp, maxHp: hp,
       speed: 0.8 + Math.random() * 0.3,
       accel: 0.015 + this._pursuers.length * 0.005,
@@ -817,11 +835,12 @@ window.SkiFreeGame = (function () {
       // Draw dark skier: use compositing to darken
       ctx.save();
       // Base emoji
-      this.drawEmoji(ctx, EMOJI.player, pur.x, pur.y, T * 1.0);
+      var purSize = T * 1.0 * this._entityScale;
+      this.drawEmoji(ctx, EMOJI.player, pur.x, pur.y, purSize);
       // Dark overlay: draw a dark rect with multiply-like effect
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = 'rgba(15,15,15,0.75)';
-      ctx.fillRect(pur.x - T * 0.6, pur.y - T * 0.6, T * 1.2, T * 1.2);
+      ctx.fillRect(pur.x - purSize * 0.6, pur.y - purSize * 0.6, purSize * 1.2, purSize * 1.2);
       ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
       // HP pips if multi-hit
@@ -853,7 +872,7 @@ window.SkiFreeGame = (function () {
       // Slight rotation for lean
       ctx.rotate(dir * 0.15);
 
-      ctx.font = Math.floor(T * 1.1) + 'px serif';
+      ctx.font = Math.floor(T * 1.1 * this._entityScale) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (this.colors.phosphor) { ctx.shadowColor = this.colors.phosphor; ctx.shadowBlur = 8; }
       ctx.fillText(EMOJI.player, 0, 0);
@@ -971,9 +990,9 @@ window.SkiFreeGame = (function () {
         // Phase 1: motorcycle appears at bottom, player skis toward it
         var motoY = H * 0.7;
         this.drawEmoji(ctx, EMOJI.motorcycle, W / 2, motoY, T * 1.5, { glow: true });
-        // Player slides down toward motorcycle
+        // Player slides down toward motorcycle (grows to full size during extraction)
         var slideY = this._playerRestY + (motoY - this._playerRestY) * Math.min(1, et / 50);
-        this.drawEmoji(ctx, EMOJI.player, this._player.x, slideY, T * 1.1, { glow: true });
+        this.drawEmoji(ctx, EMOJI.player, this._player.x, slideY, T * 1.1 * this._entityScale, { glow: true });
       } else if (et < 80) {
         // Phase 2: poof! player becomes second motorcycle
         var poofAlpha = 1 - (et - 60) / 20;
@@ -1040,8 +1059,8 @@ window.SkiFreeGame = (function () {
       hazards.push({ x: o.x - o.w / 2, y: o.y - o.h / 2, w: o.w, h: o.h, damage: o.damage });
     }
     for (var p = 0; p < this._pursuers.length; p++) {
-      var pur = this._pursuers[p];
-      hazards.push({ x: pur.x - pur.w / 2, y: pur.y - pur.h / 2, w: pur.w, h: pur.h, damage: 20 });
+      var pur2 = this._pursuers[p];
+      hazards.push({ x: pur2.x - pur2.w / 2, y: pur2.y - pur2.h / 2, w: pur2.w, h: pur2.h, damage: 20 });
     }
     return hazards;
   };
