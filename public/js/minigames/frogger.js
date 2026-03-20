@@ -4,7 +4,7 @@
    audio, currency, and BossAdapter for Depot Warden encounter.
 
    Entities: 🐸 player, 🚂 freight, 🚃 passenger, 🚗 car,
-             🪵 safe platform, 🏁 extraction goal
+             🟫 log platform, 🏁 extraction goal, 💰 coin
    ============================================================ */
 window.FroggerGame = (function () {
   'use strict';
@@ -35,12 +35,13 @@ window.FroggerGame = (function () {
     freight:   '🚂',
     passenger: '🚃',
     car:       '🚗',
-    log:       '🪵',
+    log:       '🟫',    // brown square — 🪵 is tofu on older Windows
     goal:      '🏁',
     goalFill:  '✅',
     water:     '🌊',
     splash:    '💦',
-    skull:     '💀'
+    skull:     '💀',
+    coin:      '💰'     // money bag — 🪙 is tofu on older Windows
   };
 
   // ── Frogger game class ──
@@ -52,6 +53,19 @@ window.FroggerGame = (function () {
       lives: 3,
       currencyRate: 0.02
     });
+
+    // ── SFX mapping: generic engine keys → real audio manifest keys ──
+    this.sfxMap = {
+      'hop':          'sq-sq-pickup-success1',   // frog jump
+      // death/splat are randomized per-call in _die()
+      'death':        'kitty-1',
+      'splat':        'kitty-1',
+      'game-over':    'game-over-1',
+      'goal-fanfare': 'toad',                    // slot filled
+      'level-clear':  'toad',                    // all slots clear
+      'level-up':     'toad',
+      'game-start':   'sq-sq-pickup-success1'
+    };
 
     // Game-specific state
     this._frog = null;
@@ -75,6 +89,14 @@ window.FroggerGame = (function () {
     this._squishTimer = 0;          // ms remaining
     this._squishScaleX = 1.0;       // horizontal scale for rendering
     this._squishScaleY = 1.0;       // vertical scale for rendering
+
+    // Coyote timer: grace period when landing in water without a log
+    this._coyoteTimer = 0;          // ms remaining (0 = no grace)
+    this._coyoteActive = false;     // true while splash grace is active
+    this._lastLogRow = -1;          // row of last log the frog was on
+
+    // Collectible currency scattered on map peripherals
+    this._coins = [];               // [{col, row, value, collected}]
 
     // Boss adapter state
     this._bossHP = 0;
@@ -102,7 +124,11 @@ window.FroggerGame = (function () {
     this._deathPos = null;
     this._highestRow = ROWS - 1;
     this._trainImpactKill = false;
+    this._coyoteTimer = 0;
+    this._coyoteActive = false;
+    this._lastLogRow = -1;
     this._buildGrid();
+    this._spawnCoins();
     this._resetFrog();
   };
 
@@ -118,12 +144,44 @@ window.FroggerGame = (function () {
   // GRID SETUP
   // ════════════════════════════════════════════
 
+  /**
+   * Build the playfield grid with progressive difficulty scaling.
+   *
+   * Difficulty curve (level → feel):
+   *   1-2   Gentle intro: wide logs, almost no road traffic, trains dormant
+   *   3-4   Light traffic appears, logs still generous
+   *   5-6   Moderate traffic, trains start moving, logs begin thinning
+   *   7-9   Dense traffic, thinner logs with wider gaps, speed picks up
+   *   10+   Full density, speed continues ramping each level
+   */
   Frogger.prototype._buildGrid = function () {
     var hudOffset = (typeof ArcadeHUD !== 'undefined') ? ArcadeHUD.HEIGHT : 28;
     var playH = this.logicalH - hudOffset;
     this._tile = Math.floor(playH / ROWS);
     this._cols = Math.ceil(this.logicalW / this._tile);
     this._hudOffset = hudOffset;
+
+    var lvl = this.level || 1;
+
+    // ── Difficulty knobs (all clamped 0-1 via Math.min) ──
+
+    // Road traffic density: 0 at lvl 1 → full at lvl 10
+    //   Controls gap size between vehicles (inverted: higher = tighter gaps)
+    var trafficDensity = Math.min(1, (lvl - 1) / 9);
+
+    // Train activation: trains are inert below lvl 5, ramp to full by lvl 8
+    var trainActivity = Math.min(1, Math.max(0, (lvl - 4) / 4));
+
+    // Log width: wide at lvl 1, shrinks to minimum by lvl 10
+    //   logWidth lerps from 4 tiles down to 2
+    var logWidthMax = Math.max(2, Math.round(4 - 2 * Math.min(1, (lvl - 1) / 9)));
+    var logWidthMin = Math.max(1, logWidthMax - 1);
+
+    // Log gap: tight at lvl 1, widens by lvl 7+
+    var logGapExtra = Math.min(3, Math.floor((lvl - 1) / 3));
+
+    // Global speed multiplier: gentle ramp starting at 0.5×, reaching 1× at lvl 10, then continuing
+    var speedMul = 0.5 + 0.5 * Math.min(1, (lvl - 1) / 9) + Math.max(0, (lvl - 10) * 0.06);
 
     this._lanes = [];
     for (var r = 0; r < ROWS; r++) {
@@ -135,28 +193,72 @@ window.FroggerGame = (function () {
 
       var isWater = (type === 'water');
       var isTrain = (type === 'train');
-      var speedBase = isWater ? (0.4 + Math.random() * 0.8)
-                    : isTrain ? (1.0 + Math.random() * 1.2)
-                    : (0.5 + Math.random() * 1.0);
+      var isRoad  = (type === 'road');
+
+      // ── Speed ──
+      var speedBase;
+      if (isWater) {
+        speedBase = 0.3 + Math.random() * 0.6;
+      } else if (isTrain) {
+        speedBase = 0.8 + Math.random() * 1.0;
+      } else {
+        speedBase = 0.4 + Math.random() * 0.8;
+      }
       var dir = (r % 2 === 0) ? 1 : -1;
-      var spd = speedBase * dir * (1 + this.level * 0.08);
+      var spd = speedBase * dir * speedMul;
 
-      var objW = isWater ? (2 + Math.floor(Math.random() * 2))
-               : isTrain ? (2 + Math.floor(Math.random() * 2))
-               : (1 + Math.floor(Math.random() * 2));
-      var gap = objW + 2 + Math.floor(Math.random() * 3);
+      // ── Train lanes: dormant (no objects) until trainActivity > 0 ──
+      if (isTrain && trainActivity <= 0) {
+        // Empty train lane — safe to cross at low levels
+        this._lanes.push({ type: type, speed: 0, objs: [] });
+        continue;
+      }
+
+      // ── Object width ──
+      var objW;
+      if (isWater) {
+        objW = logWidthMin + Math.floor(Math.random() * (logWidthMax - logWidthMin + 1));
+      } else if (isTrain) {
+        objW = 2 + Math.floor(Math.random() * 2);
+      } else {
+        // Cars: 1-wide early, 1-2 later
+        objW = (lvl < 5) ? 1 : (1 + Math.floor(Math.random() * 2));
+      }
+
+      // ── Gap between objects ──
+      var gap;
+      if (isWater) {
+        // Logs: small gap early (easy to hop), wider gap later
+        gap = objW + 1 + logGapExtra + Math.floor(Math.random() * 2);
+      } else if (isTrain) {
+        // Trains: lerp gap with trainActivity (wider gap = fewer trains when ramping in)
+        var trainGapBase = objW + 2 + Math.floor(Math.random() * 2);
+        var trainGapExtra = Math.round((1 - trainActivity) * 4); // extra space when trains are new
+        gap = trainGapBase + trainGapExtra;
+      } else {
+        // Road: wide gap at lvl 1, shrinks to tight at lvl 10
+        var roadGapBase = objW + 1 + Math.floor(Math.random() * 2);
+        var roadGapExtra = Math.round((1 - trafficDensity) * 5); // up to 5 extra tiles at lvl 1
+        gap = roadGapBase + roadGapExtra;
+      }
+
+      // Populate lane
       var totalCols = this._cols + 6;
-
       var objs = [];
       for (var x = -3; x < totalCols; x += gap) {
-        var emojiType = isWater ? 'log'
-                      : isTrain ? (Math.random() < 0.4 ? 'freight' : 'passenger')
-                      : 'car';
+        var emojiType;
+        if (isWater) {
+          emojiType = 'log';
+        } else if (isTrain) {
+          emojiType = (Math.random() < 0.4) ? 'freight' : 'passenger';
+        } else {
+          emojiType = 'car';
+        }
         objs.push({
           x: x,
           w: objW,
           emoji: emojiType,
-          pauseTimer: 0  // for passenger trains that stop briefly
+          pauseTimer: 0
         });
       }
 
@@ -175,9 +277,75 @@ window.FroggerGame = (function () {
     };
     this._alive = true;
     this._hopCooldown = 0;
+    this._coyoteTimer = 0;
+    this._coyoteActive = false;
+    this._lastLogRow = -1;
     // Snap visual position to grid (no lerp on reset)
     this._visualX = this._frog.col;
     this._visualY = this._frog.row;
+  };
+
+  // ════════════════════════════════════════════
+  // COLLECTIBLE COINS
+  // ════════════════════════════════════════════
+
+  var COIN_SCORE = 25;
+
+  /**
+   * Scatter currency collectibles along the left/right peripherals of the map.
+   * Clusters of 1 or 3 coins, seeded by level so the pattern is consistent
+   * per level but varies between levels.
+   */
+  Frogger.prototype._spawnCoins = function () {
+    this._coins = [];
+    var cols = this._cols;
+    if (!cols || cols < 4) return;
+
+    // Deterministic seed from level for repeatable layouts
+    var seed = (this.level || 1) * 7919;
+    function rng() {
+      seed = (seed * 16807 + 0) % 2147483647;
+      return (seed & 0x7fffffff) / 2147483647;
+    }
+
+    // Peripheral columns: leftmost 2 and rightmost 2
+    var leftCols  = [0, 1];
+    var rightCols = [cols - 2, cols - 1];
+    var edgeCols  = leftCols.concat(rightCols);
+
+    // Eligible rows: road lanes (7-11), water lanes (1-5), safe median (6)
+    // Skip goal row (0) and start row (12)
+    var eligibleRows = [];
+    for (var r = 1; r <= 11; r++) eligibleRows.push(r);
+
+    // Number of clusters scales slightly with level (3-6 clusters)
+    var clusterCount = Math.min(6, 3 + Math.floor((this.level || 1) / 3));
+
+    // Track occupied cells to avoid duplicates
+    var occupied = {};
+    function place(self, c, r) {
+      var key = c + ',' + r;
+      if (occupied[key]) return;
+      occupied[key] = true;
+      self._coins.push({ col: c, row: r, value: 1, collected: false });
+    }
+
+    for (var c = 0; c < clusterCount; c++) {
+      var row = eligibleRows[Math.floor(rng() * eligibleRows.length)];
+      var col = edgeCols[Math.floor(rng() * edgeCols.length)];
+      var size = rng() < 0.5 ? 1 : 3; // cluster of 1 or 3
+
+      place(this, col, row);
+      if (size === 3) {
+        // Adjacent horizontally (toward center)
+        var inward = (col <= 1) ? col + 1 : col - 1;
+        inward = Math.max(0, Math.min(cols - 1, inward));
+        place(this, inward, row);
+        // Adjacent vertically
+        var vRow = Math.max(1, Math.min(11, row + (rng() < 0.5 ? -1 : 1)));
+        place(this, col, vRow);
+      }
+    }
   };
 
   // ════════════════════════════════════════════
@@ -353,7 +521,7 @@ window.FroggerGame = (function () {
         }
       }
     } else if (lane.type === 'water') {
-      // Must be on a log
+      // Must be on a log — with coyote time grace period
       var onLog = false;
       for (var i = 0; i < lane.objs.length; i++) {
         var o = lane.objs[i];
@@ -363,12 +531,28 @@ window.FroggerGame = (function () {
           var drift = lane.speed * (dt / 1000);
           f.col += drift;
           this._visualX += drift;
+          // Track that we're safely on a log (for coyote recovery)
+          this._coyoteTimer = 0;
+          this._coyoteActive = false;
+          this._lastLogRow = f.row;
           break;
         }
       }
       if (!onLog) {
-        this._die();
-        return;
+        // Coyote time: 300ms grace to hop back onto a plank
+        if (!this._coyoteActive) {
+          this._coyoteActive = true;
+          this._coyoteTimer = 300; // 0.3 seconds
+          this.playSFX('sq-sq-pickup-success1', { volume: 0.3 }); // subtle warning splash
+        }
+        this._coyoteTimer -= dt;
+        if (this._coyoteTimer <= 0) {
+          // Grace period expired — drown
+          this._coyoteActive = false;
+          this._die();
+          return;
+        }
+        // During coyote time, player can still move (hop to safety)
       }
     } else if (lane.type === 'goal' && f.row === 0) {
       // Reached a goal slot
@@ -404,11 +588,34 @@ window.FroggerGame = (function () {
         this._winSlots = [];
         for (var i = 0; i < GOAL_SLOTS; i++) this._winSlots.push(false);
         this._buildGrid();
+        this._spawnCoins();
       }
 
       this._highestRow = ROWS - 1;
       this._resetFrog();
       return;
+    }
+
+    // Clear coyote state when on a non-water lane
+    if (lane.type !== 'water') {
+      this._coyoteTimer = 0;
+      this._coyoteActive = false;
+    }
+
+    // ── Coin pickup ──
+    var fCol = Math.round(f.col);
+    for (var ci = 0; ci < this._coins.length; ci++) {
+      var coin = this._coins[ci];
+      if (!coin.collected && coin.row === f.row && Math.abs(coin.col - fCol) < 0.8) {
+        coin.collected = true;
+        this.addScore(COIN_SCORE);
+        this.playSFX('coin-2', { volume: 0.5 });
+        if (this._hud) {
+          this._hud.popup('+' + COIN_SCORE,
+            coin.col * T + T / 2,
+            this._hudOffset + coin.row * T, this.colors.amber);
+        }
+      }
     }
 
     // Out of bounds (drifted off log)
@@ -425,6 +632,11 @@ window.FroggerGame = (function () {
     } : null;
     this._deathTimer = 800;
     this._highestRow = ROWS - 1;
+
+    // Randomize kitty SFX for this death (updates both 'death' and 'splat' keys)
+    var kittyKey = 'kitty-' + (1 + Math.floor(Math.random() * 3));
+    this.sfxMap['death'] = kittyKey;
+    this.sfxMap['splat'] = kittyKey;
 
     this.playSFX('splat');
     this.loseLife();  // ArcadeEngine handles GAME_OVER transition when lives=0
@@ -492,7 +704,7 @@ window.FroggerGame = (function () {
             // First cell gets the main emoji, rest get body segments
             var segChar = (t === 0) ? emojiChar
                         : (o.emoji === 'freight' || o.emoji === 'passenger') ? '🚃'
-                        : (o.emoji === 'log') ? '🪵'
+                        : (o.emoji === 'log') ? EMOJI.log
                         : emojiChar;
             this.drawEmoji(ctx, segChar,
               ox + t * T + T / 2,
@@ -512,6 +724,32 @@ window.FroggerGame = (function () {
             this._winSlots[s] ? { glow: true, glowColor: this.colors.phosphor } : {});
         }
       }
+    }
+
+    // ── Draw collectible coins ──
+    for (var ci = 0; ci < this._coins.length; ci++) {
+      var coin = this._coins[ci];
+      if (coin.collected) continue;
+      var cx = coin.col * T + T / 2;
+      var cy = hudY + coin.row * T + T / 2;
+      // Gentle float animation
+      var bobY = Math.sin(Date.now() * 0.004 + ci * 1.5) * 2;
+      this.drawEmoji(ctx, EMOJI.coin, cx, cy + bobY, T * 0.6, {
+        glow: true,
+        glowColor: this.colors.amber,
+        glowRadius: 6
+      });
+    }
+
+    // ── Coyote time warning flash ──
+    if (this._coyoteActive && this._alive && this._frog) {
+      // Flash the water tile under the frog red as warning
+      var warnAlpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.02);
+      ctx.fillStyle = 'rgba(255, 60, 60, ' + warnAlpha + ')';
+      ctx.fillRect(
+        this._visualX * T, hudY + this._visualY * T,
+        T, T
+      );
     }
 
     // ── Draw frog (lerped smooth position + squish transform) ──

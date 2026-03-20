@@ -545,10 +545,13 @@ var ArcadeEngine = (function () {
    * Play a sound effect via AudioSystem.
    */
   ArcadeEngine.prototype.playSFX = function (name, opts) {
+    // Allow games to remap generic SFX names to real audio keys
+    // by setting this.sfxMap = { 'hop': 'actual-key', ... }
+    var key = (this.sfxMap && this.sfxMap[name]) ? this.sfxMap[name] : name;
     if (typeof AudioSystem !== 'undefined' && AudioSystem.playSFX) {
-      AudioSystem.playSFX(name, opts);
+      AudioSystem.playSFX(key, opts);
     } else if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
-      AudioSystem.play(name, opts);
+      AudioSystem.play(key, opts);
     }
   };
 
