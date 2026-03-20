@@ -819,6 +819,11 @@
         }
       });
 
+      // Touch drag for mobile incineration (HTML5 drag doesn't fire on touch)
+      if (typeof CardDisposalSystem !== 'undefined' && CardDisposalSystem.setupTouchDrag) {
+        CardDisposalSystem.setupTouchDrag(itemEl, item, index, 'inventory');
+      }
+
       container.appendChild(itemEl);
     });
 

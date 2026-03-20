@@ -2689,20 +2689,31 @@ body.amber-mode #scanlines::after {
   }
 
   /* ── Mobile Inventory Layout Fix ── */
-  /* Hide empty slots so they don't wrap into the middle of log-column */
-  .inventory-item-empty {
-    display: none !important;
-  }
-
-  /* Remove min-height that forces empty space */
+  /* Collapse min-height so grid doesn't leave a huge gap */
   .inventory-grid {
     min-height: auto !important;
+    padding: 6px !important;
   }
 
-  /* Fade trailing edge of inventory items */
+  /* Force 2-column grid so items + placeholders wrap into compact rows */
   .inventory-items {
-    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  /* Smaller item tiles on mobile */
+  .inventory-item {
+    font-size: 1.5em !important;
+  }
+
+  /* Dim placeholders but keep them visible for layout continuity */
+  .inventory-item-empty {
+    opacity: 0.15 !important;
+  }
+
+  /* Last empty slot fades further — implies expandability */
+  .inventory-item-empty:last-child {
+    opacity: 0.06 !important;
   }
 }
 
@@ -4130,6 +4141,15 @@ body.cascade-active {
 .card-dragging {
   opacity: 0.5;
   cursor: grabbing;
+}
+
+/* Touch drag ghost (mobile incineration) */
+.touch-drag-ghost {
+  animation: touch-ghost-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes touch-ghost-pulse {
+  from { transform: translate(-50%, -50%) scale(1); }
+  to   { transform: translate(-50%, -50%) scale(1.15); }
 }
 
 /* Incinerator idle animation — pulsing glow when item hovers over debrief */

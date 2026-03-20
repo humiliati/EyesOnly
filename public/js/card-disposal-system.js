@@ -379,7 +379,7 @@ const CardDisposalSystem = (function() {
    * @param {string} lifecycle - Card lifecycle type
    */
   function _handleInvalidDisposal(card, cardElement, lifecycle) {
-    console.log('[CardDisposalSystem] Invalid disposal:', lifecycle, 'cards cannot be destroyed');
+    console.log('[CardDisposalSystem] Invalid disposal:', lifecycle, 'cannot be destroyed');
 
     // Shake animation
     if (cardElement) {
@@ -391,7 +391,7 @@ const CardDisposalSystem = (function() {
 
     // MOK interjection
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection('Cannot destroy ' + lifecycle + ' card: ' + card.name);
+      UIControls.updateMokInterjection('Cannot destroy ' + lifecycle + ' item: ' + card.name);
     }
   }
 
@@ -457,7 +457,13 @@ const CardDisposalSystem = (function() {
 
     // MOK interjection
     if (typeof UIControls !== 'undefined' && UIControls.updateMokInterjection) {
-      UIControls.updateMokInterjection('Card destroyed: ' + data.name);
+      var label = source === 'inventory' ? 'Item incinerated' : 'Card destroyed';
+      UIControls.updateMokInterjection(label + ': ' + data.name);
+    }
+
+    // Report to debrief feed
+    if (typeof DebriefFeedController !== 'undefined' && typeof DebriefFeedController.reportEvent === 'function') {
+      DebriefFeedController.reportEvent('ITEM_INCINERATED', { itemName: data.name || data.id, source: source });
     }
   }
 
@@ -491,12 +497,159 @@ const CardDisposalSystem = (function() {
     return DISPOSAL_CONFIG.validCardTypes.indexOf(lifecycle) !== -1;
   }
 
+  /* ============================================================
+     TOUCH DRAG SYSTEM — mobile incineration support
+     HTML5 drag-and-drop doesn't fire on touch devices.
+     This creates a floating ghost + detects drop on debrief feed.
+     ============================================================ */
+  var _touchState = null; // { element, data, index, source, ghost, startX, startY, moved }
+
+  function _createTouchGhost(emoji, x, y) {
+    var ghost = document.createElement('div');
+    ghost.className = 'touch-drag-ghost';
+    ghost.textContent = emoji || '📦';
+    ghost.style.cssText =
+      'position:fixed;z-index:999999;pointer-events:none;' +
+      'font-size:2.2em;opacity:0.85;' +
+      'transform:translate(-50%,-50%);' +
+      'filter:drop-shadow(0 0 8px rgba(255,120,0,0.6));' +
+      'transition:transform 80ms ease;' +
+      'left:' + x + 'px;top:' + y + 'px;';
+    document.body.appendChild(ghost);
+    return ghost;
+  }
+
+  function _isOverDebrief(x, y) {
+    if (!_debriefFeedElement) return false;
+    var rect = _debriefFeedElement.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  function _onTouchStart(e) {
+    if (!_touchState) return;
+    // Don't create ghost until movement threshold reached
+    _touchState.startX = e.touches[0].clientX;
+    _touchState.startY = e.touches[0].clientY;
+    _touchState.moved = false;
+  }
+
+  function _onTouchMove(e) {
+    if (!_touchState) return;
+    var tx = e.touches[0].clientX;
+    var ty = e.touches[0].clientY;
+
+    // Require 12px movement before initiating drag (prevents accidental drags on tap)
+    if (!_touchState.moved) {
+      var dx = tx - _touchState.startX;
+      var dy = ty - _touchState.startY;
+      if (Math.sqrt(dx * dx + dy * dy) < 12) return;
+      _touchState.moved = true;
+
+      // Create ghost
+      var emoji = _touchState.data.emoji || _touchState.element.textContent || '📦';
+      _touchState.ghost = _createTouchGhost(emoji, tx, ty);
+      _touchState.element.classList.add('card-dragging');
+    }
+
+    e.preventDefault(); // Prevent scroll while dragging
+
+    // Move ghost
+    if (_touchState.ghost) {
+      _touchState.ghost.style.left = tx + 'px';
+      _touchState.ghost.style.top = ty + 'px';
+    }
+
+    // Highlight debrief if hovering over it
+    _handleDragOverDebrief(_isOverDebrief(tx, ty));
+  }
+
+  function _onTouchEnd(e) {
+    if (!_touchState) return;
+
+    var ts = _touchState;
+    _touchState = null;
+
+    // Clean up ghost
+    if (ts.ghost) {
+      ts.ghost.remove();
+    }
+    ts.element.classList.remove('card-dragging');
+
+    // If didn't move enough, treat as tap (not drag)
+    if (!ts.moved) {
+      _handleDragOverDebrief(false);
+      return;
+    }
+
+    // Check if released over debrief feed
+    var endX, endY;
+    if (e.changedTouches && e.changedTouches.length) {
+      endX = e.changedTouches[0].clientX;
+      endY = e.changedTouches[0].clientY;
+    } else {
+      _handleDragOverDebrief(false);
+      return;
+    }
+
+    if (_isOverDebrief(endX, endY)) {
+      // Set _draggedCard so _handleDropOnDebrief() works
+      _draggedCard = {
+        element: ts.element,
+        card: ts.data,
+        index: ts.index,
+        source: ts.source
+      };
+      _handleDropOnDebrief();
+    } else {
+      _handleDragOverDebrief(false);
+    }
+  }
+
+  /**
+   * Wire touch drag on an inventory/card element for mobile incineration.
+   * Call this for each draggable item element after it's created.
+   * @param {HTMLElement} element - The item button/element
+   * @param {Object} data - Item data object (with name, emoji, lifecycle, etc.)
+   * @param {number} index - Index in inventory
+   * @param {string} source - 'hand' or 'inventory'
+   */
+  function setupTouchDrag(element, data, index, source) {
+    source = source || 'inventory';
+
+    element.addEventListener('touchstart', function(e) {
+      // Block BLVCK
+      if (_isBlvckCard(data)) return;
+
+      _touchState = {
+        element: element,
+        data: data,
+        index: index,
+        source: source,
+        ghost: null,
+        startX: 0,
+        startY: 0,
+        moved: false
+      };
+      _onTouchStart(e);
+    }, { passive: true });
+
+    element.addEventListener('touchmove', _onTouchMove, { passive: false });
+    element.addEventListener('touchend', _onTouchEnd, { passive: true });
+    element.addEventListener('touchcancel', function() {
+      if (_touchState && _touchState.ghost) _touchState.ghost.remove();
+      if (_touchState && _touchState.element) _touchState.element.classList.remove('card-dragging');
+      _touchState = null;
+      _handleDragOverDebrief(false);
+    }, { passive: true });
+  }
+
   // Public API
   return {
     init: init,
     handleDragStart: handleDragStart,
     handleDragEnd: handleDragEnd,
-    isDisposable: isDisposable
+    isDisposable: isDisposable,
+    setupTouchDrag: setupTouchDrag
   };
 })();
 
