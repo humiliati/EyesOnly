@@ -67,6 +67,8 @@ window.MinigameModal = (function () {
         '<div class="minigame-cabinet-legs">' +
           '<div class="minigame-cabinet-leg"></div>' +
           '<div class="minigame-cabinet-leg"></div>' +
+          '<div class="minigame-cabinet-leg"></div>' +
+          '<div class="minigame-cabinet-leg"></div>' +
         '</div>' +
       '</div>';
 
@@ -79,11 +81,6 @@ window.MinigameModal = (function () {
     titleEl      = document.getElementById('minigame-title');
     closeBtn     = document.getElementById('minigame-close');
     pauseOverlay = document.getElementById('minigame-pause');
-
-    // Move box-depth faces OUT of cabinet onto the scene so they
-    // aren't clipped by cabinet's overflow:hidden after animation.
-    var depthFaces = cabinet.querySelectorAll('.minigame-cab-depth');
-    depthFaces.forEach(function (face) { scene.appendChild(face); });
 
     /* Close button → shows pause menu */
     closeBtn.addEventListener('click', function (e) {
@@ -155,7 +152,7 @@ window.MinigameModal = (function () {
       cabinet.style.overflow = 'hidden';  // restore after animation
       // Re-size canvas now that transforms are stripped (rect is accurate)
       sizeCanvas();
-      syncDepthFaces();
+  
       if (currentGame && currentGame.resize) {
         currentGame.resize(canvas);
       }
@@ -175,21 +172,6 @@ window.MinigameModal = (function () {
     paused = false;
     if (pauseOverlay) pauseOverlay.classList.remove('active');
     if (currentGame && currentGame.resume) currentGame.resume();
-  }
-
-  /* ── Sync depth-face dimensions to actual cabinet size ── */
-  function syncDepthFaces() {
-    if (!cabinet || !scene) return;
-    var w = cabinet.offsetWidth;
-    var h = cabinet.offsetHeight;
-    var cabLeft   = scene.querySelector('.cab-left');
-    var cabRight  = scene.querySelector('.cab-right');
-    var cabBottom = scene.querySelector('.cab-bottom');
-    var cabBack   = scene.querySelector('.cab-back');
-    if (cabLeft)   { cabLeft.style.height = h + 'px'; }
-    if (cabRight)  { cabRight.style.height = h + 'px'; }
-    if (cabBottom) { cabBottom.style.width = w + 'px'; }
-    if (cabBack)   { cabBack.style.width = w + 'px'; cabBack.style.height = h + 'px'; }
   }
 
   /* ── Canvas sizing ── */
@@ -230,7 +212,7 @@ window.MinigameModal = (function () {
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
 
-    syncDepthFaces();
+
   }
 
   function handleResize() {
@@ -312,8 +294,6 @@ window.MinigameModal = (function () {
     scene.style.transform      = TILT_TRANSFORM;
     // 3. Cabinet needs preserve-3d so box-depth faces render during tilt
     cabinet.style.transformStyle = 'preserve-3d';
-    // 4. Cabinet overflow visible so bezel edges aren't clipped during tilt
-    cabinet.style.overflow = 'visible';
 
     // Show overlay (opacity 0→1 via CSS transition on overlay)
     overlay.classList.add('minigame-overlay-open');
@@ -345,9 +325,9 @@ window.MinigameModal = (function () {
         scene.style.transformStyle = 'flat';
         overlay.style.perspective  = 'none';
         cabinet.style.transformStyle = '';
-        cabinet.style.overflow = 'hidden';
+
         sizeCanvas();
-        syncDepthFaces();
+    
         if (currentGame && currentGame.resize) {
           currentGame.resize(canvas);
         }
