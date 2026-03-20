@@ -416,3 +416,36 @@ Phase 5: Polish, leaderboards, achievements
 | `docs/BOSS_DESIGN.md` | 6-boss minigame vision, accessibility, phases |
 | `docs/BOSS_ENCOUNTER_IDEAS.md` | 8-boss gone-rogue STR integration |
 | `docs/AUDIO_WIRING_ROADMAP.md` | Audio system architecture, boss music staging |
+
+
+### Debugging notes For Ski Free
+
+the way that the map scrolls is somewhat disorienting. we need to look at how these layers pass. the obstacles seem to come from the top while the sides seem to scroll from the bottom. we get the impression that ideal is scrolling the obstacles and sides up from the bottom for a sliding down sensation, the player should start by scrolling in from the top, once centered gain controls, and at the end of the level the pursuer would come to follow from the player's spawn point
+
+
+
+we want to use few obstacles at the beginning with an increase in obstacles as the level progresses
+
+
+
+we're using the skiier ⛷️ player which works when we're travelling left but should narrow and flip gradually along a sine when the player is carving back and forth.
+
+let's use the same ⛷️ emoji animator for pursuer(s) but with the blvck emoji overlay so they appear as almost black smudges.
+
+
+
+player controller needs to accelerate when clicking at the bottom and decelerate when clicking or dragging near the top
+
+
+
+we can keep the motorcycle emoji for a possible support npc or the victory condition win state is arriving at the motorcycle, the emojis collide the skiier poofs into a second motorcycle and the two ride off together
+
+
+
+we want paint a subtle grey trail behind the player and the pursuers (player trail can be long, pursuers should be resource savvy). we should spawn in the first pursuer somewhat early. the second should spawn in much later.
+
+
+
+we have a projectile system from gone-rogue that when in gone-rogue will depend on ammo but in ski free should have infinite ammo for dispatching pursuers (a dispatched pursuer turns into just a blvck.shadow overlay under a breakable's poof sprite animation). a ski free level from arcade will have dozens of progressively stronger pusuers the first few sparse pursuers fall easily against just a single projectile till eventually the player is overwhelmed by level ~15-20 against enemies that take 3-4 projectiles to fell. we want more breakable obstacles on the map that contain collectibles (currency in arcade, all collectibles from loot tables in gone-rogue). 
+
+players should be able to ski BEHIND tree emojis once they've passed the bottom ~15-20 of a row containing obstacles they should be able to carve back and disappear momentarily behind a tree emoji
