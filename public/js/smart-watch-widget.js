@@ -354,6 +354,9 @@ var SmartWatchWidget = (function () {
       AudioSystem._initialized = true;
     }
 
+    // Dim the terminal's embedded debrief feed to avoid two competing feeds
+    _setTerminalDebriefDimmed(true);
+
     // Render MOK pyramid into viewport
     _renderMOKPyramid();
 
@@ -372,6 +375,9 @@ var SmartWatchWidget = (function () {
   function _minimize() {
     if (!_state.expanded) return;
     _state.expanded = false;
+
+    // Restore the terminal's embedded debrief feed
+    _setTerminalDebriefDimmed(false);
     _el.overlay.classList.remove('open');
 
     // Clean up MOK pyramid (so it doesn't conflict with terminal's #mok-avatar)
@@ -379,6 +385,35 @@ var SmartWatchWidget = (function () {
       _el.mokContainer.innerHTML = '';
     }
     _state.mokInteractionBound = false;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // TERMINAL DEBRIEF FEED COORDINATION
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Dim/restore the terminal's embedded debrief feed when the smart watch
+   * overlay is open. This prevents two competing debrief feeds from being
+   * interactive simultaneously and avoids state machine conflicts.
+   * Cheap approach: CSS opacity + pointer-events. No state teardown needed,
+   * so M console push notifications still target the terminal feed normally.
+   */
+  function _setTerminalDebriefDimmed(dimmed) {
+    var debriefWindow = document.getElementById('debrief-window');
+    if (!debriefWindow) return;
+    if (dimmed) {
+      debriefWindow.style.opacity = '0.3';
+      debriefWindow.style.pointerEvents = 'none';
+      debriefWindow.style.transition = 'opacity 0.2s ease';
+    } else {
+      debriefWindow.style.opacity = '';
+      debriefWindow.style.pointerEvents = '';
+      debriefWindow.style.transition = 'opacity 0.2s ease';
+      // Clean up transition property after it completes
+      setTimeout(function () {
+        if (debriefWindow) debriefWindow.style.transition = '';
+      }, 250);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

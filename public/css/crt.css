@@ -97,21 +97,10 @@ html, body {
   flex-direction: column;
 }
 
-/* --- Barrel Distortion (CSS approximation) --- */
-#crt-screen::before {
-  content: '';
-  position: absolute;
-  top: -2%;
-  left: -2%;
-  width: 104%;
-  height: 104%;
-  border-radius: 50% / 10%;
-  box-shadow:
-    inset 0 0 70px 36px rgba(0, 0, 0, 0.7),
-    inset 0 0 14px 8px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-  z-index: 100;
-}
+/* --- Barrel Distortion — DISABLED for readability --- */
+/* The inset box-shadow overlay darkened terminal text at high z-index.
+   Removed per UX feedback: superficially harder to read on all themes. */
+/* #crt-screen::before { ... } */
 
 /* --- Scanlines Overlay --- */
 #scanlines {
@@ -394,13 +383,13 @@ body.in-gone-rogue .debrief-window {
 }
 
 .debrief-label {
-  font-size: 0.78em;
-  letter-spacing: 0.1em;
+  font-size: 0.88em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--phosphor-dim);
   margin: 0;
   padding: 0;
-  line-height: 1;       /* was 1.05 — tighter */
+  line-height: 1;
 }
 
 .debrief-screen {
@@ -1856,11 +1845,7 @@ body.amber-mode #scanlines::after {
     min-height: 200px;
     padding: 12px;
   }
-  #crt-screen::before {
-    box-shadow:
-      inset 0 0 50px 26px rgba(0, 0, 0, 0.55),
-      inset 0 0 10px 6px rgba(0, 0, 0, 0.28);
-  }
+  /* #crt-screen::before — barrel distortion disabled (see line ~100) */
 }
 
 @media (max-width: 600px) {
@@ -3162,13 +3147,13 @@ body.in-gone-rogue #log-column {
     overflow: hidden;
   }
 
-  /* Drastically reduce header size when keyboard is visible */
+  /* Further reduce header size when keyboard is visible (base compact is 4px 8px) */
   body.keyboard-visible #mok-header.monitor-header {
     padding: 2px 6px;
     min-height: 24px;
     height: auto;  /* release UX patch's min-height: 44px so keyboard compaction works */
     gap: 4px;
-    transition: padding 0.2s ease, gap 0.15s ease;
+    /* No transition — instant snap prevents bounce when keyboard toggles */
   }
 
   body.keyboard-visible .mok-header-title {
@@ -4809,12 +4794,7 @@ body[data-theme="white"] #vignette {
   display: none;
 }
 
-/* Suppress the ::before dark vignette overlay */
-body[data-theme="white"] #crt-screen::before {
-  box-shadow: none;
-  background: none;
-  display: none;
-}
+/* #crt-screen::before barrel distortion removed globally — white theme override no longer needed */
 
 /* ── PAGE BACKGROUND ── */
 body[data-theme="white"] {

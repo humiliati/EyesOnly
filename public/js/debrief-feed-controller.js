@@ -637,8 +637,8 @@ const DebriefFeedController = (function() {
 
     _debriefScreen.innerHTML = html;
 
-    // Legacy MOKVisualEngine/MOKStateMachine no longer initialized here.
-    // The 3D pyramid is driven by CSS classes via mok-ux.js and kernel-manager.js.
+    // The 3D pyramid is driven by CSS classes via MOKStateMachine, mok-ux.js, and kernel-manager.js.
+    // MOKVisualEngine is deprecated — expression/glow APIs now route through CSS custom properties.
     _mokInitialized = true;
 
     _attachEventHandlers();
@@ -1845,8 +1845,13 @@ const DebriefFeedController = (function() {
         e.stopPropagation();
         if (_videoPlaying) {
           stopVideo();
+          // Enter "stopped" red state
+          stopBtn.classList.add('video-stopped');
+        } else if (stopBtn.classList.contains('video-stopped')) {
+          // Second click: return to theme color (clear stopped state)
+          stopBtn.classList.remove('video-stopped');
         } else {
-          // Not playing — start theme video
+          // Not playing, not stopped — start theme video
           playThemeVideo();
         }
         _updateVideoWidget();
@@ -1865,15 +1870,29 @@ const DebriefFeedController = (function() {
     if (_videoPlaying) {
       var vid = document.getElementById('debrief-video-el');
       var isPaused = vid && vid.paused;
-      playIcon.textContent = isPaused ? '\u25B6' : '\u23F8'; // ▶ or ⏸
-      if (playBtn) playBtn.title = isPaused ? 'Resume video' : 'Pause video';
+      // Play button cycles between ▶ (play/resume) and ⏸ (pause)
+      playIcon.textContent = isPaused ? '\u25B6' : '\u23F8';
+      if (playBtn) {
+        playBtn.title = isPaused ? 'Resume video' : 'Pause video';
+        playBtn.classList.add('video-active');
+      }
+      // Stop button: active state (not stopped)
       stopIcon.textContent = '\u25A0'; // ■
-      if (stopBtn) stopBtn.title = 'Stop video \u2192 MOK avatar';
+      if (stopBtn) {
+        stopBtn.title = 'Stop video';
+        stopBtn.classList.remove('video-stopped');
+      }
     } else {
       playIcon.textContent = '\u25B6'; // ▶
-      if (playBtn) playBtn.title = 'Play theme video';
-      stopIcon.textContent = '\u25A0'; // ■ (always stop icon)
-      if (stopBtn) stopBtn.title = 'Stop / return to MOK';
+      if (playBtn) {
+        playBtn.title = 'Play theme video';
+        playBtn.classList.remove('video-active');
+      }
+      stopIcon.textContent = '\u25A0'; // ■
+      if (stopBtn) {
+        stopBtn.title = stopBtn.classList.contains('video-stopped')
+          ? 'Click to reset' : 'Stop / return to MOK';
+      }
     }
   }
 
@@ -1970,40 +1989,98 @@ const DebriefFeedController = (function() {
 
   /**
    * Set MOK expression directly (API hook for agents)
+   * Maps expression names to MOKStateMachine event types.
+   * Falls back to legacy MOKVisualEngine if loaded.
    * @param {string} expression - Expression name (idle, talking, warning, happy, error, etc.)
    * @param {Object} options - Optional color and timing overrides
    */
+  var EXPRESSION_TO_EVENT = {
+    idle: 'idle_timer',
+    talking: 'tooltip_open',
+    processing: 'card_played',
+    warning: 'card_failed',
+    happy: 'item_acquired',
+    error: 'error',
+    combat: 'combat_start',
+    active: 'player_input'
+  };
+
   function setMOKExpression(expression, options) {
-    if (!_mokInitialized || !MOKVisualEngine) {
-      return;
+    if (!_mokInitialized) return;
+
+    // Route through unified state machine (CSS class driven)
+    if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.handleEvent) {
+      var eventType = EXPRESSION_TO_EVENT[expression];
+      if (eventType) {
+        MOKStateMachine.handleEvent({ type: eventType });
+        return;
+      }
     }
 
-    MOKVisualEngine.setExpression(expression, options);
+    // Legacy fallback: MOKVisualEngine (deprecated, will be removed)
+    if (typeof MOKVisualEngine !== 'undefined' && MOKVisualEngine.setExpression) {
+      MOKVisualEngine.setExpression(expression, options);
+    }
   }
 
   /**
    * Set custom MOK glow colors (API hook for agents)
+   * Applies via CSS custom properties on #mok-avatar for the 3D pyramid.
+   * Falls back to legacy MOKVisualEngine if loaded.
    * @param {string} primaryColor - Primary glow color (hex)
    * @param {string} secondaryColor - Secondary glow color (hex)
    * @param {number} pulseSpeed - Pulse speed in ms (optional)
    */
   function setMOKGlowColors(primaryColor, secondaryColor, pulseSpeed) {
-    if (!_mokInitialized || !MOKVisualEngine) {
-      return;
+    if (!_mokInitialized) return;
+
+    // Apply via CSS custom properties on the pyramid element
+    // The pyramid reads --mok-color-1 (primary), --mok-color-2 (secondary), --mok-glow
+    var avatar = document.getElementById('mok-avatar');
+    if (avatar) {
+      if (primaryColor) {
+        avatar.style.setProperty('--mok-color-1', primaryColor);
+        avatar.style.setProperty('--mok-glow', primaryColor.replace(')', ', 0.5)').replace('rgb(', 'rgba(').replace('#', ''));
+        // If hex, build an rgba glow
+        if (primaryColor.charAt(0) === '#') {
+          avatar.style.setProperty('--mok-glow', primaryColor + '80'); // 50% alpha hex
+        }
+      }
+      if (secondaryColor) avatar.style.setProperty('--mok-color-2', secondaryColor);
+      if (pulseSpeed) avatar.style.setProperty('--mok-spin-duration', (pulseSpeed / 1000) + 's');
     }
 
-    MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
+    // Legacy fallback
+    if (typeof MOKVisualEngine !== 'undefined' && MOKVisualEngine.setCustomGlowColors) {
+      MOKVisualEngine.setCustomGlowColors(primaryColor, secondaryColor, pulseSpeed);
+    }
   }
 
   /**
    * Get current MOK glow colors
+   * Reads from CSS custom properties, falls back to legacy engine.
    */
   function getMOKGlowColors() {
-    if (!_mokInitialized || !MOKVisualEngine || !MOKVisualEngine.getCurrentGlowColors) {
-      return null;
+    // Read from CSS custom properties
+    var avatar = document.getElementById('mok-avatar');
+    if (avatar) {
+      var primary = avatar.style.getPropertyValue('--mok-color-1');
+      var secondary = avatar.style.getPropertyValue('--mok-color-2');
+      if (primary || secondary) {
+        var spinDur = avatar.style.getPropertyValue('--mok-spin-duration');
+        return {
+          primary: primary || null,
+          secondary: secondary || null,
+          pulseSpeed: spinDur ? parseFloat(spinDur) * 1000 : null
+        };
+      }
     }
 
-    return MOKVisualEngine.getCurrentGlowColors();
+    // Legacy fallback
+    if (typeof MOKVisualEngine !== 'undefined' && MOKVisualEngine.getCurrentGlowColors) {
+      return MOKVisualEngine.getCurrentGlowColors();
+    }
+    return null;
   }
 
   /**

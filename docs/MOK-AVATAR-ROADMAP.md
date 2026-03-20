@@ -87,19 +87,49 @@ The `#mok-avatar` button contains a hardcoded SVG triangle glyph that renders wi
 
 ---
 
-## Phase 1: Remaining Work
+## Phase 1: Remaining Work — All Complete
 
-### Wire MOKStateMachine into interactive system
-The interactive poke/spin/squish handlers in `_setupMokInteraction()` should:
-1. Check `MOKStateMachine.canInteract()` before allowing interaction
-2. Call `MOKStateMachine.handleEvent({ type: 'poke' })` etc. so the state machine tracks interactive state
-3. Let the state machine's decay timer handle returning to idle (instead of manual `setTimeout` in each handler)
+### Wire MOKStateMachine into interactive system ✅
+- `_setupMokInteraction()` now gates on `MOKStateMachine.canInteract()` before allowing poke/spin/squish
+- Calls `_notifySM('poke')`, `_notifySM('spin_burst')`, `_notifySM('squish')` to notify the state machine
+- Guard: `typeof MOKStateMachine !== 'undefined'` on all references
 
-### Wire MOKStateMachine into mok-ux.js
-`mok-ux.js` `setAvatarState()` should route through `MOKStateMachine.handleEvent()` instead of direct class manipulation, so the priority system applies consistently. Terminal patches (writeLine, typeText, typeLines) should emit events to MOKStateMachine.
+### Wire MOKStateMachine into mok-ux.js ✅
+- `setAvatarState()` routes through `MOKStateMachine.handleEvent()` via `STATE_TO_EVENT` map
+- Map: typing→tooltip_open, output→card_played, ping→item_acquired, active→player_input, idle→idle_timer
+- Terminal patches (writeLine, typeText, typeLines) all flow through the state machine priority system
+- Falls back to direct class manipulation if MOKStateMachine hasn't loaded yet
 
-### MOKStateMachine.init() call
-Currently `init()` is available but not called during page load. Should be called in `DebriefFeedController.init()` or on DOMContentLoaded, targeting `#mok-avatar`.
+### MOKStateMachine.init() call ✅
+- Called in `DebriefFeedController.init()` targeting `#mok-avatar`
+- Guarded with `typeof MOKStateMachine !== 'undefined'`
+
+### Smart Watch Widget — Site-Wide Debrief Feed ✅
+- ITM-204 Smart Watch added to items.json, seeded as default account item
+- `debrief_feed: true` meta tag gates the widget (extensible to other items)
+- Full MOK pyramid + interactive poke/spin/squish in overlay (uses `#sw-mok-avatar`)
+- Audio controls: master mute, music/SFX volume, now playing
+- Wired into all 5 public pages
+- See `docs/SMART-WATCH-ROADMAP.md` for polish stages through oscilloscope variant
+
+---
+
+## Phase 1.5: Legacy Deprecation (Complete)
+
+### MOKVisualEngine bypass ✅
+- `setMOKExpression()` now routes through `MOKStateMachine.handleEvent()` via `EXPRESSION_TO_EVENT` map
+- Expression names (idle, talking, warning, happy, error, combat, active) map to SM event types
+- Falls back to legacy MOKVisualEngine only if SM is unavailable
+
+### CSS custom property glow API ✅
+- `setMOKGlowColors(primary, secondary, pulseSpeed)` now sets `--mok-color-1`, `--mok-color-2`, `--mok-glow`, `--mok-spin-duration` on `#mok-avatar`
+- `getMOKGlowColors()` reads from the same CSS properties
+- Agent integration (`agent-integration.js`) calls flow through to CSS without needing MOKVisualEngine
+- `kernel-manager.js` backward-compat call still present but no longer required
+
+### Remaining cleanup (low priority)
+- `mok-visual-engine.js` and `mok-animation-cycles.js` still loaded in index.html — can be removed once confirmed no callers remain
+- kernel-manager.js legacy `MOKVisualEngine.setCustomGlowColors()` call can be removed
 
 ---
 
@@ -122,8 +152,10 @@ This is documented for reference but not actively planned.
 |------|------|--------|
 | `index.html` #mok-avatar SVG | No-JS fallback | ✅ Stable |
 | `css/mok-pyramid.css` | 3D pyramid + state animations + interactive keyframes | ✅ Complete |
-| `js/mok-ux.js` | Lightweight fallback driver, Terminal patches | ✅ Working (needs SM wire) |
-| `js/mok-state-machine.js` | Central state authority (CSS class driven) | ✅ Rewritten |
-| `js/debrief-feed-controller.js` | Feed management + interactive poke system | ✅ Working (needs SM wire) |
+| `js/mok-ux.js` | Lightweight fallback driver, Terminal patches | ✅ Wired to SM |
+| `js/mok-state-machine.js` | Central state authority (CSS class driven) | ✅ Rewritten + wired |
+| `js/debrief-feed-controller.js` | Feed management + interactive poke system | ✅ Wired to SM |
+| `js/smart-watch-widget.js` | Site-wide debrief feed + audio overlay | ✅ Complete |
+| `css/smart-watch-widget.css` | Watch sprite + overlay styles | ✅ Complete |
 | `js/mok-visual-engine.js` | Legacy canvas renderer | ⚠️ Deprecated (still loaded) |
 | `js/kernel-manager.js` | Drives kernel state colors | ✅ Compatible |

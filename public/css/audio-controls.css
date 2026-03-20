@@ -340,6 +340,15 @@
 .video-btn.video-active {
   color: var(--phosphor-bright, #66ff66);
 }
+/* Stop button: dark red "stopped" state (click to toggle) */
+.video-btn.video-stopped {
+  color: #661111;
+  text-shadow: none;
+}
+.video-btn.video-stopped:hover,
+.video-btn.video-stopped:focus-visible {
+  color: #993333;
+}
 /* Hide video controls when debrief is minimized */
 .debrief-window.debrief-minimized .video-controls-inline {
   display: none;

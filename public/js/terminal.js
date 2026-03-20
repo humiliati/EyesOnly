@@ -329,8 +329,8 @@ const Terminal = (function () {
     if (!_inputLineEl || _inputLineEl.style.display === 'none') return;
 
     // Scroll the input line into view
-    _inputLineEl.scrollIntoView({ 
-      behavior: 'smooth', 
+    _inputLineEl.scrollIntoView({
+      behavior: 'instant',
       block: 'end',
       inline: 'nearest'
     });
