@@ -24,7 +24,7 @@ window.MinigameModal = (function () {
   var DBL_CLICK_WINDOW = 400;
 
   /* ── 3D starting pose (tilted flat on table) ── */
-  var TILT_TRANSFORM = 'rotateX(82deg) rotateZ(15deg) scale(0.6)';
+  var TILT_TRANSFORM = 'rotateX(85deg) rotateZ(12deg) scale(0.55) translateY(40px)';
 
   function buildDOM() {
     if (overlay) return;
@@ -60,6 +60,11 @@ window.MinigameModal = (function () {
             '<div class="minigame-arcade-btn btn-white"></div>' +
             '<div class="minigame-arcade-btn btn-blue"></div>' +
           '</div>' +
+          /* 3D box faces — visible only while the cabinet is tilted */
+          '<div class="minigame-cab-depth cab-left"></div>' +
+          '<div class="minigame-cab-depth cab-right"></div>' +
+          '<div class="minigame-cab-depth cab-bottom"></div>' +
+          '<div class="minigame-cab-depth cab-back"></div>' +
         '</div>' +
         '<div class="minigame-cabinet-legs">' +
           '<div class="minigame-cabinet-leg"></div>' +
@@ -136,11 +141,14 @@ window.MinigameModal = (function () {
       if (e.target !== scene) return;
       if (!_animating) return;
       _animating = false;
-      // Kill perspective + preserve-3d on parents so canvas rect is clean
+      // Kill perspective + preserve-3d on scene/cabinet so canvas rect is clean.
+      // Control panel keeps its OWN perspective (set in CSS) — it's a sibling
+      // of bezel, not a canvas ancestor, so it can't warp canvas coords.
       scene.style.transition = 'none';
       scene.style.transform  = 'none';
       scene.style.transformStyle = 'flat';
       overlay.style.perspective = 'none';
+      cabinet.style.transformStyle = '';
       // Re-size canvas now that transforms are stripped (rect is accurate)
       sizeCanvas();
       if (currentGame && currentGame.resize) {
@@ -229,12 +237,14 @@ window.MinigameModal = (function () {
     _lastOverlayClick = 0;
 
     // ── Reset 3D transform state for the roll-in animation ──
-    // 1. Restore perspective on overlay
-    overlay.style.perspective = '1200px';
+    // 1. Restore perspective on overlay (tighter = more dramatic depth)
+    overlay.style.perspective = '800px';
     // 2. Force scene to the tilted starting pose (no transition)
     scene.style.transition     = 'none';
     scene.style.transformStyle = 'preserve-3d';
     scene.style.transform      = TILT_TRANSFORM;
+    // 3. Cabinet needs preserve-3d so box-depth faces render during tilt
+    cabinet.style.transformStyle = 'preserve-3d';
 
     // Show overlay (opacity 0→1 via CSS transition on overlay)
     overlay.classList.add('minigame-overlay-open');
@@ -262,6 +272,7 @@ window.MinigameModal = (function () {
         scene.style.transform      = 'none';
         scene.style.transformStyle = 'flat';
         overlay.style.perspective  = 'none';
+        cabinet.style.transformStyle = '';
         sizeCanvas();
         if (currentGame && currentGame.resize) {
           currentGame.resize(canvas);

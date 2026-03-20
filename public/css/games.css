@@ -1401,6 +1401,9 @@ html, body {
       linear-gradient(180deg,
         #141420 0%, #0c0c14 50%, #0a0a10 100%);
     border-top: 1px solid #222238;
+    /* Own 3D context — independent of scene, can't warp canvas coords */
+    perspective: 500px;
+    transform-style: preserve-3d;
   }
   .minigame-arcade-btn {
     width: 14px;
@@ -1409,7 +1412,14 @@ html, body {
     border: 2px solid rgba(255,255,255,0.08);
     box-shadow:
       inset 0 1px 2px rgba(255,255,255,0.08),
-      0 2px 4px rgba(0,0,0,0.5);
+      0 2px 4px rgba(0,0,0,0.5),
+      0 4px 8px rgba(0,0,0,0.4);
+    /* Pop up from the table surface */
+    transform: translateZ(8px);
+    transition: transform 0.15s ease;
+  }
+  .minigame-arcade-btn:hover {
+    transform: translateZ(4px);  /* push down on hover */
   }
   .minigame-arcade-btn.btn-red    { background: radial-gradient(circle at 40% 35%, #ff4444, #991111); }
   .minigame-arcade-btn.btn-yellow { background: radial-gradient(circle at 40% 35%, #ffcc33, #997711); }
@@ -1421,8 +1431,10 @@ html, body {
     background: linear-gradient(180deg, #444 0%, #222 100%);
     border-radius: 5px 5px 3px 3px;
     border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.35);
     position: relative;
+    /* Stick pokes up higher than buttons */
+    transform: translateZ(14px);
   }
   .minigame-joystick::after {
     content: '';
@@ -1436,6 +1448,61 @@ html, body {
     border: 1px solid rgba(255,255,255,0.06);
     box-shadow: 0 -1px 4px rgba(0,0,0,0.3);
   }
+}
+
+/* ── Cabinet 3D box faces — give the table real depth during roll-in ──
+   These are side/bottom/back panels of the cocktail cabinet box.
+   At identity (face-on) they're perpendicular to screen = invisible.
+   During the tilted roll-in they catch light and sell the depth.         */
+
+.minigame-cab-depth {
+  position: absolute;
+  pointer-events: none;
+  backface-visibility: hidden;
+}
+
+.minigame-cab-depth.cab-left {
+  top: 0;
+  left: 0;
+  width: 80px;           /* exaggerated table thickness */
+  height: 100%;
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  background: linear-gradient(90deg, #0e0e1a 0%, #060610 100%);
+  border-right: 1px solid #1a1a2a;
+}
+
+.minigame-cab-depth.cab-right {
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 100%;
+  transform-origin: right center;
+  transform: rotateY(-90deg);
+  background: linear-gradient(270deg, #0e0e1a 0%, #060610 100%);
+  border-left: 1px solid #1a1a2a;
+}
+
+.minigame-cab-depth.cab-bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  transform-origin: bottom center;
+  transform: rotateX(90deg);
+  background: linear-gradient(180deg, #0c0c18 0%, #050509 100%);
+  border-top: 2px solid #1a1a2a;
+}
+
+.minigame-cab-depth.cab-back {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateZ(-80px);
+  background: #050508;
+  border: 2px solid #111122;
+  border-radius: 14px;
 }
 
 /* ── Pause overlay (shown on outside-click / escape) ── */
