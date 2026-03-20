@@ -1186,7 +1186,7 @@ html, body {
 }
 
 /* ============================================================
-   MINIGAME MODAL — Fullscreen overlay for arcade games
+   MINIGAME MODAL — Cocktail Arcade Cabinet overlay
    ============================================================ */
 
 .minigame-overlay {
@@ -1196,92 +1196,338 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.4s ease, background 0.6s ease;
+  perspective: 1200px;
 }
 
 .minigame-overlay-open {
   opacity: 1;
   pointer-events: auto;
+  background: rgba(0, 0, 0, 0.92);
 }
 
-.minigame-modal {
+/* ── The 3D scene container ── */
+.minigame-cabinet-scene {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(82deg) rotateZ(15deg) scale(0.6);
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.minigame-overlay-open .minigame-cabinet-scene {
+  transform: rotateX(0deg) rotateZ(0deg) scale(1);
+}
+
+/* ── Cabinet body: the cocktail table ── */
+.minigame-cabinet {
+  position: relative;
   display: flex;
   flex-direction: column;
-  background: #0a0a0a;
-  border: 1px solid var(--phosphor-dim, #1a6b4a);
-  border-radius: 6px;
-  box-shadow:
-    0 0 30px rgba(0, 0, 0, 0.6),
-    0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.1));
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 40px);
+  /* Desktop: ~70% larger than the old 600×460 */
+  width: min(1020px, calc(100vw - 48px));
+  max-height: min(780px, calc(100vh - 80px));
+  background: #0d0d0d;
+  border-radius: 14px;
   overflow: hidden;
+  /* Cabinet body: dark frame with blue-black inlay */
+  border: 3px solid #1a1a2a;
+  box-shadow:
+    /* Inner phosphor glow on the monitor bezel */
+    inset 0 0 20px rgba(28, 255, 155, 0.06),
+    /* Outer cabinet shadow + ambient glow */
+    0 8px 60px rgba(0, 0, 0, 0.8),
+    0 0 2px var(--phosphor-dim, #1a6b4a),
+    0 0 30px rgba(28, 255, 155, 0.05);
 }
 
+/* ── Arcade table legs (decorative, desktop only) ── */
+.minigame-cabinet-legs {
+  display: none;
+}
+@media (min-width: 769px) {
+  .minigame-cabinet-legs {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 60px;
+    position: relative;
+    z-index: -1;
+  }
+  .minigame-cabinet-leg {
+    width: 6px;
+    height: 50px;
+    background: linear-gradient(180deg, #1a1a2a 0%, #111 40%, #0a0a0a 100%);
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .minigame-cabinet-leg::after {
+    content: '';
+    display: block;
+    width: 16px;
+    height: 4px;
+    background: #181820;
+    border-radius: 2px;
+    margin-left: -5px;
+    margin-top: -1px;
+  }
+}
+
+/* ── Monitor bezel (terminal metal frame) ── */
+.minigame-monitor-bezel {
+  background:
+    linear-gradient(180deg,
+      #1c1c28 0%, #141420 8%, #0e0e18 50%, #141420 92%, #1c1c28 100%);
+  border: 2px solid #222238;
+  border-radius: 10px;
+  margin: 10px;
+  padding: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 -1px 0 rgba(0,0,0,0.4),
+    0 0 12px rgba(28, 255, 155, 0.04);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Subtle CRT scanline overlay */
+.minigame-monitor-bezel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  border-radius: 8px;
+  z-index: 2;
+}
+
+/* ── Header bar inside bezel ── */
 .minigame-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--phosphor-dim, #1a6b4a);
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(28, 255, 155, 0.15);
   flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 3;
 }
 
 .minigame-modal-title {
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  font-size: 0.75em;
+  font-size: 0.8em;
   font-weight: bold;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--phosphor, #1cff9b);
-  text-shadow: 0 0 6px var(--phosphor-glow, rgba(28, 255, 155, 0.3));
+  text-shadow: 0 0 8px var(--phosphor-glow, rgba(28, 255, 155, 0.4));
 }
 
 .minigame-modal-close {
   background: none;
   border: 1px solid var(--phosphor-dim, #1a6b4a);
   color: var(--phosphor, #1cff9b);
-  font-size: 1.1em;
+  font-size: 1.2em;
   line-height: 1;
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  z-index: 3;
 }
 
 .minigame-modal-close:hover {
   border-color: var(--phosphor, #1cff9b);
-  background: rgba(28, 255, 155, 0.1);
+  background: rgba(28, 255, 155, 0.12);
 }
 
+/* ── Canvas (the CRT screen) ── */
 .minigame-canvas {
   display: block;
-  background: #0a0a0a;
+  background: #060808;
   image-rendering: pixelated;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
+/* ── Footer / controls strip ── */
 .minigame-modal-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 10px;
-  border-top: 1px solid var(--phosphor-dim, #1a6b4a);
+  padding: 5px 12px;
+  border-top: 1px solid rgba(28, 255, 155, 0.15);
   flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 3;
 }
 
 .minigame-controls-hint {
   font-family: var(--theme-font-data, 'Courier New', monospace);
-  font-size: 0.58em;
+  font-size: 0.6em;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--phosphor-dim, #1a6b4a);
+}
+
+/* ── Control panel strip (arcade buttons decoration) ── */
+.minigame-control-panel {
+  display: none;
+}
+@media (min-width: 769px) {
+  .minigame-control-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 8px 20px;
+    background:
+      linear-gradient(180deg,
+        #141420 0%, #0c0c14 50%, #0a0a10 100%);
+    border-top: 1px solid #222238;
+  }
+  .minigame-arcade-btn {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.08);
+    box-shadow:
+      inset 0 1px 2px rgba(255,255,255,0.08),
+      0 2px 4px rgba(0,0,0,0.5);
+  }
+  .minigame-arcade-btn.btn-red    { background: radial-gradient(circle at 40% 35%, #ff4444, #991111); }
+  .minigame-arcade-btn.btn-yellow { background: radial-gradient(circle at 40% 35%, #ffcc33, #997711); }
+  .minigame-arcade-btn.btn-blue   { background: radial-gradient(circle at 40% 35%, #4488ff, #112299); }
+  .minigame-arcade-btn.btn-white  { background: radial-gradient(circle at 40% 35%, #eeeeff, #888899); }
+  .minigame-joystick {
+    width: 10px;
+    height: 22px;
+    background: linear-gradient(180deg, #444 0%, #222 100%);
+    border-radius: 5px 5px 3px 3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .minigame-joystick::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #cc2222, #771111);
+    position: absolute;
+    top: -10px;
+    left: -3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 -1px 4px rgba(0,0,0,0.3);
+  }
+}
+
+/* ── Pause overlay (shown on outside-click / escape) ── */
+.minigame-pause-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  border-radius: 10px;
+}
+
+.minigame-pause-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.minigame-pause-title {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 1.3em;
+  font-weight: bold;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--phosphor, #1cff9b);
+  text-shadow: 0 0 12px var(--phosphor-glow, rgba(28, 255, 155, 0.5));
+}
+
+.minigame-pause-btn {
+  font-family: var(--theme-font-data, 'Courier New', monospace);
+  font-size: 0.85em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--phosphor, #1cff9b);
+  background: rgba(28, 255, 155, 0.06);
+  border: 1px solid var(--phosphor-dim, #1a6b4a);
+  padding: 10px 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  min-width: 180px;
+  text-align: center;
+}
+
+.minigame-pause-btn:hover {
+  background: rgba(28, 255, 155, 0.12);
+  border-color: var(--phosphor, #1cff9b);
+  box-shadow: 0 0 10px var(--phosphor-glow, rgba(28, 255, 155, 0.2));
+}
+
+.minigame-pause-btn.exit-btn {
+  color: #ff6655;
+  border-color: rgba(255, 100, 80, 0.3);
+  background: rgba(255, 80, 60, 0.05);
+}
+
+.minigame-pause-btn.exit-btn:hover {
+  background: rgba(255, 80, 60, 0.12);
+  border-color: #ff6655;
+  box-shadow: 0 0 10px rgba(255, 80, 60, 0.2);
+}
+
+/* ── Mobile: simpler, near-fullscreen ── */
+@media (max-width: 768px) {
+  .minigame-cabinet-scene {
+    transform: none !important;
+    transition: none !important;
+  }
+  .minigame-overlay-open .minigame-cabinet-scene {
+    transform: none !important;
+  }
+  .minigame-cabinet {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 32px);
+    border-radius: 8px;
+    border-width: 2px;
+  }
+  .minigame-monitor-bezel {
+    margin: 4px;
+    border-radius: 6px;
+  }
 }
 
 /* ============================================================
