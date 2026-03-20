@@ -1,76 +1,296 @@
 /* ============================================================
-   FROGGER — Classic road / river crossing
-   Canvas-based, CRT-themed.
+   FROGGER — Depot Crossing
+   ArcadeEngine-powered rewrite with emoji entities, touch swipe,
+   audio, currency, and BossAdapter for Depot Warden encounter.
+
+   Entities: 🐸 player, 🚂 freight, 🚃 passenger, 🚗 car,
+             🪵 safe platform, 🏁 extraction goal
    ============================================================ */
 window.FroggerGame = (function () {
   'use strict';
 
-  var ctx, W, H, raf;
-  var ROWS = 13, TILE;
-  var frog, lives, level, score;
-  var lanes = [];
-  var alive, winSlots;
+  // ── Grid config ──
+  var ROWS = 13;
+  var GOAL_SLOTS = 5;
+  var HOP_SCORE = 10;
+  var GOAL_SCORE = 100;
+  var CLEAR_SCORE = 500;
 
-  function reset() {
-    TILE = Math.floor(H / ROWS);
-    lives = 3;
-    level = 1;
-    score = 0;
-    alive = true;
-    winSlots = [false, false, false, false, false];
-    buildLanes();
-    resetFrog();
+  // ── Lane templates ──
+  // Row 0 = goal, row 6 = safe median, row 12 = safe start
+  // Rows 1-5 = water/log, rows 7-11 = road/train
+  var LANE_MAP = [
+    'goal',                           // 0
+    'water', 'water', 'water',        // 1-3
+    'water', 'water',                 // 4-5
+    'safe',                           // 6  (median)
+    'road', 'road', 'train',          // 7-9
+    'road', 'train',                  // 10-11
+    'safe'                            // 12 (start)
+  ];
+
+  // Emoji for each lane element
+  var EMOJI = {
+    player:    '🐸',
+    freight:   '🚂',
+    passenger: '🚃',
+    car:       '🚗',
+    log:       '🪵',
+    goal:      '🏁',
+    goalFill:  '✅',
+    water:     '🌊',
+    splash:    '💦',
+    skull:     '💀'
+  };
+
+  // ── Frogger game class ──
+
+  function Frogger() {
+    ArcadeEngine.call(this, {
+      gameId: 'frogger',
+      title: 'DEPOT CROSSING',
+      lives: 3,
+      currencyRate: 0.02
+    });
+
+    // Game-specific state
+    this._frog = null;
+    this._lanes = [];
+    this._winSlots = [];
+    this._tile = 0;
+    this._cols = 0;
+    this._alive = true;
+    this._deathTimer = 0;
+    this._deathPos = null;
+    this._highestRow = 0;           // track farthest forward for scoring
+    this._hopCooldown = 0;          // prevent spammed movement
+    this._lastSwipeDir = 'up';      // default hop direction for tap
+
+    // Boss adapter state
+    this._bossHP = 0;
+    this._bossMaxHP = 0;
+    this._bossHazards = [];
+    this._trainImpactKill = false;  // mythic flag
   }
 
-  function resetFrog() {
-    frog = { col: Math.floor((W / TILE) / 2), row: ROWS - 1 };
-    alive = true;
-  }
+  Frogger.prototype = Object.create(ArcadeEngine.prototype);
+  Frogger.prototype.constructor = Frogger;
 
-  function buildLanes() {
-    lanes = [];
-    var totalCols = Math.ceil(W / TILE) + 4;
-    for (var r = 0; r < ROWS; r++) {
-      if (r === 0) { lanes.push({ type: 'goal' }); continue; }
-      if (r === ROWS - 1) { lanes.push({ type: 'safe' }); continue; }
-      if (r === 6) { lanes.push({ type: 'safe' }); continue; }
+  // ════════════════════════════════════════════
+  // LIFECYCLE HOOKS
+  // ════════════════════════════════════════════
 
-      var isWater = r >= 1 && r <= 5;
-      var spd = (0.5 + Math.random() * 1.5) * (r % 2 === 0 ? 1 : -1) * (1 + level * 0.1);
-      var objW = isWater ? (2 + Math.floor(Math.random() * 3)) : (1 + Math.floor(Math.random() * 2));
-      var gap = objW + 2 + Math.floor(Math.random() * 3);
-      var objs = [];
-      for (var x = -2; x < totalCols; x += gap) {
-        objs.push({ x: x, w: objW });
-      }
-      lanes.push({ type: isWater ? 'water' : 'road', speed: spd, objs: objs });
+  Frogger.prototype.onInit = function () {
+    this._buildGrid();
+  };
+
+  Frogger.prototype.onStart = function () {
+    this._winSlots = [];
+    for (var i = 0; i < GOAL_SLOTS; i++) this._winSlots.push(false);
+    this._alive = true;
+    this._deathTimer = 0;
+    this._deathPos = null;
+    this._highestRow = ROWS - 1;
+    this._trainImpactKill = false;
+    this._buildGrid();
+    this._resetFrog();
+  };
+
+  Frogger.prototype.onResize = function () {
+    this._buildGrid();
+    if (this._frog) {
+      this._frog.row = Math.min(this._frog.row, ROWS - 1);
+      this._frog.col = Math.min(this._frog.col, this._cols - 1);
     }
-  }
+  };
 
-  function update() {
-    if (!alive) return;
+  // ════════════════════════════════════════════
+  // GRID SETUP
+  // ════════════════════════════════════════════
+
+  Frogger.prototype._buildGrid = function () {
+    var hudOffset = (typeof ArcadeHUD !== 'undefined') ? ArcadeHUD.HEIGHT : 28;
+    var playH = this.logicalH - hudOffset;
+    this._tile = Math.floor(playH / ROWS);
+    this._cols = Math.ceil(this.logicalW / this._tile);
+    this._hudOffset = hudOffset;
+
+    this._lanes = [];
+    for (var r = 0; r < ROWS; r++) {
+      var type = LANE_MAP[r] || 'safe';
+      if (type === 'goal' || type === 'safe') {
+        this._lanes.push({ type: type, objs: [] });
+        continue;
+      }
+
+      var isWater = (type === 'water');
+      var isTrain = (type === 'train');
+      var speedBase = isWater ? (0.4 + Math.random() * 0.8)
+                    : isTrain ? (1.0 + Math.random() * 1.2)
+                    : (0.5 + Math.random() * 1.0);
+      var dir = (r % 2 === 0) ? 1 : -1;
+      var spd = speedBase * dir * (1 + this.level * 0.08);
+
+      var objW = isWater ? (2 + Math.floor(Math.random() * 2))
+               : isTrain ? (2 + Math.floor(Math.random() * 2))
+               : (1 + Math.floor(Math.random() * 2));
+      var gap = objW + 2 + Math.floor(Math.random() * 3);
+      var totalCols = this._cols + 6;
+
+      var objs = [];
+      for (var x = -3; x < totalCols; x += gap) {
+        var emojiType = isWater ? 'log'
+                      : isTrain ? (Math.random() < 0.4 ? 'freight' : 'passenger')
+                      : 'car';
+        objs.push({
+          x: x,
+          w: objW,
+          emoji: emojiType,
+          pauseTimer: 0  // for passenger trains that stop briefly
+        });
+      }
+
+      this._lanes.push({
+        type: type,
+        speed: spd,
+        objs: objs
+      });
+    }
+  };
+
+  Frogger.prototype._resetFrog = function () {
+    this._frog = {
+      col: Math.floor(this._cols / 2),
+      row: ROWS - 1
+    };
+    this._alive = true;
+    this._hopCooldown = 0;
+  };
+
+  // ════════════════════════════════════════════
+  // INPUT
+  // ════════════════════════════════════════════
+
+  Frogger.prototype.onInput = function (type, data) {
+    if (!this._alive || this._hopCooldown > 0) return;
+
+    var dir = null;
+
+    if (type === 'swipe' || type === 'keyaction') {
+      dir = data.direction || data.action;
+    } else if (type === 'tap') {
+      // Tap = hop in last swipe direction (default up)
+      dir = this._lastSwipeDir;
+    }
+
+    if (!dir || dir === 'action' || dir === 'secondary') return;
+
+    // Remember last directional input for tap
+    if (dir === 'up' || dir === 'down' || dir === 'left' || dir === 'right') {
+      this._lastSwipeDir = dir;
+    }
+
+    this._hop(dir);
+  };
+
+  Frogger.prototype._hop = function (dir) {
+    if (!this._frog) return;
+
+    var f = this._frog;
+    var oldRow = f.row;
+
+    switch (dir) {
+      case 'up':    f.row = Math.max(0, f.row - 1); break;
+      case 'down':  f.row = Math.min(ROWS - 1, f.row + 1); break;
+      case 'left':  f.col = Math.max(0, f.col - 1); break;
+      case 'right': f.col = Math.min(this._cols - 1, f.col + 1); break;
+    }
+
+    // Score for forward progress
+    if (f.row < this._highestRow) {
+      this.addScore(HOP_SCORE);
+      this._highestRow = f.row;
+      if (this._hud) {
+        this._hud.popup('+' + HOP_SCORE,
+          f.col * this._tile + this._tile / 2,
+          this._hudOffset + f.row * this._tile);
+      }
+    }
+
+    // Cooldown prevents movement spam (150ms)
+    this._hopCooldown = 150;
+
+    // SFX
+    this.playSFX('hop');
+  };
+
+  // ════════════════════════════════════════════
+  // UPDATE (called at 60fps fixed timestep)
+  // ════════════════════════════════════════════
+
+  Frogger.prototype.onUpdate = function (dt) {
+    // Hop cooldown
+    if (this._hopCooldown > 0) this._hopCooldown -= dt;
+
+    // Death respawn timer
+    if (!this._alive) {
+      this._deathTimer -= dt;
+      if (this._deathTimer <= 0 && this.lives > 0) {
+        this._resetFrog();
+      }
+      return;
+    }
+
+    var T = this._tile;
+    if (!T) return;
 
     // Move lane objects
-    for (var r = 0; r < lanes.length; r++) {
-      var lane = lanes[r];
-      if (!lane.objs) continue;
+    for (var r = 0; r < this._lanes.length; r++) {
+      var lane = this._lanes[r];
+      if (!lane.objs || lane.type === 'goal' || lane.type === 'safe') continue;
+
       for (var i = 0; i < lane.objs.length; i++) {
-        lane.objs[i].x += lane.speed * 0.02;
+        var o = lane.objs[i];
+
+        // Passenger trains can pause briefly
+        if (o.emoji === 'passenger' && o.pauseTimer > 0) {
+          o.pauseTimer -= dt;
+          continue;
+        }
+
+        o.x += lane.speed * (dt / 1000);
+
+        // Wrap objects that go off-screen
+        var totalW = this._cols + 6;
+        if (lane.speed > 0 && o.x > totalW) {
+          o.x = -o.w - 2;
+          // Chance for passenger to pause when re-entering
+          if (o.emoji === 'passenger' && Math.random() < 0.3) {
+            o.pauseTimer = 800 + Math.random() * 1200;
+          }
+        } else if (lane.speed < 0 && o.x + o.w < -3) {
+          o.x = totalW;
+          if (o.emoji === 'passenger' && Math.random() < 0.3) {
+            o.pauseTimer = 800 + Math.random() * 1200;
+          }
+        }
       }
     }
 
     // Frog interactions
-    var fr = frog.row;
-    var fx = frog.col;
-    var lane = lanes[fr];
+    var f = this._frog;
+    if (!f) return;
+    var lane = this._lanes[f.row];
     if (!lane) return;
 
-    if (lane.type === 'road') {
-      // Check car collision
+    if (lane.type === 'road' || lane.type === 'train') {
+      // Check vehicle collision
       for (var i = 0; i < lane.objs.length; i++) {
         var o = lane.objs[i];
-        if (fx >= o.x && fx < o.x + o.w) {
-          die();
+        if (f.col >= o.x - 0.3 && f.col < o.x + o.w + 0.3) {
+          // Track if killed by train (for mythic check)
+          if (lane.type === 'train') this._trainImpactKill = true;
+          this._die();
           return;
         }
       }
@@ -79,161 +299,271 @@ window.FroggerGame = (function () {
       var onLog = false;
       for (var i = 0; i < lane.objs.length; i++) {
         var o = lane.objs[i];
-        if (fx >= o.x - 0.3 && fx < o.x + o.w + 0.3) {
+        if (f.col >= o.x - 0.4 && f.col < o.x + o.w + 0.4) {
           onLog = true;
-          frog.col += lane.speed * 0.02;
+          // Ride the log
+          f.col += lane.speed * (dt / 1000);
           break;
         }
       }
       if (!onLog) {
-        die();
+        this._die();
         return;
       }
-    } else if (lane.type === 'goal' && fr === 0) {
-      // Win slot
-      var slot = Math.floor(fx / (Math.ceil(W / TILE) / 5));
-      if (slot < 0) slot = 0;
-      if (slot > 4) slot = 4;
-      if (!winSlots[slot]) {
-        winSlots[slot] = true;
-        score += 100;
-      }
-      // Check all slots filled
-      if (winSlots.every(function (s) { return s; })) {
-        level++;
-        winSlots = [false, false, false, false, false];
-        buildLanes();
-      }
-      resetFrog();
-    }
+    } else if (lane.type === 'goal' && f.row === 0) {
+      // Reached a goal slot
+      var slotW = this._cols / GOAL_SLOTS;
+      var slot = Math.floor(f.col / slotW);
+      slot = Math.max(0, Math.min(GOAL_SLOTS - 1, slot));
 
-    // Out of bounds
-    if (frog.col < 0 || frog.col >= Math.ceil(W / TILE)) {
-      die();
-    }
-  }
-
-  function die() {
-    lives--;
-    alive = false;
-    if (lives > 0) {
-      setTimeout(function () { resetFrog(); }, 600);
-    }
-  }
-
-  function draw() {
-    var ph = getComputedStyle(document.documentElement).getPropertyValue('--phosphor').trim() || '#1cff9b';
-    var dim = getComputedStyle(document.documentElement).getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
-
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, W, H);
-
-    // Draw lanes
-    for (var r = 0; r < ROWS; r++) {
-      var lane = lanes[r];
-      if (!lane) continue;
-      var ly = r * TILE;
-
-      if (lane.type === 'road') {
-        ctx.fillStyle = '#0f0f0f';
-        ctx.fillRect(0, ly, W, TILE);
-        // Cars
-        ctx.fillStyle = '#c44';
-        for (var i = 0; i < lane.objs.length; i++) {
-          var o = lane.objs[i];
-          ctx.fillRect(o.x * TILE, ly + 2, o.w * TILE, TILE - 4);
+      if (!this._winSlots[slot]) {
+        this._winSlots[slot] = true;
+        this.addScore(GOAL_SCORE);
+        this.playSFX('goal-fanfare');
+        if (this._hud) {
+          this._hud.popup('+' + GOAL_SCORE,
+            f.col * this._tile + this._tile / 2,
+            this._hudOffset + 10);
         }
+      }
+
+      // Check all slots filled → level clear
+      var allFilled = true;
+      for (var s = 0; s < GOAL_SLOTS; s++) {
+        if (!this._winSlots[s]) { allFilled = false; break; }
+      }
+
+      if (allFilled) {
+        this.addScore(CLEAR_SCORE);
+        this.playSFX('level-clear');
+        if (this._hud) {
+          this._hud.popup('+' + CLEAR_SCORE + ' CLEAR!',
+            this.logicalW / 2, this.logicalH / 2, this.colors.phosphorBright);
+        }
+        this.nextLevel();
+        this._winSlots = [];
+        for (var i = 0; i < GOAL_SLOTS; i++) this._winSlots.push(false);
+        this._buildGrid();
+      }
+
+      this._highestRow = ROWS - 1;
+      this._resetFrog();
+      return;
+    }
+
+    // Out of bounds (drifted off log)
+    if (f.col < -0.5 || f.col >= this._cols + 0.5) {
+      this._die();
+    }
+  };
+
+  Frogger.prototype._die = function () {
+    this._alive = false;
+    this._deathPos = this._frog ? {
+      col: this._frog.col,
+      row: this._frog.row
+    } : null;
+    this._deathTimer = 800;
+    this._highestRow = ROWS - 1;
+
+    this.playSFX('splat');
+    this.loseLife();  // ArcadeEngine handles GAME_OVER transition when lives=0
+  };
+
+  // ════════════════════════════════════════════
+  // DRAW
+  // ════════════════════════════════════════════
+
+  Frogger.prototype.onDraw = function (ctx, w, h) {
+    var T = this._tile;
+    if (!T) return;
+    var hudY = this._hudOffset;
+
+    // ── Draw lanes ──
+    for (var r = 0; r < ROWS; r++) {
+      var lane = this._lanes[r];
+      if (!lane) continue;
+      var ly = hudY + r * T;
+
+      // Lane background
+      if (lane.type === 'road' || lane.type === 'train') {
+        ctx.fillStyle = '#0f0f0f';
+        ctx.fillRect(0, ly, w, T);
+        // Lane markings
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.setLineDash([6, 8]);
+        ctx.beginPath();
+        ctx.moveTo(0, ly + T / 2);
+        ctx.lineTo(w, ly + T / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
       } else if (lane.type === 'water') {
         ctx.fillStyle = '#001a33';
-        ctx.fillRect(0, ly, W, TILE);
-        // Logs
-        ctx.fillStyle = dim;
-        for (var i = 0; i < lane.objs.length; i++) {
-          var o = lane.objs[i];
-          ctx.fillRect(o.x * TILE, ly + 3, o.w * TILE, TILE - 6);
+        ctx.fillRect(0, ly, w, T);
+        // Water ripple dots
+        ctx.fillStyle = 'rgba(0, 100, 200, 0.2)';
+        for (var wx = 0; wx < w; wx += T) {
+          ctx.fillRect(wx + Math.sin(wx * 0.1 + Date.now() * 0.001) * 3, ly + T * 0.7, 4, 2);
         }
       } else if (lane.type === 'goal') {
-        ctx.fillStyle = '#001a33';
-        ctx.fillRect(0, ly, W, TILE);
-        // Win slots
-        var slotW = Math.ceil(W / TILE) / 5;
-        for (var s = 0; s < 5; s++) {
-          if (winSlots[s]) {
-            ctx.fillStyle = ph;
-            ctx.globalAlpha = 0.3;
-            ctx.fillRect(s * slotW * TILE, ly, slotW * TILE, TILE);
-            ctx.globalAlpha = 1;
-          }
-        }
+        ctx.fillStyle = '#0a1a0a';
+        ctx.fillRect(0, ly, w, T);
       } else {
         // Safe zone
         ctx.fillStyle = '#0a120a';
-        ctx.fillRect(0, ly, W, TILE);
+        ctx.fillRect(0, ly, w, T);
+      }
+
+      // Lane objects (emoji)
+      if (lane.objs) {
+        for (var i = 0; i < lane.objs.length; i++) {
+          var o = lane.objs[i];
+          var ox = o.x * T;
+          var ow = o.w * T;
+
+          // Only draw if on screen
+          if (ox + ow < -T || ox > w + T) continue;
+
+          var emojiChar = EMOJI[o.emoji] || '?';
+          var emojiSize = T * 0.75;
+
+          // Draw each tile of the object
+          for (var t = 0; t < o.w; t++) {
+            // First cell gets the main emoji, rest get body segments
+            var segChar = (t === 0) ? emojiChar
+                        : (o.emoji === 'freight' || o.emoji === 'passenger') ? '🚃'
+                        : (o.emoji === 'log') ? '🪵'
+                        : emojiChar;
+            this.drawEmoji(ctx, segChar,
+              ox + t * T + T / 2,
+              ly + T / 2,
+              emojiSize);
+          }
+        }
+      }
+
+      // Goal slots
+      if (lane.type === 'goal') {
+        var slotW = this._cols / GOAL_SLOTS;
+        for (var s = 0; s < GOAL_SLOTS; s++) {
+          var sx = s * slotW * T + slotW * T / 2;
+          var flagEmoji = this._winSlots[s] ? EMOJI.goalFill : EMOJI.goal;
+          this.drawEmoji(ctx, flagEmoji, sx, ly + T / 2, T * 0.65,
+            this._winSlots[s] ? { glow: true, glowColor: this.colors.phosphor } : {});
+        }
       }
     }
 
-    // Frog
-    if (alive) {
-      ctx.fillStyle = ph;
-      var fx = frog.col * TILE + TILE * 0.15;
-      var fy = frog.row * TILE + TILE * 0.15;
-      var fs = TILE * 0.7;
-      ctx.fillRect(fx, fy, fs, fs);
-      // Eyes
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(fx + fs * 0.2, fy + fs * 0.15, 3, 3);
-      ctx.fillRect(fx + fs * 0.6, fy + fs * 0.15, 3, 3);
+    // ── Draw frog ──
+    if (this._alive && this._frog) {
+      var fx = this._frog.col * T + T / 2;
+      var fy = hudY + this._frog.row * T + T / 2;
+      this.drawEmoji(ctx, EMOJI.player, fx, fy, T * 0.85, {
+        glow: true,
+        glowColor: this.colors.phosphor,
+        glowRadius: 10
+      });
     }
 
-    // HUD
-    ctx.fillStyle = ph;
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('LVL:' + level + '  SCORE:' + score + '  LIVES:' + lives, 8, H - 6);
-
-    if (lives <= 0) {
-      ctx.font = '16px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', W / 2, H / 2 - 6);
-      ctx.font = '11px monospace';
-      ctx.fillText('SCORE: ' + score, W / 2, H / 2 + 14);
-      ctx.fillText('[SPACE] RETRY', W / 2, H / 2 + 30);
+    // ── Death animation ──
+    if (!this._alive && this._deathPos) {
+      var dx = this._deathPos.col * T + T / 2;
+      var dy = hudY + this._deathPos.row * T + T / 2;
+      var deathLane = this._lanes[this._deathPos.row];
+      var deathEmoji = (deathLane && deathLane.type === 'water') ? EMOJI.splash : EMOJI.skull;
+      var alpha = Math.max(0.2, this._deathTimer / 800);
+      this.drawEmoji(ctx, deathEmoji, dx, dy, T * 0.9, {
+        alpha: alpha,
+        glow: true,
+        glowColor: this.colors.red,
+        glowRadius: 12
+      });
     }
-  }
 
-  function loop() {
-    update();
-    draw();
-    raf = requestAnimationFrame(loop);
-  }
+    // ── Safe zone labels ──
+    this.drawText(ctx, 'START', 8, hudY + (ROWS - 1) * T + T / 2, 9,
+                  this.colors.phosphorDim);
+    this.drawText(ctx, 'SAFE', 8, hudY + 6 * T + T / 2, 9,
+                  this.colors.phosphorDim);
 
-  function onKeyDown(e) {
-    if (e.key === ' ' && lives <= 0) { e.preventDefault(); reset(); return; }
-    if (!alive || lives <= 0) return;
-    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { frog.row--; score += 10; }
-    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { frog.row = Math.min(frog.row + 1, ROWS - 1); }
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { frog.col--; }
-    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { frog.col++; }
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].indexOf(e.key) !== -1) e.preventDefault();
-  }
-
-  return {
-    start: function (canvas) {
-      ctx = canvas.getContext('2d');
-      W = canvas.width;
-      H = canvas.height;
-      reset();
-      document.addEventListener('keydown', onKeyDown);
-      loop();
-    },
-    stop: function () {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('keydown', onKeyDown);
-    },
-    resize: function (canvas) {
-      W = canvas.width;
-      H = canvas.height;
-      reset();
+    // ── Train warning indicators ──
+    for (var r = 0; r < ROWS; r++) {
+      var lane = this._lanes[r];
+      if (lane && lane.type === 'train') {
+        var warnY = hudY + r * T + T / 2;
+        this.drawText(ctx, '⚠', w - 16, warnY, 10, this.colors.amber, 'center');
+      }
     }
   };
+
+  // ════════════════════════════════════════════
+  // BOSS ADAPTER (Depot Warden)
+  // ════════════════════════════════════════════
+
+  Frogger.prototype.onBossMount = function (combatState) {
+    this._bossHP = combatState.bossHP || 100;
+    this._bossMaxHP = combatState.bossMaxHP || 100;
+    this._trainImpactKill = false;
+
+    if (this._hud) {
+      this._hud.setBossHP(this._bossHP, this._bossMaxHP);
+    }
+  };
+
+  Frogger.prototype.onBossUnmount = function () {
+    return {
+      loot: null, // populated by boss-encounters.js based on result
+      mythic: this._trainImpactKill
+    };
+  };
+
+  Frogger.prototype.onBossUpdate = function (deltaMs) {
+    // Boss HP sync — could be driven by gone-rogue combat state
+    if (this._hud) {
+      this._hud.setBossHP(this._bossHP, this._bossMaxHP);
+    }
+  };
+
+  /**
+   * Return hazard rects for gone-rogue collision pipeline.
+   * All train/car objects become hazards in boss mode.
+   */
+  Frogger.prototype.onGetHazards = function () {
+    var hazards = [];
+    var T = this._tile;
+    var hudY = this._hudOffset;
+
+    for (var r = 0; r < this._lanes.length; r++) {
+      var lane = this._lanes[r];
+      if (!lane.objs || lane.type === 'water' || lane.type === 'goal' || lane.type === 'safe') continue;
+
+      var damage = (lane.type === 'train') ? 25 : 15;
+      for (var i = 0; i < lane.objs.length; i++) {
+        var o = lane.objs[i];
+        hazards.push({
+          x: o.x * T,
+          y: hudY + r * T,
+          w: o.w * T,
+          h: T,
+          damage: damage
+        });
+      }
+    }
+    return hazards;
+  };
+
+  /**
+   * Mythic check: did a train kill the player?
+   * (TRAIN_IMPACT_KILL — survive a boss encounter where you were once hit by a train)
+   */
+  Frogger.prototype.onMythicCheck = function () {
+    return this._trainImpactKill && this.lives > 0;
+  };
+
+  // ════════════════════════════════════════════
+  // EXPORT — MinigameModal compatible
+  // ════════════════════════════════════════════
+
+  var instance = new Frogger();
+  return instance.asMinigame();
 })();
