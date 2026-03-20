@@ -78,7 +78,8 @@
       },
       "tier": "SEMI_HIDDEN",
       "oneShot": true,
-      "palette": "phosphor"
+      "palette": "phosphor",
+      "lensFilter": ["porthole"]
     },
     {
       "id": "qr-arcade-secret",

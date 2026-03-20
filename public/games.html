@@ -157,10 +157,11 @@
               <div class="games-row-body games-row-body-open" id="decryption-body">
                 <div class="games-inventory-scroll" id="decryption-scroll">
                 <div class="games-inventory-grid" id="decryption-inventory">
-                  <div class="games-inv-slot" data-slot="0" data-item="magnifying-glass">
+                  <div class="games-inv-slot games-inv-equipped-slot" data-slot="0" data-item="magnifying-glass" data-equipped>
                     <div class="games-inv-slot-inner games-inv-occupied">
+                      <span class="games-inv-equipped-badge">EQ</span>
                       <span class="games-inv-item-icon">&#128270;</span>
-                      <span class="games-inv-slot-label">MAGNIFIER</span>
+                      <span class="games-inv-slot-label">EQUIPPED</span>
                     </div>
                   </div>
                   <div class="games-inv-slot" data-slot="1">
@@ -239,6 +240,12 @@
                     <div class="games-inv-slot-inner games-inv-empty">
                       <span class="games-inv-slot-num">14</span>
                       <span class="games-inv-slot-label">EMPTY</span>
+                    </div>
+                  </div>
+                  <div class="games-inv-slot games-inv-incinerator" data-incinerator title="Drag item here to dispose">
+                    <div class="games-inv-slot-inner games-inv-incinerator-inner">
+                      <span class="games-inv-item-icon">🔥</span>
+                      <span class="games-inv-slot-label">DISPOSE</span>
                     </div>
                   </div>
                 </div>
@@ -894,6 +901,234 @@
       }
     })();
 
+    /* ---- Equipped slot: MicroMagnifier drag from slot 0 ---- */
+    (function initEquippedSlotDrag() {
+      if (typeof MicroMagnifier === 'undefined') return;
+      var equippedSlot = document.querySelector('.games-inv-slot[data-equipped]');
+      if (!equippedSlot) return;
+
+      var _eqDragActive = false;
+      var _eqPending = null;
+      var _eqThreshold = 6;
+      var _eqTouchActive = false;
+      var _eqLastTouchX = 0;
+      var _eqLastTouchY = 0;
+
+      function getEquippedRef() {
+        var itemKey = equippedSlot.getAttribute('data-item');
+        var itemId = equippedSlot.getAttribute('data-item-id');
+        if (!itemKey) return null;
+        // Only MicroMagnifier-applicable items get the widget drag
+        if (itemKey === 'magnifying-glass' || MicroMagnifier.isApplicable(itemId || 'ITM-200')) {
+          return { id: itemId || 'ITM-200', key: itemKey, emoji: '🔍' };
+        }
+        return null;
+      }
+
+      // Pointer events
+      equippedSlot.addEventListener('pointerdown', function(e) {
+        var ref = getEquippedRef();
+        if (!ref) return;
+        e.preventDefault();
+        _eqPending = { x: e.clientX, y: e.clientY, ref: ref };
+      }, { passive: false });
+
+      document.addEventListener('pointermove', function(e) {
+        if (_eqDragActive && MicroMagnifier.isDragging()) {
+          e.preventDefault();
+          MicroMagnifier.updateDrag(e.clientX, e.clientY);
+          return;
+        }
+        if (_eqPending) {
+          var dx = e.clientX - _eqPending.x;
+          var dy = e.clientY - _eqPending.y;
+          if (Math.sqrt(dx * dx + dy * dy) > _eqThreshold) {
+            _eqDragActive = true;
+            MicroMagnifier.startDrag(_eqPending.x, _eqPending.y, _eqPending.ref);
+            _eqPending = null;
+          }
+        }
+      }, { passive: false });
+
+      document.addEventListener('pointerup', function(e) {
+        _eqPending = null;
+        if (_eqDragActive) {
+          _eqDragActive = false;
+          if (MicroMagnifier.isDragging()) {
+            MicroMagnifier.endDrag(e.clientX, e.clientY);
+          }
+        }
+      });
+
+      document.addEventListener('pointercancel', function() {
+        _eqPending = null;
+        if (_eqDragActive) {
+          _eqDragActive = false;
+          if (MicroMagnifier.isDragging()) MicroMagnifier.endDrag(0, 0);
+        }
+      });
+
+      // Touch fallback
+      equippedSlot.addEventListener('touchstart', function(e) {
+        var ref = getEquippedRef();
+        if (!ref) return;
+        var touch = e.touches[0];
+        _eqPending = { x: touch.clientX, y: touch.clientY, ref: ref };
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(e) {
+        if (_eqTouchActive) {
+          var touch = e.touches[0];
+          if (touch) {
+            _eqLastTouchX = touch.clientX;
+            _eqLastTouchY = touch.clientY;
+            e.preventDefault();
+            MicroMagnifier.updateDrag(touch.clientX, touch.clientY);
+          }
+          return;
+        }
+        if (_eqPending && e.touches[0]) {
+          var t = e.touches[0];
+          var dx = t.clientX - _eqPending.x;
+          var dy = t.clientY - _eqPending.y;
+          if (Math.sqrt(dx * dx + dy * dy) > _eqThreshold) {
+            _eqTouchActive = true;
+            _eqLastTouchX = t.clientX;
+            _eqLastTouchY = t.clientY;
+            MicroMagnifier.startDrag(_eqPending.x, _eqPending.y, _eqPending.ref);
+            _eqPending = null;
+          }
+        }
+      }, { passive: false });
+
+      document.addEventListener('touchend', function() {
+        _eqPending = null;
+        if (_eqTouchActive) {
+          _eqTouchActive = false;
+          if (MicroMagnifier.isDragging()) MicroMagnifier.endDrag(_eqLastTouchX, _eqLastTouchY);
+        }
+      });
+
+      document.addEventListener('touchcancel', function() {
+        _eqPending = null;
+        if (_eqTouchActive) {
+          _eqTouchActive = false;
+          if (MicroMagnifier.isDragging()) MicroMagnifier.endDrag(0, 0);
+        }
+      });
+
+      // Prevent native drag on the equipped slot emoji
+      equippedSlot.addEventListener('dragstart', function(e) { e.preventDefault(); });
+    })();
+
+    /* ---- Incinerator: drag-to-dispose ---- */
+    (function initIncinerator() {
+      var incinerator = document.querySelector('.games-inv-incinerator');
+      if (!incinerator) return;
+
+      // HTML5 drag-drop: accept items dragged from inventory slots
+      incinerator.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        incinerator.classList.add('games-inv-incinerator-hover');
+      });
+
+      incinerator.addEventListener('dragleave', function() {
+        incinerator.classList.remove('games-inv-incinerator-hover');
+      });
+
+      incinerator.addEventListener('drop', function(e) {
+        e.preventDefault();
+        incinerator.classList.remove('games-inv-incinerator-hover');
+
+        var itemId = e.dataTransfer.getData('text/x-item-id');
+        var sourceSlot = e.dataTransfer.getData('text/x-source-slot');
+        if (!itemId) return;
+
+        // Don't allow disposing the equipped item via drag (must unequip first)
+        if (sourceSlot === '0') return;
+
+        // Animate
+        _incinerateAnimation(incinerator);
+
+        // Remove from inventory
+        if (typeof AccountInventory !== 'undefined' && AccountInventory.removeItem) {
+          AccountInventory.removeItem(itemId);
+        }
+
+        // Clear the source slot
+        var srcEl = document.querySelector('.games-inv-slot[data-slot="' + sourceSlot + '"]');
+        if (srcEl) {
+          srcEl.removeAttribute('data-item');
+          srcEl.removeAttribute('data-item-id');
+          srcEl.classList.remove('mag-revealed', 'games-inv-equipped');
+          var inner = srcEl.querySelector('.games-inv-slot-inner');
+          if (inner) {
+            var slotNum = parseInt(sourceSlot, 10) + 1;
+            inner.className = 'games-inv-slot-inner games-inv-empty';
+            inner.innerHTML =
+              '<span class="games-inv-slot-num">' + (slotNum < 10 ? '0' : '') + slotNum + '</span>' +
+              '<span class="games-inv-slot-label">EMPTY</span>';
+          }
+        }
+
+        // SFX
+        if (window.AudioSystem && AudioSystem.playSFX) AudioSystem.playSFX('incinerator');
+      });
+
+      function _incinerateAnimation(el) {
+        el.classList.add('incinerator-active');
+        setTimeout(function() {
+          el.classList.remove('incinerator-active');
+        }, 800);
+      }
+
+      // Make inventory slots draggable for the incinerator
+      var grid = document.getElementById('decryption-inventory');
+      if (grid) {
+        grid.addEventListener('dragstart', function(e) {
+          var slot = e.target.closest('.games-inv-slot[data-item]');
+          if (!slot || slot.hasAttribute('data-incinerator')) return;
+          if (slot.hasAttribute('data-equipped')) return; // Can't drag equipped slot to incinerator
+
+          var itemId = slot.getAttribute('data-item-id');
+          var slotNum = slot.getAttribute('data-slot');
+          if (itemId) {
+            e.dataTransfer.setData('text/x-item-id', itemId);
+            e.dataTransfer.setData('text/x-source-slot', slotNum || '');
+            e.dataTransfer.effectAllowed = 'move';
+          }
+        });
+
+        // Make occupied slots draggable (except equipped and magnifying-glass slots)
+        grid.querySelectorAll('.games-inv-slot[data-item]').forEach(function(slot) {
+          if (slot.hasAttribute('data-equipped')) return;
+          if (slot.getAttribute('data-item') === 'magnifying-glass') return;
+          slot.setAttribute('draggable', 'true');
+        });
+
+        // Also observe for dynamically added items
+        if (typeof MutationObserver !== 'undefined') {
+          var obs = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+              if (m.type === 'attributes' && m.attributeName === 'data-item') {
+                var el = m.target;
+                if (el.classList.contains('games-inv-slot') &&
+                    el.getAttribute('data-item') &&
+                    !el.hasAttribute('data-equipped') &&
+                    el.getAttribute('data-item') !== 'magnifying-glass') {
+                  el.setAttribute('draggable', 'true');
+                } else {
+                  el.removeAttribute('draggable');
+                }
+              }
+            });
+          });
+          obs.observe(grid, { attributes: true, attributeFilter: ['data-item'], subtree: true });
+        }
+      }
+    })();
+
     /* ---- Register item popups ---- */
     (function initItemPopups() {
       if (typeof ItemPopup === 'undefined') return;
@@ -991,7 +1226,7 @@
       // Zone definitions loaded from /data/reveal-zones-games.json
       // (externalized for designer editing via portal; inline fallback below)
       var _FALLBACK_ZONES = [
-        { id: 'cypher-note-2', type: 'item', anchor: { selector: '[data-slot="2"]', offset: [0,0] }, size: [120,120], content: { emoji: '\uD83D\uDCDC', itemId: 'ITM-201', itemKey: 'cypher-note-2', label: 'CYPHER NOTE', meta: { name: 'Cypher Note', emoji: '\uD83D\uDCDC', type: 'equipment', subtype: 'investigation', rarity: 'uncommon', platformItem: true, noteIndex: 2 } }, reveal: { enter: 'slide', lockThreshold: 0.75, lockAnimation: 'pulse-glow', onRelease: 'deposit-to-inventory' }, tier: 'SEMI_HIDDEN', oneShot: true, palette: 'phosphor' },
+        { id: 'cypher-note-2', type: 'item', anchor: { selector: '[data-slot="2"]', offset: [0,0] }, size: [120,120], content: { emoji: '\uD83D\uDCDC', itemId: 'ITM-201', itemKey: 'cypher-note-2', label: 'CYPHER NOTE', meta: { name: 'Cypher Note', emoji: '\uD83D\uDCDC', type: 'equipment', subtype: 'investigation', rarity: 'uncommon', platformItem: true, noteIndex: 2 } }, reveal: { enter: 'slide', lockThreshold: 0.75, lockAnimation: 'pulse-glow', onRelease: 'deposit-to-inventory' }, tier: 'SEMI_HIDDEN', oneShot: true, palette: 'phosphor', lensFilter: ['porthole'] },
         { id: 'qr-arcade-secret', type: 'qr', anchor: { selector: '#row-arcade', offset: [200,50] }, size: [100,100], content: { qrData: 'https://eyesonly.game/secret/arcade-01', fgColor: '#33ff33', bgColor: 'transparent' }, reveal: { enter: 'fade', lockThreshold: 0.6, lockAnimation: 'scan-line', onRelease: 'persist-found' }, tier: 'CONCEALED', oneShot: false, palette: 'phosphor' },
         { id: 'briefing-rogue', type: 'video', anchor: { selector: '#row-gone-rogue', offset: [-30,80] }, size: [200,150], content: { src: '/media/secret-briefing.webm', autoplay: true, loop: false }, reveal: { enter: 'slide', lockThreshold: 0.8, lockAnimation: 'border-glow', onRelease: 'pause-and-persist' }, tier: 'HIDDEN', oneShot: false, palette: 'panther' }
       ];

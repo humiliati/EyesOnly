@@ -201,9 +201,9 @@ var MagnifyingGlassDrag = (function () {
 
     document.body.style.cursor = 'none';
 
-    // Begin RevealGrid lens session
+    // Begin RevealGrid lens session (porthole lens — reveals all zones)
     if (window.RevealGrid) {
-      RevealGrid.beginLensSession(_getLensRect(clientX, clientY));
+      RevealGrid.beginLensSession(_getLensRect(clientX, clientY), { lensSource: 'porthole' });
     }
   }
 
@@ -417,6 +417,9 @@ var MagnifyingGlassDrag = (function () {
     var slot = e.target.closest('[data-item="magnifying-glass"]');
     if (!slot) return;
 
+    // Skip the equipped slot — MicroMagnifier handles that drag
+    if (slot.hasAttribute('data-equipped')) return;
+
     e.preventDefault();
     _pendingDrag = { x: e.clientX, y: e.clientY };
     _startX = e.clientX;
@@ -462,6 +465,10 @@ var MagnifyingGlassDrag = (function () {
   function _onTouchStart(e) {
     var slot = e.target.closest('[data-item="magnifying-glass"]');
     if (!slot) return;
+
+    // Skip the equipped slot — MicroMagnifier handles that drag
+    if (slot.hasAttribute('data-equipped')) return;
+
     var touch = e.touches[0];
     _pendingDrag = { x: touch.clientX, y: touch.clientY };
     _startX = touch.clientX;

@@ -214,10 +214,20 @@ var RevealGrid = (function () {
 
   // ── Lens Session ─────────────────────────────────────────
 
-  function beginLensSession(lensRect) {
+  var _lensSource = null;   // 'porthole' | 'magnifier' | null
+
+  /**
+   * Begin a lens session.
+   * @param {Object} lensRect — bounding rect of the lens
+   * @param {Object} [opts]
+   * @param {string} [opts.lensSource] — 'porthole' or 'magnifier'; zones with
+   *   a `lensFilter` array will only reveal when the current source is listed.
+   */
+  function beginLensSession(lensRect, opts) {
     _lensActive = true;
     _lastLensRect = lensRect || null;
     _activeReveal = null;
+    _lensSource = (opts && opts.lensSource) || null;
   }
 
   function updateLens(lensRect) {
@@ -232,6 +242,12 @@ var RevealGrid = (function () {
     _zones.forEach(function (zone) {
       var state = _active[zone.id];
       if (!state) return;
+
+      // Lens source filter: skip zones that specify allowed sources
+      // and the current source isn't in the list
+      if (zone.lensFilter && zone.lensFilter.length > 0 && _lensSource) {
+        if (zone.lensFilter.indexOf(_lensSource) === -1) return;
+      }
 
       var zoneRect = _getZoneRect(zone);
       var overlap = _rectOverlap(lensRect, zoneRect);
@@ -324,6 +340,7 @@ var RevealGrid = (function () {
     if (!_lensActive) return;
     _lensActive = false;
     _activeReveal = null;
+    _lensSource = null;
 
     _zones.forEach(function (zone) {
       var state = _active[zone.id];

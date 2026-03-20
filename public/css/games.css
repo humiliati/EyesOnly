@@ -396,6 +396,100 @@ html, body {
   position: relative;
 }
 
+/* ---- Equipped item slot (slot 0, data-equipped) ---- */
+.games-inv-equipped-slot .games-inv-slot-inner {
+  border: 1.5px solid var(--phosphor, #1cff9b);
+  box-shadow: 0 0 12px var(--phosphor-glow, rgba(28,255,155,0.3)),
+              inset 0 0 8px var(--phosphor-glow, rgba(28,255,155,0.12));
+}
+
+.games-inv-equipped-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.4em;
+  letter-spacing: 0.12em;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--phosphor, #1cff9b);
+  opacity: 0.65;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.games-inv-equipped-slot .games-inv-slot-label {
+  font-size: 0.48em;
+  letter-spacing: 0.08em;
+  color: var(--phosphor-dim, #1a9c1a);
+}
+
+/* Pulse animation when equipped slot is being dragged from */
+.games-inv-equipped-slot:active .games-inv-slot-inner {
+  box-shadow: 0 0 18px var(--phosphor-glow, rgba(28,255,155,0.5)),
+              inset 0 0 10px var(--phosphor-glow, rgba(28,255,155,0.2));
+}
+
+/* ---- Incinerator slot ---- */
+.games-inv-incinerator {
+  order: 999;  /* Always last in grid */
+}
+
+.games-inv-incinerator-inner {
+  border: 1.5px dashed rgba(255, 71, 87, 0.4);
+  background: rgba(255, 71, 87, 0.04);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  min-height: 52px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  cursor: default;
+}
+
+.games-inv-incinerator-inner .games-inv-item-icon {
+  font-size: 1.1em;
+  opacity: 0.5;
+  filter: grayscale(0.4);
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.games-inv-incinerator-inner .games-inv-slot-label {
+  font-size: 0.45em;
+  letter-spacing: 0.1em;
+  color: rgba(255, 71, 87, 0.5);
+  text-transform: uppercase;
+}
+
+/* Hover/dragover state */
+.games-inv-incinerator-hover .games-inv-incinerator-inner,
+.games-inv-incinerator:hover .games-inv-incinerator-inner {
+  border-color: rgba(255, 71, 87, 0.8);
+  background: rgba(255, 71, 87, 0.1);
+  box-shadow: 0 0 12px rgba(255, 71, 87, 0.3),
+              inset 0 0 8px rgba(255, 71, 87, 0.1);
+}
+
+.games-inv-incinerator-hover .games-inv-incinerator-inner .games-inv-item-icon,
+.games-inv-incinerator:hover .games-inv-incinerator-inner .games-inv-item-icon {
+  opacity: 1;
+  filter: none;
+}
+
+/* Incinerate animation */
+.games-inv-incinerator.incinerator-active .games-inv-incinerator-inner {
+  animation: incinerator-flash-inv 0.8s ease-out forwards;
+}
+
+@keyframes incinerator-flash-inv {
+  0%   { background: rgba(255,71,87,0.1); box-shadow: none; }
+  10%  { background: rgba(255,165,0,0.6); box-shadow: 0 0 20px rgba(255,165,0,0.5); }
+  30%  { background: rgba(255,69,0,0.7); box-shadow: 0 0 30px rgba(255,69,0,0.6); }
+  60%  { background: rgba(180,30,0,0.5); box-shadow: 0 0 15px rgba(180,30,0,0.3); }
+  100% { background: rgba(255,71,87,0.04); box-shadow: none; }
+}
+
 /* ---- Interactive Decoder Ring (in puzzles category) ---- */
 .games-decoder-ring-wrap {
   border: 1px solid var(--panel-border-soft);
