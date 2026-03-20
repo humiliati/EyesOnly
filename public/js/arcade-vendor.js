@@ -1,56 +1,41 @@
 /* ============================================================
    ARCADE VENDOR — Ice Cream Truck Prize Exchange
    /games page vendor: currency → items + gamble cards
+
+   Stock is seeded from /data/gone-rogue/items.json at runtime.
+   Buyback slot rotates on a 24-hour schedule (date-seeded PRNG)
+   with day/night availability windows.
    ============================================================ */
 
 var ArcadeVendor = (function() {
   'use strict';
 
-  // ── Fixed catalog: 3 items always available ──
-  var FIXED_CATALOG = [
-    {
-      id: 'ITM-200', name: 'Magnifying Glass', emoji: '🔍',
-      price: 80, color: '#264653',
-      description: 'Reveals hidden porthole zones on any page',
-      meta: { emoji: '🔍', name: 'Magnifying Glass', type: 'equipment', reveal: true }
-    },
-    {
-      id: 'ITM-202', name: 'Decoder Ring', emoji: '💍',
-      price: 120, color: '#2a9d8f',
-      description: 'Activates cipher puzzles in the field',
-      meta: { emoji: '💍', name: 'Decoder Ring', type: 'equipment', cipher: true }
-    },
-    {
-      id: 'ITM-203', name: 'Baseplate Compass', emoji: '🧭',
-      price: 200, color: '#e9c46a',
-      description: 'Orientation overlay for navigation',
-      meta: { emoji: '🧭', name: 'Baseplate Compass', type: 'rare', compass: true }
-    }
-  ];
+  // ── items.json registry (populated by _loadItemsRegistry) ──
+  var _itemsRegistry = [];   // full items.json array
+  var _registryReady = false;
+  var _pendingInit = false;
 
-  // ── Buyback pool: rotating item that changes each session ──
-  var BUYBACK_POOL = [
-    {
-      id: 'ITM-204', name: 'Smart Watch', emoji: '⌚',
-      price: 150, color: '#f4a261',
-      description: 'Debrief feed on your wrist',
-      meta: { emoji: '⌚', name: 'Smart Watch', type: 'equipment', watch: true }
-    },
-    {
-      id: 'ITM-205', name: 'Signal Flare', emoji: '🔴',
-      price: 90, color: '#f4a261',
-      description: 'Emergency beacon for field extraction',
-      meta: { emoji: '🔴', name: 'Signal Flare', type: 'consumable' }
-    },
-    {
-      id: 'ITM-206', name: 'Night Optic', emoji: '🌙',
-      price: 180, color: '#f4a261',
-      description: 'See hidden elements in low-light zones',
-      meta: { emoji: '🌙', name: 'Night Optic', type: 'equipment' }
-    }
-  ];
+  // ── Catalog & pools (populated from registry after load) ──
+  var FIXED_CATALOG = [];    // 3 always-available platform items
+  var BUYBACK_POOL = [];     // items tagged _vendorPool:"buyback"
+  var GAMBLE_ITEMS = {};     // keyed by _gambleTier → [{item, weight}]
 
-  // ── Gamble tiers ──
+  // Fixed catalog IDs — these are always stocked
+  var FIXED_IDS = ['ITM-200', 'ITM-202', 'ITM-203'];
+
+  // Price table (override per-item; items.json doesn't carry prices)
+  var PRICE_TABLE = {
+    'ITM-200': 80,   'ITM-202': 120,  'ITM-203': 200,
+    'ITM-204': 150,  'ITM-205': 90,   'ITM-206': 180
+  };
+
+  // Color palette for the purchasing flex bars
+  var COLOR_TABLE = {
+    'ITM-200': '#264653', 'ITM-202': '#2a9d8f', 'ITM-203': '#e9c46a',
+    'ITM-204': '#f4a261', 'ITM-205': '#e76f51', 'ITM-206': '#457b9d'
+  };
+
+  // Gamble carousel layout (order / pricing / css class)
   var GAMBLE_TIERS = [
     { type: 'standard', label: 'STDRD', icon: '💰', price: 60,  cssClass: 'vendor-gamble-standard' },
     { type: 'standard', label: 'STDRD', icon: '💰', price: 60,  cssClass: 'vendor-gamble-standard' },
@@ -62,49 +47,144 @@ var ArcadeVendor = (function() {
     { type: 'cursed',   label: 'CRSD',  icon: '🎴', price: 120, cssClass: 'vendor-gamble-cursed' }
   ];
 
-  // ── Gamble result pools ──
-  var GAMBLE_RESULTS = {
-    standard: [
-      { weight: 70, items: [
-        { id: 'ITM-CHARM-C', name: 'Lucky Penny', emoji: '🪙', meta: { emoji: '🪙', name: 'Lucky Penny', type: 'charm' } },
-        { id: 'ITM-BADGE-C', name: 'Tin Badge', emoji: '🏷️', meta: { emoji: '🏷️', name: 'Tin Badge', type: 'cosmetic' } }
-      ]},
-      { weight: 22, items: [
-        { id: 'ITM-TOOL-U', name: 'Lock Pick', emoji: '🔓', meta: { emoji: '🔓', name: 'Lock Pick', type: 'tool' } }
-      ]},
-      { weight: 7, items: [
-        { id: 'ITM-203', name: 'Baseplate Compass', emoji: '🧭', meta: { emoji: '🧭', name: 'Baseplate Compass', type: 'rare', compass: true } }
-      ]},
-      { weight: 1, items: [
-        { id: 'ITM-RELIC', name: 'Obsidian Key', emoji: '🗝️', meta: { emoji: '🗝️', name: 'Obsidian Key', type: 'impossible' } }
-      ]}
-    ],
-    cursed: [
-      { weight: 40, items: [
-        { id: 'ITM-CURSE-1', name: 'Cracked Lens', emoji: '🔮', meta: { emoji: '🔮', name: 'Cracked Lens', type: 'cursed' } }
-      ]},
-      { weight: 35, items: [
-        { id: 'ITM-CURSE-2', name: 'Black Candle', emoji: '🕯️', meta: { emoji: '🕯️', name: 'Black Candle', type: 'cursed' } }
-      ]},
-      { weight: 25, items: [
-        { id: 'ITM-RELIC', name: 'Obsidian Key', emoji: '🗝️', meta: { emoji: '🗝️', name: 'Obsidian Key', type: 'impossible' } }
-      ]}
-    ],
-    binary: [
-      { weight: 50, items: [
-        { id: 'ITM-RELIC', name: 'Obsidian Key', emoji: '🗝️', meta: { emoji: '🗝️', name: 'Obsidian Key', type: 'impossible' } }
-      ]},
-      { weight: 50, items: [
-        { id: 'ITM-DUST', name: 'Handful of Dust', emoji: '💨', meta: { emoji: '💨', name: 'Handful of Dust', type: 'junk' } }
-      ]}
-    ],
-    empty: [
-      { weight: 75, items: [] }, // nothing
-      { weight: 25, items: [
-        { id: 'ITM-CHARM-C', name: 'Lucky Penny', emoji: '🪙', meta: { emoji: '🪙', name: 'Lucky Penny', type: 'charm' } }
-      ]}
-    ]
-  };
+  // ── Date-seeded PRNG for deterministic 24h rotation ──
+  function _dateSeed() {
+    var d = new Date();
+    // Seed = YYYYMMDD as integer → same pick all day, rotates at midnight
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+
+  function _seededRandom(seed) {
+    // Simple mulberry32 PRNG
+    var t = (seed + 0x6D2B79F5) | 0;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function _isDaytime() {
+    var h = new Date().getHours();
+    return h >= 6 && h < 20; // 6 AM – 8 PM
+  }
+
+  // ── Load items.json and build vendor pools ──
+  function _loadItemsRegistry(callback) {
+    if (_registryReady) { callback(); return; }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/data/gone-rogue/items.json?v=' + _dateSeed(), true);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          _itemsRegistry = JSON.parse(xhr.responseText);
+        } catch (e) {
+          console.warn('[ArcadeVendor] Failed to parse items.json:', e);
+          _itemsRegistry = [];
+        }
+      }
+      _buildPools();
+      _registryReady = true;
+      callback();
+    };
+    xhr.onerror = function() {
+      console.warn('[ArcadeVendor] Failed to fetch items.json');
+      _buildFallbackPools();
+      _registryReady = true;
+      callback();
+    };
+    xhr.send();
+  }
+
+  function _itemToVendorEntry(item) {
+    return {
+      id: item.id,
+      name: item.name,
+      emoji: item.emoji,
+      price: PRICE_TABLE[item.id] || 100,
+      color: COLOR_TABLE[item.id] || '#556677',
+      description: item.description || '',
+      availability: item._vendorAvailability || 'always',
+      meta: {
+        emoji: item.emoji,
+        name: item.name,
+        type: item.type || 'equipment'
+      }
+    };
+  }
+
+  function _buildPools() {
+    var byId = {};
+    _itemsRegistry.forEach(function(item) { byId[item.id] = item; });
+
+    // Fixed catalog from known IDs
+    FIXED_CATALOG = [];
+    FIXED_IDS.forEach(function(id) {
+      if (byId[id]) FIXED_CATALOG.push(_itemToVendorEntry(byId[id]));
+    });
+
+    // Buyback pool: items tagged _vendorPool:"buyback"
+    BUYBACK_POOL = [];
+    _itemsRegistry.forEach(function(item) {
+      if (item._vendorPool === 'buyback') {
+        BUYBACK_POOL.push(_itemToVendorEntry(item));
+      }
+    });
+    // Fallback: include ITM-204 (Smart Watch) if no buyback tagged items found
+    if (BUYBACK_POOL.length === 0 && byId['ITM-204']) {
+      BUYBACK_POOL.push(_itemToVendorEntry(byId['ITM-204']));
+    }
+
+    // Gamble pools: items tagged _vendorPool:"gamble"
+    GAMBLE_ITEMS = { standard: [], cursed: [], binary: [], empty: [] };
+    _itemsRegistry.forEach(function(item) {
+      if (item._vendorPool !== 'gamble') return;
+      var tiers = Array.isArray(item._gambleTier) ? item._gambleTier : [item._gambleTier || 'standard'];
+      var weight = item._gambleWeight || 10;
+      var entry = {
+        id: item.id, name: item.name, emoji: item.emoji,
+        meta: { emoji: item.emoji, name: item.name, type: item.type || 'equipment' }
+      };
+      tiers.forEach(function(tier) {
+        if (GAMBLE_ITEMS[tier]) {
+          GAMBLE_ITEMS[tier].push({ item: entry, weight: weight });
+        }
+      });
+    });
+    // Empty tier always has a "nothing" result
+    if (!GAMBLE_ITEMS.empty.length) {
+      GAMBLE_ITEMS.empty.push({ item: null, weight: 75 });
+    }
+  }
+
+  function _buildFallbackPools() {
+    // Hardcoded fallback if items.json fails to load
+    FIXED_CATALOG = [
+      { id: 'ITM-200', name: 'Magnifying Glass', emoji: '🔍', price: 80, color: '#264653', description: 'Reveals hidden porthole zones', meta: { emoji: '🔍', name: 'Magnifying Glass', type: 'equipment' } },
+      { id: 'ITM-202', name: 'Decoder Ring', emoji: '💍', price: 120, color: '#2a9d8f', description: 'Activates cipher puzzles', meta: { emoji: '💍', name: 'Decoder Ring', type: 'equipment' } },
+      { id: 'ITM-203', name: 'Baseplate Compass', emoji: '🧭', price: 200, color: '#e9c46a', description: 'Orientation overlay', meta: { emoji: '🧭', name: 'Baseplate Compass', type: 'rare' } }
+    ];
+    BUYBACK_POOL = [
+      { id: 'ITM-204', name: 'Smart Watch', emoji: '⌚', price: 150, color: '#f4a261', description: 'Debrief feed on your wrist', availability: 'always', meta: { emoji: '⌚', name: 'Smart Watch', type: 'equipment' } }
+    ];
+    GAMBLE_ITEMS = {
+      standard: [
+        { item: { id: 'ITM-300', name: 'Lucky Penny', emoji: '🪙', meta: { emoji: '🪙', name: 'Lucky Penny', type: 'charm' } }, weight: 70 },
+        { item: { id: 'ITM-302', name: 'Lock Pick', emoji: '🔓', meta: { emoji: '🔓', name: 'Lock Pick', type: 'equipment' } }, weight: 22 }
+      ],
+      cursed: [
+        { item: { id: 'ITM-304', name: 'Cracked Lens', emoji: '🔮', meta: { emoji: '🔮', name: 'Cracked Lens', type: 'equipment' } }, weight: 40 },
+        { item: { id: 'ITM-305', name: 'Black Candle', emoji: '🕯️', meta: { emoji: '🕯️', name: 'Black Candle', type: 'consumable' } }, weight: 35 }
+      ],
+      binary: [
+        { item: { id: 'ITM-303', name: 'Obsidian Key', emoji: '🗝️', meta: { emoji: '🗝️', name: 'Obsidian Key', type: 'key' } }, weight: 50 },
+        { item: { id: 'ITM-306', name: 'Handful of Dust', emoji: '💨', meta: { emoji: '💨', name: 'Handful of Dust', type: 'junk' } }, weight: 50 }
+      ],
+      empty: [{ item: null, weight: 75 }]
+    };
+  }
+
+  // ── Gamble result pools (built dynamically from GAMBLE_ITEMS) ──
+  // Replaces the old static GAMBLE_RESULTS
 
   // ── State ──
   var _overlayEl = null;
@@ -118,56 +198,72 @@ var ArcadeVendor = (function() {
 
   // ── Helpers ──
 
+  var _GAMESTATE_KEY = 'eyesonly_gamestate';
+
   function _getCryptos() {
+    // Prefer live GAMESTATE if loaded (terminal / gone-rogue context)
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.getState === 'function') {
       return GAMESTATE.getState().cryptos || 0;
     }
-    // Fallback: check localStorage for a simple balance
+    // On /games page: read directly from the shared localStorage save
     try {
-      var saved = JSON.parse(localStorage.getItem('eyesonly_arcade_balance') || '{}');
+      var saved = JSON.parse(localStorage.getItem(_GAMESTATE_KEY) || '{}');
       return saved.cryptos || 0;
     } catch(e) { return 0; }
   }
 
   function _spendCryptos(amount) {
+    // Prefer live GAMESTATE if loaded
     if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.addCryptos === 'function') {
       GAMESTATE.addCryptos(-amount);
       return true;
     }
-    // Fallback
+    // On /games page: read-modify-write the shared localStorage save
     try {
-      var saved = JSON.parse(localStorage.getItem('eyesonly_arcade_balance') || '{}');
-      saved.cryptos = (saved.cryptos || 0) - amount;
-      localStorage.setItem('eyesonly_arcade_balance', JSON.stringify(saved));
+      var saved = JSON.parse(localStorage.getItem(_GAMESTATE_KEY) || '{}');
+      saved.cryptos = Math.max(0, (saved.cryptos || 0) - amount);
+      localStorage.setItem(_GAMESTATE_KEY, JSON.stringify(saved));
       return true;
     } catch(e) { return false; }
   }
 
   function _pickBuyback() {
-    // Pick a random buyback item, prioritizing items the player doesn't own
+    // Date-seeded deterministic rotation: same pick all day, changes at midnight
+    // Filters by day/night availability window
+    var daytime = _isDaytime();
     var candidates = BUYBACK_POOL.filter(function(item) {
+      if (item.availability === 'day' && !daytime) return false;
+      if (item.availability === 'night' && daytime) return false;
+      return true;
+    });
+    // Fallback: if no candidates match the time window, use full pool
+    if (candidates.length === 0) candidates = BUYBACK_POOL.slice();
+
+    // Further prioritize items the player doesn't own
+    var unowned = candidates.filter(function(item) {
       return typeof AccountInventory !== 'undefined' && !AccountInventory.hasItem(item.id);
     });
-    if (candidates.length === 0) candidates = BUYBACK_POOL;
-    var idx = Math.floor(Math.random() * candidates.length);
-    _buybackItem = candidates[idx];
+    if (unowned.length > 0) candidates = unowned;
+
+    // Date-seeded pick: deterministic for the calendar day
+    var seed = _dateSeed();
+    var pick = Math.floor(_seededRandom(seed) * candidates.length);
+    _buybackItem = candidates[pick];
   }
 
   function _rollGamble(type) {
-    var pool = GAMBLE_RESULTS[type];
-    if (!pool) return null;
+    var pool = GAMBLE_ITEMS[type];
+    if (!pool || pool.length === 0) return null;
 
     var totalWeight = 0;
-    pool.forEach(function(tier) { totalWeight += tier.weight; });
+    pool.forEach(function(entry) { totalWeight += entry.weight; });
 
     var roll = Math.random() * totalWeight;
     var cumulative = 0;
     for (var i = 0; i < pool.length; i++) {
       cumulative += pool[i].weight;
       if (roll < cumulative) {
-        var items = pool[i].items;
-        if (items.length === 0) return null; // nothing
-        return items[Math.floor(Math.random() * items.length)];
+        return pool[i].item; // may be null (empty tier)
       }
     }
     return null;
@@ -220,15 +316,18 @@ var ArcadeVendor = (function() {
     _balanceEl = _overlayEl.querySelector('.vendor-balance');
     _headerBalanceEl = document.getElementById('vendor-row-balance');
 
-    _pickBuyback();
-    _renderPrizes();
-    _renderGamble();
+    // Ensure registry is loaded before rendering
+    _loadItemsRegistry(function() {
+      _pickBuyback();
+      _renderPrizes();
+      _renderGamble();
 
-    _overlayEl.classList.add('vendor-visible');
-    _updateBalance();
+      _overlayEl.classList.add('vendor-visible');
+      _updateBalance();
 
-    // Scroll games content to show inventory row
-    _playSound('ui-04');
+      // Scroll games content to show inventory row
+      _playSound('ui-04');
+    });
   }
 
   function close() {

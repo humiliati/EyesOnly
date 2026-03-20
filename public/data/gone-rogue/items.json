@@ -1713,7 +1713,11 @@
       "exploration",
       "compass"
     ],
-    "description": "A precision navigational instrument. Points to true north. Reveals the compass widget on all pages."
+    "description": "A precision navigational instrument. Points to true north. Reveals the compass widget on all pages.",
+    "_portalCategory": "platform",
+    "_platformItem": true,
+    "_widgetItem": true,
+    "_widgetType": "compass"
   },
   {
     "id": "ITM-204",
@@ -1745,6 +1749,189 @@
     "_designNote": "Platform item (ITM-204). Seeded by default. Unlocks the smart watch widget site-wide. The debrief_feed: true meta tag can be applied to other items to also unlock this widget. Widget contains full debrief feed (MOK pyramid + interactive states) and audio controls (master mute, music volume, SFX volume, now playing).",
     "_portalCategory": "platform",
     "_platformItem": true,
-    "_defaultAccountItem": true
+    "_defaultAccountItem": true,
+    "_widgetItem": true,
+    "_widgetType": "debrief_feed"
+  },
+
+  {
+    "id": "ITM-205",
+    "name": "Signal Flare",
+    "emoji": "🔴",
+    "type": "consumable",
+    "subtype": "tactical",
+    "rarity": "uncommon",
+    "stackable": true,
+    "maxStack": 3,
+    "equipSlot": "none",
+    "effects": [
+      { "type": "extraction_beacon", "value": 1 }
+    ],
+    "synergyTags": ["tactical", "emergency", "extraction"],
+    "description": "Emergency field beacon. Triggers an extraction event when deployed. Single use.",
+    "consumeOnUse": true,
+    "_vendorItem": true,
+    "_vendorPool": "buyback",
+    "_vendorAvailability": "day"
+  },
+  {
+    "id": "ITM-206",
+    "name": "Night Optic",
+    "emoji": "🌙",
+    "type": "equipment",
+    "subtype": "optics",
+    "rarity": "rare",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "accessory",
+    "effects": [
+      { "type": "reveal_hidden", "mode": "low_light" }
+    ],
+    "synergyTags": ["optics", "surveillance", "stealth"],
+    "description": "Monocular with phosphor-green amplification tube. Reveals hidden elements in low-light zones.",
+    "_vendorItem": true,
+    "_vendorPool": "buyback",
+    "_vendorAvailability": "night"
+  },
+
+  {
+    "id": "ITM-300",
+    "name": "Lucky Penny",
+    "emoji": "🪙",
+    "type": "charm",
+    "subtype": "luck",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 10,
+    "equipSlot": "charm",
+    "effects": [
+      { "type": "luck", "value": 1 }
+    ],
+    "synergyTags": ["luck", "gamble", "charm"],
+    "description": "A tarnished copper coin that hums faintly. Increases luck modifier by 1.",
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "standard",
+    "_gambleWeight": 70
+  },
+  {
+    "id": "ITM-301",
+    "name": "Tin Badge",
+    "emoji": "🏷️",
+    "type": "cosmetic",
+    "subtype": "badge",
+    "rarity": "common",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "cosmetic",
+    "effects": [],
+    "synergyTags": ["cosmetic", "badge"],
+    "description": "Cheap stamped-tin badge. No tactical value. Looks cool, though.",
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "standard",
+    "_gambleWeight": 70
+  },
+  {
+    "id": "ITM-302",
+    "name": "Lock Pick",
+    "emoji": "🔓",
+    "type": "equipment",
+    "subtype": "tool",
+    "rarity": "uncommon",
+    "stackable": true,
+    "maxStack": 5,
+    "equipSlot": "active",
+    "effects": [
+      { "type": "unlock", "value": 1 }
+    ],
+    "synergyTags": ["infiltration", "tool", "lock"],
+    "description": "Slim tension wrench and pick. Single-use per lock attempt.",
+    "consumeOnUse": true,
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "standard",
+    "_gambleWeight": 22
+  },
+  {
+    "id": "ITM-303",
+    "name": "Obsidian Key",
+    "emoji": "🗝️",
+    "type": "key",
+    "subtype": "master",
+    "rarity": "legendary",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "key",
+    "effects": [
+      { "type": "master_unlock", "value": 1 }
+    ],
+    "synergyTags": ["key", "legendary", "impossible"],
+    "description": "A key carved from volcanic glass. Opens doors that shouldn't exist.",
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": ["standard", "cursed", "binary"],
+    "_gambleWeight": 1
+  },
+  {
+    "id": "ITM-304",
+    "name": "Cracked Lens",
+    "emoji": "🔮",
+    "type": "equipment",
+    "subtype": "cursed",
+    "rarity": "uncommon",
+    "stackable": false,
+    "maxStack": 1,
+    "equipSlot": "accessory",
+    "effects": [
+      { "type": "distort_vision", "value": -1 },
+      { "type": "reveal_cursed", "value": 1 }
+    ],
+    "synergyTags": ["cursed", "optics", "occult"],
+    "description": "Glass orb with a hairline fracture. Distorts normal vision but reveals cursed objects.",
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "cursed",
+    "_gambleWeight": 40
+  },
+  {
+    "id": "ITM-305",
+    "name": "Black Candle",
+    "emoji": "🕯️",
+    "type": "consumable",
+    "subtype": "cursed",
+    "rarity": "uncommon",
+    "stackable": true,
+    "maxStack": 3,
+    "equipSlot": "none",
+    "effects": [
+      { "type": "reveal_cursed", "value": 2 },
+      { "type": "hp", "value": -2 }
+    ],
+    "synergyTags": ["cursed", "occult", "consumable"],
+    "description": "Tallow candle that burns with an inverted flame. Reveals hidden cursed passages at the cost of vitality.",
+    "consumeOnUse": true,
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "cursed",
+    "_gambleWeight": 35
+  },
+  {
+    "id": "ITM-306",
+    "name": "Handful of Dust",
+    "emoji": "💨",
+    "type": "junk",
+    "subtype": "nothing",
+    "rarity": "common",
+    "stackable": true,
+    "maxStack": 99,
+    "equipSlot": "none",
+    "effects": [],
+    "synergyTags": ["junk"],
+    "description": "Literally nothing. The machine gave you dust. You can't even sell this.",
+    "_vendorItem": true,
+    "_vendorPool": "gamble",
+    "_gambleTier": "binary",
+    "_gambleWeight": 50
   }
 ]

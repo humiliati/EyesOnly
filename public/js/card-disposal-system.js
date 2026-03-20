@@ -186,11 +186,14 @@ const CardDisposalSystem = (function() {
     // Clear prior classes
     _debriefFeedElement.classList.remove('debrief-drop-target', 'debrief-drop-target-self', 'debrief-drop-target-invalid');
 
-    if (isOver && _draggedCard) {
+    // Active drag data can come from HTML5 drag (_draggedCard) or touch drag (_touchState)
+    var _activeDrag = _draggedCard || (_touchState ? { card: _touchState.data, source: _touchState.source } : null);
+
+    if (isOver && _activeDrag) {
       // In STR combat: debrief is a disposal zone (discard to backup)
       // Self-cast cards get the self-target glow, everything else gets disposal glow
       if (_isStrCombatActive()) {
-        if (_isSelfCastCard(_draggedCard.card)) {
+        if (_isSelfCastCard(_activeDrag.card)) {
           _debriefFeedElement.classList.add('debrief-drop-target-self');
           if (typeof TooltipSystem !== 'undefined') {
             TooltipSystem.showPersistent('🧑 SELF TARGET: drop to apply', 650);

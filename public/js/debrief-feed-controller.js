@@ -515,6 +515,15 @@ const DebriefFeedController = (function() {
     }
 
     label.addEventListener('pointerdown', function(ev) {
+      // Don't intercept clicks on video/audio control buttons —
+      // preventDefault on pointerdown suppresses the click event those
+      // buttons rely on (the data-sound fires on pointerdown so it
+      // still plays, masking the fact that click never fires).
+      if (ev.target.closest('.video-controls-inline') ||
+          ev.target.closest('.audio-controls-inline')) {
+        return;
+      }
+
       _tapStartX = ev.clientX || 0;
       _tapStartY = ev.clientY || 0;
       _dragMoved = false;
@@ -546,6 +555,11 @@ const DebriefFeedController = (function() {
     // interacting with feed content.
     label.addEventListener('click', function(ev) {
       if (_dragMoved) return;
+      // Don't maximise when clicking video/audio controls
+      if (ev.target.closest('.video-controls-inline') ||
+          ev.target.closest('.audio-controls-inline')) {
+        return;
+      }
 
       if (_debriefState === 'normal') {
         _setDebriefState('maximized');

@@ -509,6 +509,7 @@ body.in-gone-rogue .debrief-window {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  min-width: 0; /* prevents flex child from escaping grid cell */
 }
 
 .log-frame {
@@ -1307,6 +1308,8 @@ body.gone-rogue-active .mok-header-nav {
   flex-direction: column;
   gap: 10px;
   min-height: 260px;
+  min-width: 0;        /* anchor flex child to parent width */
+  overflow: hidden;    /* clips content to the panel border */
   flex: 1;
 }
 
@@ -1324,6 +1327,8 @@ body.gone-rogue-active .mok-header-nav {
   grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   gap: 8px;
   flex: 1;
+  min-width: 0;          /* respect container width for 1fr sizing */
+  align-content: start;  /* rows pack to top instead of stretching */
 }
 
 .inventory-item {
@@ -2693,12 +2698,15 @@ body.amber-mode #scanlines::after {
   .inventory-grid {
     min-height: auto !important;
     padding: 6px !important;
+    overflow: hidden !important; /* panels clip their own overflow */
   }
 
-  /* Force 2-column grid so items + placeholders wrap into compact rows */
+  /* Force 4-column grid so items + placeholders wrap into compact rows */
   .inventory-items {
     grid-template-columns: repeat(4, 1fr) !important;
     gap: 6px !important;
+    align-content: start !important; /* prevents dead space between rows */
+    flex: 0 0 auto !important;       /* lets the grid be its natural height */
   }
 
   /* Smaller item tiles on mobile */
@@ -2806,8 +2814,10 @@ body.amber-mode #scanlines::after {
 @media (max-width: 767px) {
   #log-column {
     overflow-y: auto;
+    overflow-x: hidden;  /* prevent silent horizontal scroll */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    min-width: 0;
   }
   
   .log-frame {
@@ -4760,6 +4770,15 @@ body.cascade-active {
   body.mode-gone-rogue .accountability-icon,
   body.in-gone-rogue .accountability-icon { font-size: 10px !important; }
   #mok-header.monitor-header { min-height: 44px; padding: 4px 8px; gap: 4px; align-items: center; }
+
+  /* Tighten debrief feed header on mobile to match desktop density */
+  .debrief-resources-header { padding: 4px 6px; gap: 4px; }
+  .debrief-mok-swapper { padding: 4px 6px; font-size: 10px; gap: 4px; }
+  .debrief-label { padding: 3px 6px; gap: 3px; min-height: 0; }
+  .video-controls-inline { gap: 2px; }
+  .video-btn { padding: 2px 4px; min-width: 0; min-height: 0; }
+  .audio-controls-inline { gap: 2px; }
+  .audio-btn { padding: 2px 4px; min-width: 0; min-height: 0; }
 }
 
 /* Show AWOL label on tablet */

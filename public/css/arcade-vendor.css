@@ -69,7 +69,9 @@
   width: 90%;
   max-width: 520px;
   max-height: 82vh;
-  background: rgba(15, 18, 15, 0.96);
+  background: rgba(15, 18, 15, 0.98);
+  /* Punch through CRT scanlines — crisp content */
+  isolation: isolate;
   border: 1px solid rgba(255, 200, 140, 0.2);
   border-radius: 12px;
   overflow: hidden;
@@ -240,22 +242,26 @@
 .vendor-prize-emoji {
   font-size: 1.6em;
   transition: transform 0.15s ease;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
 }
 
 .vendor-prize-name {
-  font-size: 0.55em;
+  font-size: 0.6em;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0;
   transition: opacity 0.15s ease;
-  font-weight: 600;
+  font-weight: 700;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
 .vendor-prize-price {
-  font-size: 0.5em;
+  font-size: 0.55em;
   opacity: 0;
   transition: opacity 0.15s ease;
   color: #ffd700;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .vendor-prize:hover {
