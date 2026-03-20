@@ -42,7 +42,7 @@
     'js/pet-follower.js',
     'js/gone-rogue-canvas.js?v=20260305d',
     'js/lighting-system.js?v=20260305k',
-    'js/tooltip-system.js',
+    // tooltip-system.js — moved to sync in index.html (history toggle + interjections need it early)
     'js/dialogue-system.js',
     'js/drift-vector-system.js?v=20260305f',
     'js/ground-effects.js?v=20260305f',

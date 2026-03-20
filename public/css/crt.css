@@ -4946,17 +4946,9 @@ body[data-theme="white"] #mok-interjections {
 body[data-theme="white"] .mok-history-toggle {
   color: #3a4a5a;
   border-color: #9aa6b2;
-  text-decoration-color: #3a4a5a;
 }
 
 body[data-theme="white"] .interject-body {
   color: #2a3a4a;
   text-shadow: none;
-}
-
-/* ── HISTORY BUTTON → white console hyperlink ── */
-body[data-theme="white"] .mok-history-toggle {
-  padding: 3px 10px;
-  font-size: 10px;
-  border-radius: 4px;
 }

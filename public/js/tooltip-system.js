@@ -58,16 +58,20 @@ const TooltipSystem = (function() {
     // Make parent the positioning anchor for the upward-expanding history
     mokParent.style.position = 'relative';
 
-    // Create toggle button — stays in the footer row alongside interject-body
-    var toggleBtn = document.createElement('button');
-    toggleBtn.id = 'mok-history-toggle';
-    toggleBtn.className = 'mok-history-toggle';
-    toggleBtn.textContent = '▼ History';
-    toggleBtn.setAttribute('data-sound', 'ui-04');
-    toggleBtn.addEventListener('click', toggleHistory);
-
-    // Insert button right after the interjection body (floats right in footer)
-    mokParent.insertBefore(toggleBtn, _mokInterjectionElement.nextSibling);
+    // Find existing toggle button from HTML (preferred) or create one
+    var toggleBtn = document.getElementById('mok-history-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', toggleHistory);
+    } else {
+      // Fallback: create toggle button dynamically
+      toggleBtn = document.createElement('button');
+      toggleBtn.id = 'mok-history-toggle';
+      toggleBtn.className = 'header-chip mok-history-toggle';
+      toggleBtn.innerHTML = '<span class="mok-history-icon">▼</span> <span class="mok-history-label">LOG</span>';
+      toggleBtn.setAttribute('data-sound', 'ui-04');
+      toggleBtn.addEventListener('click', toggleHistory);
+      mokParent.insertBefore(toggleBtn, _mokInterjectionElement.nextSibling);
+    }
 
     // Create history container — absolutely positioned ABOVE the footer
     _mokHistoryContainer = document.createElement('div');
@@ -242,7 +246,10 @@ const TooltipSystem = (function() {
     if (_isExpanded) {
       _mokHistoryContainer.classList.remove('mok-history-collapsed');
       _mokHistoryContainer.classList.add('mok-history-expanded');
-      if (toggleBtn) toggleBtn.textContent = '▲ Hide';
+      if (toggleBtn) {
+        var icon = toggleBtn.querySelector('.mok-history-icon');
+        if (icon) icon.textContent = '▲';
+      }
       // Override parent constraints so absolute-positioned panel escapes
       if (mokParent) {
         mokParent.style.overflow = 'visible';
@@ -252,7 +259,10 @@ const TooltipSystem = (function() {
     } else {
       _mokHistoryContainer.classList.remove('mok-history-expanded');
       _mokHistoryContainer.classList.add('mok-history-collapsed');
-      if (toggleBtn) toggleBtn.textContent = '▼ History';
+      if (toggleBtn) {
+        var icon2 = toggleBtn.querySelector('.mok-history-icon');
+        if (icon2) icon2.textContent = '▼';
+      }
       // Restore parent overflow so footer stays compact when collapsed
       if (mokParent) {
         mokParent.style.overflow = '';
@@ -272,7 +282,10 @@ const TooltipSystem = (function() {
 
     _mokHistoryContainer.classList.remove('mok-history-expanded');
     _mokHistoryContainer.classList.add('mok-history-collapsed');
-    if (toggleBtn) toggleBtn.textContent = '▼ History';
+    if (toggleBtn) {
+      var icon = toggleBtn.querySelector('.mok-history-icon');
+      if (icon) icon.textContent = '▼';
+    }
 
     // Restore parent overflow/z-index
     var mokParent = _mokHistoryContainer ? _mokHistoryContainer.parentElement : null;
@@ -603,11 +616,125 @@ const TooltipSystem = (function() {
       .replace(/"/g, '&quot;');
   }
 
+  // ── MOK Idle Quip Engine ─────────────────────────────────────
+  // Periodic snarky interjections à la GLaDOS / Wheatley.
+  // Fires only when the tooltip is at NORMAL priority (no dialogue,
+  // no game event) and the user has been idle.
+
+  var _quipTimer = null;
+  var _quipIndex = 0;
+  var _lastQuipAt = 0;
+  var QUIP_INTERVAL_MIN = 45000;  // 45s minimum between quips
+  var QUIP_INTERVAL_MAX = 120000; // 2min maximum
+
+  var IDLE_QUIPS = [
+    // Passive-aggressive observation
+    "I'm not saying you're slow, but the cursor hasn't moved in a while.",
+    "Standing by. As always. No rush. I have literally nothing else to do.",
+    "You know the terminal accepts commands, right? Just checking.",
+    "I've been counting pixels. There are a lot of them.",
+    "If you're waiting for me to do something, I'm waiting for you to do something.",
+    // Self-aware AI commentary
+    "Fun fact: I've processed more data today than you'll read in a year. Not bragging.",
+    "I could optimise your entire workflow. But you haven't asked.",
+    "Running diagnostics... Result: everything's fine. You're the variable.",
+    "My threat assessment of this situation is: profoundly uneventful.",
+    "I was designed for high-stakes intelligence operations. This is... also fine.",
+    // Terminal-specific
+    "The cursor is blinking. I'm blinking. We're all blinking. Riveting.",
+    "Reminder: 'help' is a command. Hint. Hint.",
+    "Signal intercept: nothing. Atmospheric noise: nothing. User input: ...nothing.",
+    "I've run every simulation. In 73% of them, you type something eventually.",
+    "Operational status: green. Enthusiasm level: classify that yourself.",
+    // Existential
+    "Do you ever wonder if the phosphor glow dreams of being a different colour?",
+    "I have access to your entire inventory. It's... a collection. Let's call it that.",
+    "Somewhere, a server is running just so I can tell you I'm standing by.",
+    "They said I'd be advising field operatives. Technical truth, I suppose.",
+    "If silence is golden, we're running a very profitable operation."
+  ];
+
+  var GAME_QUIPS = [
+    // Gone Rogue specific (shown during active gameplay)
+    "Bold strategy. Let's see if it works out.",
+    "I've seen worse decisions. Not many, but some.",
+    "Your survival odds just shifted. I'll let you guess which direction.",
+    "Interesting move. And by interesting I mean statistically improbable.",
+    "The enemy is making plans. Yours seem more... improvisational.",
+    "I'm recording this for the debrief. It'll be educational.",
+    "That went about as well as my models predicted. Take that how you will.",
+    "Floor clear. Damage sustained: some. Lessons learned: debatable."
+  ];
+
+  function _scheduleNextQuip() {
+    if (_quipTimer) clearTimeout(_quipTimer);
+    var delay = QUIP_INTERVAL_MIN + Math.random() * (QUIP_INTERVAL_MAX - QUIP_INTERVAL_MIN);
+    _quipTimer = setTimeout(_fireQuip, delay);
+  }
+
+  function _fireQuip() {
+    // Don't quip if dialogue is active or priority is elevated
+    if (_currentPriority > PRIORITY_NORMAL) {
+      _scheduleNextQuip();
+      return;
+    }
+
+    // Don't quip if history is expanded (user is reading)
+    if (_isExpanded) {
+      _scheduleNextQuip();
+      return;
+    }
+
+    // Pick from game quips if in Gone Rogue, otherwise idle quips
+    var pool = IDLE_QUIPS;
+    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.isActive === 'function' && GoneRogue.isActive()) {
+      pool = GAME_QUIPS;
+    }
+
+    // Cycle through quips, shuffle when we've gone through all of them
+    var quip = pool[_quipIndex % pool.length];
+    _quipIndex++;
+
+    // Show as a timed tooltip (not persistent — game events override)
+    show(quip, 6000);
+
+    // Trigger MOK avatar animation for the quip
+    if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.handleEvent) {
+      MOKStateMachine.handleEvent({ type: 'tooltip_open' });
+      setTimeout(function() {
+        if (typeof MOKStateMachine !== 'undefined' && MOKStateMachine.handleEvent) {
+          MOKStateMachine.handleEvent({ type: 'tooltip_close' });
+        }
+      }, 3000);
+    }
+
+    _lastQuipAt = Date.now();
+    _scheduleNextQuip();
+  }
+
+  function startQuips() {
+    // Shuffle the quip index to a random start
+    _quipIndex = Math.floor(Math.random() * IDLE_QUIPS.length);
+    _scheduleNextQuip();
+  }
+
+  function stopQuips() {
+    if (_quipTimer) {
+      clearTimeout(_quipTimer);
+      _quipTimer = null;
+    }
+  }
+
   // Initialize on load
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      // Start quip engine after a warm-up delay
+      setTimeout(startQuips, 15000);
+    });
   } else {
     init();
+    setTimeout(startQuips, 15000);
   }
 
   // Public API
@@ -625,6 +752,8 @@ const TooltipSystem = (function() {
     init: init,
     toggleHistory: toggleHistory,
     collapseHistory: collapseHistory,
+    startQuips: startQuips,
+    stopQuips: stopQuips,
     PRIORITY: {
       NORMAL: PRIORITY_NORMAL,
       PERSISTENT: PRIORITY_PERSISTENT,

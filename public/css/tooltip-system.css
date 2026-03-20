@@ -2,43 +2,46 @@
    Tooltip System - MOK Interjection with Scrollable History
    ============================================================ */
 
-/* MOK History Toggle — console hyperlink style */
+/* MOK History Toggle — header-chip style matching AWOL button */
 .mok-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
   background: transparent;
-  border: 1px solid var(--theme-panel-border, rgba(51,255,51,0.2));
-  border-radius: 2px;
-  box-shadow: none;
   font-family: var(--theme-font-data, "Courier New", Consolas, monospace);
   font-size: 0.78em;
   letter-spacing: 0.08em;
-  text-transform: lowercase;
-  color: var(--theme-primary, var(--phosphor-dim, #1a9c1a));
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: var(--theme-primary, var(--phosphor-dim, #1a9c1a));
-  padding: 1px 6px;
-  margin: 0;
-  margin-left: 8px;
-  cursor: pointer;
-  opacity: 0.85;
-  float: right;
-  transition: opacity 0.15s, color 0.15s;
-  line-height: 1.4em;
+  text-transform: uppercase;
+  color: var(--theme-primary, var(--phosphor, #33ff33));
+  text-decoration: none;
   position: relative;
   z-index: 9002;
 }
 
+.mok-history-icon {
+  font-size: 0.85em;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.mok-history-label {
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+}
+
 .mok-history-toggle:hover {
-  opacity: 1;
-  color: var(--theme-primary-bright, var(--phosphor, #33ff33));
-  background: transparent;
-  box-shadow: none;
+  background: rgba(51, 255, 51, 0.1);
+  border-color: var(--panel-border);
+  color: #fff;
 }
 
 .mok-history-toggle:active {
-  opacity: 0.7;
-  background: transparent;
-  box-shadow: none;
+  background: rgba(51, 255, 51, 0.2);
+  transform: scale(0.98);
 }
 
 /* ============================================================

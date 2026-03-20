@@ -450,6 +450,14 @@
               <div class="interject-label">MOK INTERJECTION</div>
               <div class="interject-body" id="mok-interject-body">Standing by for advisories.</div>
               <div class="mok-footer-controls">
+                <button class="header-chip mok-history-toggle"
+                        id="mok-history-toggle"
+                        type="button"
+                        data-sound="ui-04"
+                        title="Toggle interjection history">
+                  <span class="mok-history-icon">▼</span>
+                  <span class="mok-history-label">LOG</span>
+                </button>
                 <button class="header-chip hand-fan-toggle"
                         id="hand-fan-toggle-btn"
                         type="button"
@@ -564,6 +572,8 @@
   <script src="js/smart-watch-widget.js?v=20260319a"></script>
   <!-- AWOL difficulty dropdown: must load sync so button works before game modules -->
   <script src="js/awol-difficulty.js?v=20260319a"></script>
+  <!-- Tooltip system: must load sync so history toggle and interjections work immediately -->
+  <script src="js/tooltip-system.js?v=20260319a"></script>
   <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
   <script src="js/item-popup.js"></script>
 
