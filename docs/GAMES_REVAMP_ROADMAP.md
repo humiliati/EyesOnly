@@ -14,11 +14,11 @@ The six arcade minigames on `/games.html` are bare prototypes. They lack mobile 
 
 | Game | Mobile Input | Audio | Currency | Emoji Theme | Boss Mapping |
 |------|-------------|-------|----------|-------------|-------------|
-| SkiFree | ❌ keyboard only | ❌ | ❌ | ❌ | ✅ Ski Mountain / Infiltration Descent |
-| Frogger | ❌ keyboard only | ❌ | ❌ | ❌ | ✅ Depot Crossing / Train Depot |
+| SkiFree | ✅ touch drag+swipe | ✅ sfxMap | ✅ 0.005 rate | ✅ emoji entities | ✅ Schweitzer Descent (Floor 22) BossAdapter wired |
+| Frogger | ✅ anchor tap+swipe | ✅ sfxMap | ✅ 0.02 rate | ✅ emoji entities | ✅ Depot Crossing BossAdapter ready |
 | Breakout | ✅ touch + mouse | ❌ | ❌ | ❌ | ❌ no boss mapping |
 | Snake | ❌ keyboard only | ❌ | ❌ | ❌ | ✅ Data Heist (planned Phase 4) |
-| JezzBall | ❌ mouse only | ❌ | ❌ | ❌ | ❌ no boss mapping |
+| JezzBall | ✅ touch+drag | ✅ sfxMap | ❌ | ❌ CRT grid | ❌ Containment Warden (planned JB-5) |
 | Minesweeper | ❌ mouse only | ❌ | ❌ | ❌ | ❌ no boss mapping |
 
 ### Boss encounters already implemented in gone-rogue STR combat
