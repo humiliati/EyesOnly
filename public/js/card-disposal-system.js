@@ -528,6 +528,24 @@ const CardDisposalSystem = (function() {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
   }
 
+  // ── Active item slot drop target (equip on touch drag) ──
+  function _isOverActiveSlot(x, y) {
+    var slot = document.getElementById('active-item-slot');
+    if (!slot) return false;
+    var rect = slot.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  function _handleDragOverActiveSlot(isOver) {
+    var slot = document.getElementById('active-item-slot');
+    if (!slot) return;
+    if (isOver) {
+      slot.classList.add('drag-over');
+    } else {
+      slot.classList.remove('drag-over');
+    }
+  }
+
   function _onTouchStart(e) {
     if (!_touchState) return;
     // Don't create ghost until movement threshold reached
@@ -564,6 +582,9 @@ const CardDisposalSystem = (function() {
 
     // Highlight debrief if hovering over it
     _handleDragOverDebrief(_isOverDebrief(tx, ty));
+
+    // Highlight active item slot if hovering over it (equip target)
+    _handleDragOverActiveSlot(_isOverActiveSlot(tx, ty));
   }
 
   function _onTouchEnd(e) {
@@ -577,6 +598,7 @@ const CardDisposalSystem = (function() {
       ts.ghost.remove();
     }
     ts.element.classList.remove('card-dragging');
+    _handleDragOverActiveSlot(false);
 
     // If didn't move enough, treat as tap (not drag)
     if (!ts.moved) {
@@ -603,6 +625,14 @@ const CardDisposalSystem = (function() {
         source: ts.source
       };
       _handleDropOnDebrief();
+    } else if (_isOverActiveSlot(endX, endY) && ts.source === 'inventory') {
+      // Dropped on active item slot → dispatch equip event
+      try {
+        window.dispatchEvent(new CustomEvent('equip-item-drop', {
+          detail: { item: ts.data, index: ts.index }
+        }));
+      } catch (ex) {}
+      _handleDragOverDebrief(false);
     } else {
       _handleDragOverDebrief(false);
     }

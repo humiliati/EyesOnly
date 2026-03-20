@@ -97,6 +97,13 @@
         }
       });
 
+      // Listen for touch-drag equip events from CardDisposalSystem
+      window.addEventListener('equip-item-drop', function(e) {
+        if (e.detail && e.detail.item) {
+          _equipInventoryItemToActiveSlot({ item: e.detail.item, index: e.detail.index || 0 });
+        }
+      });
+
       // Sync header active item display when GAMESTATE changes it (e.g. sidebar equip)
       window.addEventListener('rogue-active-item-changed', function(e) {
         try {
@@ -163,15 +170,40 @@
    */
   function _initializeActiveSlotPointerDrag(activeSlot) {
     var display = activeSlot.querySelector('#active-item-display') || activeSlot;
+
+    var _magDragActive = false;
+
     display.addEventListener('pointerdown', function(e) {
       if (e.button !== undefined && e.button !== 0) return;
-      // Must have an equipped item
-      var activeRef = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem)
-        ? GAMESTATE.getActiveItem() : null;
+
+      // Check both GAMESTATE (gone-rogue) and localStorage (standard mode)
+      var activeRef = null;
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+        activeRef = GAMESTATE.getActiveItem();
+      }
+      if (!activeRef || !activeRef.id) {
+        // Standard mode fallback: check localStorage
+        try {
+          var saved = localStorage.getItem('eyesonly_equipped_item');
+          if (saved) activeRef = JSON.parse(saved);
+        } catch (ex) {}
+      }
       if (!activeRef || !activeRef.id) return;
+
       // Resolve display info
       var resolved = (typeof GoneRogueDataRegistry !== 'undefined' && GoneRogueDataRegistry.getItem)
         ? GoneRogueDataRegistry.getItem(activeRef.id) : null;
+
+      // Check if this is a micro-magnifier item
+      if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isApplicable(activeRef.id)) {
+        e.preventDefault();
+        e.stopPropagation();
+        _magDragActive = true;
+        MicroMagnifier.startDrag(e.clientX, e.clientY, activeRef);
+        try { display.setPointerCapture(e.pointerId); } catch (ex) {}
+        return;
+      }
+
       var payload = {
         kind: 'equipped_item',
         id: activeRef.id,
@@ -182,6 +214,31 @@
       // Delegate to NCH's pointer drag system
       if (typeof NonCombatHUD !== 'undefined' && NonCombatHUD.startExternalDrag) {
         NonCombatHUD.startExternalDrag(payload, e);
+      }
+    });
+
+    display.addEventListener('pointermove', function(e) {
+      if (_magDragActive && typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
+        e.preventDefault();
+        MicroMagnifier.updateDrag(e.clientX, e.clientY);
+      }
+    }, { passive: false });
+
+    display.addEventListener('pointerup', function(e) {
+      if (_magDragActive) {
+        _magDragActive = false;
+        if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
+          MicroMagnifier.endDrag(e.clientX, e.clientY);
+        }
+      }
+    });
+
+    display.addEventListener('pointercancel', function() {
+      if (_magDragActive) {
+        _magDragActive = false;
+        if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
+          MicroMagnifier.endDrag(0, 0);
+        }
       }
     });
   }
@@ -238,8 +295,35 @@
         GoneRogueMobile.showInventory();
       }
     } else {
-      // Standard mode (non-Gone Rogue)
+      // Standard mode (non-Gone Rogue) — persist to AccountInventory equipped state
       setActiveItem(item);
+
+      // Persist equipped item to AccountInventory meta
+      if (typeof AccountInventory !== 'undefined' && AccountInventory.setEquippedItem) {
+        AccountInventory.setEquippedItem(item.id || item.registryId);
+      }
+
+      // Store in localStorage as fallback for pages without GAMESTATE
+      try {
+        localStorage.setItem('eyesonly_equipped_item', JSON.stringify({
+          id: item.id || item.registryId,
+          emoji: item.emoji,
+          name: item.name
+        }));
+      } catch (ex) {}
+
+      // Equip flash
+      var activeDisplay = document.getElementById('active-item-display');
+      if (activeDisplay) {
+        try {
+          activeDisplay.classList.remove('equip-flash');
+          void activeDisplay.offsetWidth;
+          activeDisplay.classList.add('equip-flash');
+          setTimeout(function() {
+            try { activeDisplay.classList.remove('equip-flash'); } catch (e0) {}
+          }, 420);
+        } catch (e1) {}
+      }
     }
   }
 

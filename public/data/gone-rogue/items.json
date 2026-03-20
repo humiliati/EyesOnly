@@ -1565,7 +1565,11 @@
     "_designNote": "Platform proof-of-concept item (ITM-200 range = cross-platform persistent). Seeded in every new account localStorage, rolls into authenticated inventory on login. Bridges ARG live missions → item designer portal → shared persistent inventory → Gone Rogue deployment. In /games and terminal inventory: click+drag activates porthole lens overlay (PORTHOLE_PUZZLE_TOOLKIT.md §4). In Gone Rogue: acts as draw modifier (magnifying-glass mode via card-state-authority.js detection).",
     "_portalCategory": "platform",
     "_platformItem": true,
-    "_defaultAccountItem": true
+    "_defaultAccountItem": true,
+    "micro_magnifier": true,
+    "_magnifierType": "micro",
+    "_magnifierZoom": 2.0,
+    "_magnifierLensSize": 180
   },
   {
     "id": "ITM-201",
