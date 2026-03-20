@@ -64,7 +64,12 @@ window.FroggerGame = (function () {
     this._deathPos = null;
     this._highestRow = 0;           // track farthest forward for scoring
     this._hopCooldown = 0;          // prevent spammed movement
-    this._lastSwipeDir = 'up';      // default hop direction for tap
+
+    // Canvas lerp: smooth rendering between grid cells
+    // (ported from gone-rogue movement system)
+    this._visualX = 0;              // smooth float for rendering
+    this._visualY = 0;
+    this._lerpSpeed = 0.22;         // lerp factor per frame (0-1, higher = snappier)
 
     // Boss adapter state
     this._bossHP = 0;
@@ -165,6 +170,9 @@ window.FroggerGame = (function () {
     };
     this._alive = true;
     this._hopCooldown = 0;
+    // Snap visual position to grid (no lerp on reset)
+    this._visualX = this._frog.col;
+    this._visualY = this._frog.row;
   };
 
   // ════════════════════════════════════════════
@@ -177,18 +185,14 @@ window.FroggerGame = (function () {
     var dir = null;
 
     if (type === 'swipe' || type === 'keyaction') {
+      // Swipe, keyboard, AND directional tap all come through here
+      // (ArcadeInput converts taps to swipe+keyaction when anchor is set)
       dir = data.direction || data.action;
-    } else if (type === 'tap') {
-      // Tap = hop in last swipe direction (default up)
-      dir = this._lastSwipeDir;
     }
+    // Plain 'tap' without anchor falls through as null — no action
+    // (directional taps are already converted by ArcadeInput)
 
     if (!dir || dir === 'action' || dir === 'secondary') return;
-
-    // Remember last directional input for tap
-    if (dir === 'up' || dir === 'down' || dir === 'left' || dir === 'right') {
-      this._lastSwipeDir = dir;
-    }
 
     this._hop(dir);
   };
@@ -243,6 +247,26 @@ window.FroggerGame = (function () {
 
     var T = this._tile;
     if (!T) return;
+
+    // ── Canvas lerp: smooth visual position toward logical grid ──
+    if (this._frog) {
+      var targetX = this._frog.col;
+      var targetY = this._frog.row;
+      this._visualX += (targetX - this._visualX) * this._lerpSpeed;
+      this._visualY += (targetY - this._visualY) * this._lerpSpeed;
+      // Snap when very close (avoid sub-pixel jitter)
+      if (Math.abs(this._visualX - targetX) < 0.01) this._visualX = targetX;
+      if (Math.abs(this._visualY - targetY) < 0.01) this._visualY = targetY;
+
+      // ── Update input anchor so taps are directional ──
+      // Anchor is the frog's current visual center in canvas coords
+      if (this._input) {
+        this._input.setAnchor(
+          this._visualX * T + T / 2,
+          this._hudOffset + this._visualY * T + T / 2
+        );
+      }
+    }
 
     // Move lane objects
     for (var r = 0; r < this._lanes.length; r++) {
@@ -301,8 +325,10 @@ window.FroggerGame = (function () {
         var o = lane.objs[i];
         if (f.col >= o.x - 0.4 && f.col < o.x + o.w + 0.4) {
           onLog = true;
-          // Ride the log
-          f.col += lane.speed * (dt / 1000);
+          // Ride the log (move both logical and visual to stay synced)
+          var drift = lane.speed * (dt / 1000);
+          f.col += drift;
+          this._visualX += drift;
           break;
         }
       }
@@ -454,10 +480,10 @@ window.FroggerGame = (function () {
       }
     }
 
-    // ── Draw frog ──
+    // ── Draw frog (lerped smooth position) ──
     if (this._alive && this._frog) {
-      var fx = this._frog.col * T + T / 2;
-      var fy = hudY + this._frog.row * T + T / 2;
+      var fx = this._visualX * T + T / 2;
+      var fy = hudY + this._visualY * T + T / 2;
       this.drawEmoji(ctx, EMOJI.player, fx, fy, T * 0.85, {
         glow: true,
         glowColor: this.colors.phosphor,

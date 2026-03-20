@@ -258,7 +258,15 @@ var ArcadeInput = (function () {
         this._lastTapTime = 0;
       } else {
         this._emit('tap', pos);
-        this._emit('keyaction', { action: 'action' });
+        // Directional tap: if anchor is set, compute direction and emit
+        // swipe+keyaction with that direction instead of generic 'action'
+        var anchorDir = this._anchorDirection(pos.x, pos.y);
+        if (anchorDir) {
+          this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
+          this._emit('keyaction', { action: anchorDir });
+        } else {
+          this._emit('keyaction', { action: 'action' });
+        }
         this._lastTapTime = now;
         this._lastTapX = touch.clientX;
         this._lastTapY = touch.clientY;
@@ -336,7 +344,13 @@ var ArcadeInput = (function () {
         this._lastTapTime = 0;
       } else {
         this._emit('tap', pos);
-        this._emit('keyaction', { action: 'action' });
+        var anchorDir = this._anchorDirection(pos.x, pos.y);
+        if (anchorDir) {
+          this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
+          this._emit('keyaction', { action: anchorDir });
+        } else {
+          this._emit('keyaction', { action: 'action' });
+        }
         this._lastTapTime = now;
         this._lastTapX = e.clientX;
         this._lastTapY = e.clientY;
@@ -381,6 +395,51 @@ var ArcadeInput = (function () {
   };
 
   ArcadeInput.prototype._swipeDirection = function (dx, dy) {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? 'right' : 'left';
+    }
+    return dy > 0 ? 'down' : 'up';
+  };
+
+  // ── Directional tap (zone-based, ported from gone-rogue tap-to-move) ──
+
+  /**
+   * Enable directional tap mode. When set, taps compute direction
+   * relative to the anchor point and emit 'swipe' + 'keyaction' events
+   * instead of plain 'tap' + 'keyaction:action'.
+   *
+   * The anchor should be updated each frame by the game (e.g. frog position).
+   * When anchor is null, taps behave normally (emit 'tap' + 'action').
+   *
+   * @param {number|null} x — anchor x in canvas coordinates (null to disable)
+   * @param {number|null} y — anchor y in canvas coordinates
+   */
+  ArcadeInput.prototype.setAnchor = function (x, y) {
+    if (x == null || y == null) {
+      this._anchor = null;
+    } else {
+      if (!this._anchor) this._anchor = {};
+      this._anchor.x = x;
+      this._anchor.y = y;
+    }
+  };
+
+  /**
+   * Convert a tap at (tx, ty) into a cardinal direction relative to
+   * the current anchor point. Uses the dominant axis (same logic as
+   * gone-rogue's 8-axis tap-to-move, collapsed to 4 cardinals for
+   * grid-based arcade games).
+   *
+   * @param {number} tx — tap x (canvas coords)
+   * @param {number} ty — tap y (canvas coords)
+   * @returns {string|null} — 'up','down','left','right' or null if on anchor
+   */
+  ArcadeInput.prototype._anchorDirection = function (tx, ty) {
+    if (!this._anchor) return null;
+    var dx = tx - this._anchor.x;
+    var dy = ty - this._anchor.y;
+    // Dead zone: taps very close to anchor don't produce a direction
+    if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return null;
     if (Math.abs(dx) > Math.abs(dy)) {
       return dx > 0 ? 'right' : 'left';
     }

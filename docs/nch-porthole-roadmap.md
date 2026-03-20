@@ -259,6 +259,70 @@ The porthole lens remains the discovery tool for hidden reveal zones (cypher not
 
 ---
 
+## Phase 6.5: Porthole / Magnifier Rename ⬜
+
+The Phase 6 split created a naming inconsistency: the **porthole lens** (coin-card drag, starfield reveal, zone detection) still lives in `magnifying-glass-drag.js` and exposes a `MagnifyingGlassDrag` global — even though it has nothing to do with the magnifying glass item anymore. Meanwhile the actual magnifying glass tool lives in `micro-magnifier.js` as `MicroMagnifier`. This confuses every call-site.
+
+### Rename plan
+
+| Current name | New name | File rename |
+|---|---|---|
+| `magnifying-glass-drag.js` | `porthole-lens-drag.js` | ✅ file rename |
+| `MagnifyingGlassDrag` (global) | `PortholeLensDrag` (global) | ✅ all references |
+| `MagnifyingGlassDrag.init()` | `PortholeLensDrag.init()` | ✅ call-sites |
+| `MagnifyingGlassDrag.isDragging()` | `PortholeLensDrag.isDragging()` | ✅ call-sites |
+| `MagnifyingGlassDrag.dispose()` | `PortholeLensDrag.dispose()` | ✅ call-sites |
+| `mag-drag-ghost` (CSS class) | `porthole-drag-ghost` | ✅ CSS + JS |
+| `mag-drag-porthole` | `porthole-drag-lens` | ✅ CSS + JS |
+| `mag-drag-ring` | `porthole-drag-ring` | ✅ CSS + JS |
+| `mag-drag-handle` | `porthole-drag-handle` | ✅ CSS + JS |
+| `mag-drag-preview` | `porthole-drag-preview` | ✅ CSS + JS |
+| `mag-drag-drop` (CustomEvent) | `porthole-drag-drop` | ✅ all listeners |
+| `data-item="magnifying-glass"` (porthole drag source) | `data-porthole-source` | ✅ HTML + JS selectors |
+
+### Affected files (grep surface)
+
+| File | References |
+|---|---|
+| `magnifying-glass-drag.js` → `porthole-lens-drag.js` | Internal: class name, CSS classes, CustomEvent name |
+| `games.html` | `MagnifyingGlassDrag.init()`, `MagnifyingGlassDrag.isDragging()`, script tag src |
+| `index.html` | Script tag src, init call |
+| `terminal.html` | Script tag src, init call (if loaded) |
+| `css/reveal-zone.css` | `.mag-drag-*` class selectors |
+| `js/reveal-grid.js` | Comment references only (no code refs) |
+| `js/ui-controls.js` | `MagnifyingGlassDrag` checks in equip toggle |
+| `js/item-popup.js` | None (only references item keys, not drag module) |
+
+### Backward compat shim
+
+During transition, `porthole-lens-drag.js` exports both names:
+
+```javascript
+window.PortholeLensDrag = PortholeLensDrag;
+// Backward compat — remove after all call-sites updated
+window.MagnifyingGlassDrag = PortholeLensDrag;
+```
+
+### Items that keep "magnifying-glass" in their name (correct, not renamed)
+
+- `data-item="magnifying-glass"` on inventory slots — this is the item key, not the drag module
+- `micro-magnifier.js` / `MicroMagnifier` — this IS the magnifying glass tool, name is correct
+- `ITM-200` metadata — item identity, unchanged
+- `magnifying-glass` CSS selectors for inventory slot styling — item-specific, stays
+
+### Deliverables
+
+- [ ] Rename file `magnifying-glass-drag.js` → `porthole-lens-drag.js`
+- [ ] Rename global `MagnifyingGlassDrag` → `PortholeLensDrag` + backward compat shim
+- [ ] Rename all `mag-drag-*` CSS classes → `porthole-drag-*`
+- [ ] Rename `mag-drag-drop` CustomEvent → `porthole-drag-drop`
+- [ ] Replace `data-item="magnifying-glass"` porthole source selector → `data-porthole-source`
+- [ ] Update all script tags and call-sites across HTML pages
+- [ ] Update CSS selectors in `reveal-zone.css` and inline styles
+- [ ] Smoke test: porthole drag from NCH overlay still works, magnifier drag from equipped slot still works, reveal zones still fire
+
+---
+
 ## Phase 7: Cross-Page Puzzle State ✅
 
 Clues found via porthole reveals on different pages connect into multi-step puzzles. A shared puzzle-state tracker persists progress in localStorage and syncs to account when online. This is the connective tissue that turns isolated per-page reveals into a site-wide meta-game.
