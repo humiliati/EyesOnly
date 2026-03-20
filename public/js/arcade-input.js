@@ -137,11 +137,12 @@ var ArcadeInput = (function () {
 
   ArcadeInput.prototype._canvasXY = function (clientX, clientY) {
     var rect = this._canvas.getBoundingClientRect();
-    var scaleX = this._canvas.width / rect.width;
-    var scaleY = this._canvas.height / rect.height;
+    // Return logical (CSS) coordinates, NOT pixel-buffer coordinates.
+    // ArcadeEngine draws in logical space (ctx is pre-scaled by DPR),
+    // and anchors are set in logical space, so input must match.
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      x: clientX - rect.left,
+      y: clientY - rect.top
     };
   };
 
