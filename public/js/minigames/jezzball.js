@@ -26,6 +26,8 @@ window.JezzBallGame = (function () {
   var direction = 'h';             // next wall direction
   var won = false, lost = false;
   var MAX_BUILDERS = 4;            // max simultaneous builders
+  var BUILD_SPEED = 1.6;           // cells per frame (was 2.0 — ~20% slower)
+  var buildAccum = 0;              // fractional accumulator for builder steps
 
   // ── Level transition animation ──
   var levelTransition = null;      // { timer, nextLevel }
@@ -52,6 +54,7 @@ window.JezzBallGame = (function () {
     for (var r = 0; r < rows; r++) { grid[r * cols] = 1; grid[r * cols + cols - 1] = 1; }
     balls = [];
     builders = [];
+    buildAccum = 0;
     nextBuilderID = 1;
     level = 1;
     lives = 3;
@@ -87,13 +90,15 @@ window.JezzBallGame = (function () {
         }
       }
 
-      // Speed scales slightly with level
-      var speedMul = 1.0 + (level - 1) * 0.08;
+      // Exponential speed curve: starts at ~0.65x, reaches 1.0x around level 6,
+      // then keeps climbing gently. Formula: 0.65 * 1.07^(level-1)
+      var speedMul = 0.65 * Math.pow(1.07, level - 1);
+      var baseSpeed = 1.2 + Math.random();
       balls.push({
         x: bx,
         y: by,
-        vx: (Math.random() < 0.5 ? 1 : -1) * (1.2 + Math.random()) * speedMul,
-        vy: (Math.random() < 0.5 ? 1 : -1) * (1.2 + Math.random()) * speedMul,
+        vx: (Math.random() < 0.5 ? 1 : -1) * baseSpeed * speedMul,
+        vy: (Math.random() < 0.5 ? 1 : -1) * baseSpeed * speedMul,
         r: 4
       });
     }
@@ -522,6 +527,7 @@ window.JezzBallGame = (function () {
 
     // Clear all builders
     builders = [];
+    buildAccum = 0;
     won = false;
     levelTransition = null;
     dirIndicator = null;
@@ -575,7 +581,14 @@ window.JezzBallGame = (function () {
     if (won) return;
 
     updateBalls();
-    if (builders.length > 0) { advanceBuilders(); advanceBuilders(); }
+    // Fractional builder advancement (~1.6 cells/frame instead of 2)
+    if (builders.length > 0) {
+      buildAccum += BUILD_SPEED;
+      while (buildAccum >= 1) {
+        advanceBuilders();
+        buildAccum -= 1;
+      }
+    }
 
     // Direction indicator decay
     if (dirIndicator) {
