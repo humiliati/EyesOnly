@@ -64,7 +64,7 @@
     'tests/agent-headless-adapter.js',
     'js/agent-integration.js',
     // kernel-manager.js, user-account.js, login-ui.js — moved to sync in index.html
-    'js/awol-difficulty.js?v=20260307m',
+    // awol-difficulty.js — moved to sync in index.html (must work before game modules load)
     'js/street-chronicles.js',
     'js/enemy-intent-system.js?v=20260305m',
     'js/tile-animation-system.js?v=20260305k',
