@@ -222,22 +222,40 @@ Each page gets a `reveal-zones.json` (or inline `<script type="application/json"
 
 ---
 
-## Phase 6: Magnifying Glass Repurpose (Zoom Lens) ⬜
+## Phase 6: Magnifying Glass Repurpose (Zoom Lens) ✅
 
-ITM-200 (magnifying glass) currently duplicates the coin-card porthole mechanic — both drag a starfield viewport over the page. With coin-cards handling porthole reveals in Phase 5, the magnifying glass is freed up for a distinct mechanic: **optical zoom**.
+ITM-200 (magnifying glass) is now a distinct tool from the coin-card porthole system. The old porthole drag (`magnifying-glass-drag.js`) remains for inventory slot reveal interactions on `/games`. A new **micro-magnifier** module (`micro-magnifier.js`) handles the equipped-item zoom lens mechanic — when the magnifying glass is equipped to the active header slot and dragged from there, it deploys a 2× optical zoom field over the actual page content.
 
-Instead of revealing a hidden starfield layer, the magnifying glass zooms into the actual visible page content — enlarging text, images, map details, fine print, hidden-in-plain-sight micro-text. Think "zoom and enhance" vs "see through walls."
+### Two-tool architecture
 
-**Potential uses:**
-- Zoom into the gone-rogue game map to read tiny labels, spot hidden markers
-- Enlarge micro-printed text on booking pages (hidden discount codes, flavor text)
-- Inspect high-res artwork for embedded steganographic clues
-- Read fine print on "classified" document props
+| Tool | Trigger | Module | Effect |
+|------|---------|--------|--------|
+| **Porthole lens** | Drag 🔍 from inventory slot | `magnifying-glass-drag.js` | Starfield porthole + RevealGrid zone detection |
+| **Zoom lens** | Drag 🔍 from equipped header slot | `micro-magnifier.js` | 2× DOM magnifier over page content |
 
-**Deliverables:**
-- Repurpose `magnifying-glass-drag.js` ghost to render a zoomed blit of the page content (CSS `transform: scale(2)` on a clipped viewport) instead of a starfield blit
-- Keep the same drag UX, ring/vignette chrome, and inventory slot
-- The zoom lens and porthole lens become two distinct tools in the player's kit
+The porthole lens remains the discovery tool for hidden reveal zones (cypher notes, QR codes, briefing videos). The zoom lens is the inspection tool for visible-but-tiny page content (map labels, micro-text, steganographic details).
+
+### Shipped
+
+- `public/js/micro-magnifier.js` — MicroMagnifier IIFE: 180px circular zoom field at 2× magnification, phosphor-green ring frame, crosshair center marker, vignette overlay, magnifying glass handle emoji. Uses `elementFromPoint` to detect and render content beneath the lens. Dispatches `micro-mag-hover` and `micro-mag-drop` CustomEvents for combo detection with portholes, puzzles, and stat perks.
+- `public/js/ui-controls.js` — `_initializeActiveSlotPointerDrag()` rewired to check `MicroMagnifier.isApplicable()` on equipped item; delegates to MicroMagnifier lifecycle (`startDrag`/`updateDrag`/`endDrag`) with document-level pointer and touch handlers (not element-level — survives leaving the slot frame on mobile).
+- `items.json` — ITM-200 tagged with `micro_magnifier: true`, `_magnifierType: "micro"`, `_magnifierZoom: 2.0`, `_magnifierLensSize: 180`.
+- Equipment flow — inventory items can be dragged to the active header slot (touch + desktop) via `equip-item-drop` CustomEvent from `card-disposal-system.js`. Standard mode persists to `localStorage('eyesonly_equipped_item')`.
+- Wired on `index.html` and `games.html` via `<script src="js/micro-magnifier.js">`.
+- Reveal zone separation — magnifying glass now has its own `magnifier-lens-protocol` reveal zone (fade-in, scan-line lock, persist-found) distinct from `cypher-note-2` (slide-in, pulse-glow, deposit-to-inventory). Each has its own ItemPopup registration.
+
+### Combo detection hooks (future)
+
+- `micro-mag-hover` event fires each frame during drag with `{ clientX, clientY, element, isPorthole, isPuzzle, isMagnifiable }` — listeners can highlight interactive targets under the zoom lens.
+- `micro-mag-drop` event fires on release with `{ clientX, clientY, element, item, isPorthole, isPuzzle }` — enables lens-on-porthole combos (e.g., zoom lens dropped on a porthole card could trigger an enhanced starfield view or unlock a hidden constellation).
+- Ring frame brightens when hovering over `[data-porthole]`, `[data-puzzle]`, or `[data-micro-magnifier]` elements.
+
+### Remaining (nice-to-have)
+
+- `macro_magnifier` variant (larger lens, different zoom + interaction) for a future item
+- Zoom lens integration with gone-rogue game map (read tiny tile labels)
+- Steganographic clue system (micro-text hidden in artwork, only readable through zoom)
+- Combo rewards: zoom lens + porthole = enhanced reveal (animated transition between zoom and starfield views)
 
 ---
 

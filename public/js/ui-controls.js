@@ -200,7 +200,9 @@
         e.stopPropagation();
         _magDragActive = true;
         MicroMagnifier.startDrag(e.clientX, e.clientY, activeRef);
-        try { display.setPointerCapture(e.pointerId); } catch (ex) {}
+        // Do NOT rely on setPointerCapture — it is unreliable on mobile touch.
+        // Instead, listen on document for move/up/cancel (same pattern as
+        // magnifying-glass-drag.js) so the drag survives leaving the slot.
         return;
       }
 
@@ -217,14 +219,17 @@
       }
     });
 
-    display.addEventListener('pointermove', function(e) {
+    // ── Magnifier drag: document-level pointer handlers ──
+    // Bound on document so the drag survives leaving the small display element.
+    // Mirrors the pattern used by magnifying-glass-drag.js.
+    document.addEventListener('pointermove', function(e) {
       if (_magDragActive && typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
         e.preventDefault();
         MicroMagnifier.updateDrag(e.clientX, e.clientY);
       }
     }, { passive: false });
 
-    display.addEventListener('pointerup', function(e) {
+    document.addEventListener('pointerup', function(e) {
       if (_magDragActive) {
         _magDragActive = false;
         if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
@@ -233,12 +238,66 @@
       }
     });
 
-    display.addEventListener('pointercancel', function() {
+    document.addEventListener('pointercancel', function() {
       if (_magDragActive) {
         _magDragActive = false;
         if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
           MicroMagnifier.endDrag(0, 0);
         }
+      }
+    });
+
+    // ── Touch fallback (browsers with incomplete pointer event support) ──
+    var _magTouchActive = false;
+    var _magLastTouchX = 0;
+    var _magLastTouchY = 0;
+
+    display.addEventListener('touchstart', function(e) {
+      // Check for equipped magnifier
+      var activeRef = null;
+      if (typeof GAMESTATE !== 'undefined' && GAMESTATE.getActiveItem) {
+        activeRef = GAMESTATE.getActiveItem();
+      }
+      if (!activeRef || !activeRef.id) {
+        try {
+          var saved = localStorage.getItem('eyesonly_equipped_item');
+          if (saved) activeRef = JSON.parse(saved);
+        } catch (ex) {}
+      }
+      if (!activeRef || !activeRef.id) return;
+      if (typeof MicroMagnifier === 'undefined' || !MicroMagnifier.isApplicable(activeRef.id)) return;
+
+      var touch = e.touches[0];
+      _magTouchActive = true;
+      _magLastTouchX = touch.clientX;
+      _magLastTouchY = touch.clientY;
+      MicroMagnifier.startDrag(touch.clientX, touch.clientY, activeRef);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+      if (!_magTouchActive) return;
+      var touch = e.touches[0];
+      if (touch) {
+        _magLastTouchX = touch.clientX;
+        _magLastTouchY = touch.clientY;
+        e.preventDefault();
+        MicroMagnifier.updateDrag(touch.clientX, touch.clientY);
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchend', function() {
+      if (!_magTouchActive) return;
+      _magTouchActive = false;
+      if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
+        MicroMagnifier.endDrag(_magLastTouchX, _magLastTouchY);
+      }
+    });
+
+    document.addEventListener('touchcancel', function() {
+      if (!_magTouchActive) return;
+      _magTouchActive = false;
+      if (typeof MicroMagnifier !== 'undefined' && MicroMagnifier.isDragging()) {
+        MicroMagnifier.endDrag(0, 0);
       }
     });
   }

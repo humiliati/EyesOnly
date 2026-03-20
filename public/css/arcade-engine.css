@@ -1,0 +1,216 @@
+/* ============================================================
+   arcade-engine.css — Arcade Canvas + HUD + CRT Glow
+   Shared styles for all /games minigames using ArcadeEngine.
+   ============================================================ */
+
+/* ── Canvas container ── */
+.arcade-canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--bg-screen, #080c08);
+}
+
+.arcade-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── CRT scanline overlay ──
+   Applied via ::after pseudo on the canvas wrapper.
+   Same technique as the main CRT stylesheet. */
+.arcade-canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, var(--scanline-opacity, 0.12)) 2px,
+    rgba(0, 0, 0, var(--scanline-opacity, 0.12)) 4px
+  );
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+/* ── Phosphor glow ──
+   Soft outer glow around the canvas, simulating CRT edge bleed. */
+.arcade-canvas-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 30px rgba(51, 255, 51, 0.06),
+    0 0 15px rgba(51, 255, 51, 0.04);
+  z-index: 1;
+}
+
+/* Theme-aware glow */
+body[data-theme] .arcade-canvas-wrap::before {
+  box-shadow:
+    inset 0 0 30px var(--phosphor-glow, rgba(51, 255, 51, 0.06)),
+    0 0 15px var(--phosphor-glow, rgba(51, 255, 51, 0.04));
+}
+
+/* ── Responsive sizing ──
+   Portrait phones: full width minus page padding.
+   Landscape / tablet: constrain to 600px. */
+@media (max-width: 640px) {
+  .arcade-canvas-wrap {
+    max-width: 100%;
+    border-radius: 0;
+  }
+}
+
+@media (min-width: 641px) and (orientation: landscape) {
+  .arcade-canvas-wrap {
+    max-width: 600px;
+  }
+}
+
+/* ── HUD layer (rendered by arcade-hud.js on canvas) ──
+   These classes are for optional DOM-based HUD elements
+   that sit outside the canvas (e.g. currency counter). */
+
+.arcade-hud-external {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--phosphor, #33ff33);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.arcade-hud-lives {
+  color: var(--phosphor, #33ff33);
+}
+
+.arcade-hud-lives.critical {
+  color: #ff4757;
+  animation: arcade-pulse 0.6s ease-in-out infinite;
+}
+
+.arcade-hud-score {
+  color: var(--phosphor, #33ff33);
+  text-shadow: 0 0 4px var(--phosphor-glow, rgba(51, 255, 51, 0.3));
+}
+
+.arcade-hud-currency {
+  color: var(--amber, #ffb000);
+  text-shadow: 0 0 4px var(--amber-glow, rgba(255, 176, 0, 0.3));
+}
+
+/* ── Score popup animation (CSS fallback for non-canvas popups) ── */
+.arcade-score-popup {
+  position: absolute;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--amber, #ffb000);
+  text-shadow: 0 0 6px var(--amber-glow, rgba(255, 176, 0, 0.4));
+  pointer-events: none;
+  animation: arcade-float-up 1.5s ease-out forwards;
+  z-index: 4;
+}
+
+@keyframes arcade-float-up {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+
+@keyframes arcade-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ── Currency award animation (coin cascade on game over) ── */
+.arcade-coin-cascade {
+  position: absolute;
+  font-size: 20px;
+  pointer-events: none;
+  animation: arcade-coin-fall 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 5;
+}
+
+@keyframes arcade-coin-fall {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 1; transform: translateY(30px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(60px) scale(0.8); }
+}
+
+/* ── Touch feedback ──
+   Brief flash on canvas tap for tactile confirmation. */
+.arcade-canvas-wrap.touch-flash::after {
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.1s;
+}
+
+/* ── Game-specific emoji rendering hints ──
+   Ensures emoji render consistently across platforms
+   when drawn in DOM (not canvas). */
+.arcade-emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Fullscreen toggle (optional) ── */
+.arcade-fullscreen-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--phosphor-dim, #1a9c1a);
+  border-radius: 4px;
+  color: var(--phosphor-dim, #1a9c1a);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.arcade-fullscreen-btn:hover {
+  border-color: var(--phosphor, #33ff33);
+  color: var(--phosphor, #33ff33);
+}
+
+/* ── Accessibility: reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .arcade-canvas-wrap::after {
+    background: rgba(0, 0, 0, var(--scanline-opacity, 0.12));
+  }
+  .arcade-score-popup {
+    animation-duration: 0.01ms;
+  }
+  .arcade-coin-cascade {
+    animation-duration: 0.01ms;
+  }
+  .arcade-hud-lives.critical {
+    animation: none;
+  }
+}
