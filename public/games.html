@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/compass-widget.css?v=20260318a">
   <link rel="stylesheet" href="css/mok-pyramid.css?v=20260319a">
   <link rel="stylesheet" href="css/smart-watch-widget.css?v=20260319a">
+  <link rel="stylesheet" href="css/arcade-vendor.css?v=20260319a">
   <link rel="stylesheet" href="css/splash-screen.css?v=20260317a">
 
   <script>
@@ -75,6 +76,7 @@
             <a class="games-v2-nav-item" data-target="row-puzzles">&#9670; Puzzles</a>
             <a class="games-v2-nav-item" data-target="row-qr-field-ops">&#9670; QR Field Ops</a>
             <a class="games-v2-nav-item" data-target="row-arcade">&#9670; Arcade</a>
+            <a class="games-v2-nav-item" data-target="row-vendor">&#9670; Prize Vendor</a>
           </div>
           <div class="postit games-v2-nav-postit">
             <canvas class="postit-starfield" width="180" height="120"></canvas>
@@ -383,6 +385,16 @@
               </div>
             </div>
 
+            <!-- ═══════════════ PRIZE VENDOR ═══════════════ -->
+            <div class="games-row" id="row-vendor">
+              <button class="games-row-header" data-target="vendor-body-none" aria-expanded="false" data-sound="ui-04">
+                <span class="games-row-chevron">&#9656;</span>
+                <span class="games-row-label">🍦 PRIZE VENDOR</span>
+                <span class="games-row-count">EXCHANGE</span>
+                <span class="vendor-currency-badge" id="vendor-row-balance">¢0</span>
+              </button>
+            </div>
+
             <!-- ═══════════════ STREET-CHRONICLES ═══════════════ -->
             <div class="games-row" id="row-street-chronicles">
               <button class="games-row-header" data-target="street-chronicles-body" aria-expanded="false">
@@ -443,6 +455,52 @@
 
           </div><!-- /games-content -->
 
+          <!-- ═══════ VENDOR OVERLAY ═══════ -->
+          <div class="vendor-overlay" id="vendor-overlay">
+            <div class="vendor-dim"></div>
+            <div class="vendor-modal">
+              <div class="vendor-header">
+                <span class="vendor-truck-icon">🍦</span>
+                <div class="vendor-title">
+                  PRIZE VENDOR
+                  <span class="vendor-title-sub">Exchange tickets for prizes</span>
+                </div>
+                <span class="vendor-balance">¢0</span>
+                <button class="vendor-close" type="button" title="Close">&times;</button>
+              </div>
+              <div class="vendor-tabs">
+                <button class="vendor-tab vendor-tab-active" data-tab="prizes" type="button">🎪 Prizes</button>
+                <button class="vendor-tab" data-tab="gamble" type="button">🎰 Gamble</button>
+              </div>
+              <div class="vendor-tab-content">
+                <!-- Purchasing palette -->
+                <div class="vendor-panel vendor-panel-active" data-panel="prizes">
+                  <div class="vendor-palette-container">
+                    <div class="vendor-palette" id="vendor-palette">
+                      <!-- Prize buttons rendered by JS -->
+                    </div>
+                    <div class="vendor-palette-stats">
+                      <span>Drag a prize to your inventory</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    </div>
+                  </div>
+                </div>
+                <!-- Gamble carousel -->
+                <div class="vendor-panel" data-panel="gamble">
+                  <div class="vendor-gamble-arena">
+                    <span class="vendor-gamble-label">Spin the wheel — hover to pause</span>
+                    <div class="vendor-carousel-scene">
+                      <div class="vendor-carousel" id="vendor-carousel">
+                        <!-- Gamble cards rendered by JS -->
+                      </div>
+                    </div>
+                    <span class="vendor-gamble-cost">Click a card to gamble</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Bottom status bar -->
           <div class="games-footer-strip">
             <span class="games-footer-sig">EYES ONLY // FIELD KIT v1.0</span>
@@ -483,6 +541,8 @@
   <script src="js/account-inventory.js"></script>
   <!-- Compass widget: orientation overlay (requires account-inventory) -->
   <script src="js/compass-widget.js?v=20260318a"></script>
+  <!-- Arcade vendor: prize exchange + gamble carousel -->
+  <script src="js/arcade-vendor.js?v=20260319a"></script>
 
   <!-- Starfield for porthole magnifying glass drag -->
   <script src="js/starfield.js"></script>
