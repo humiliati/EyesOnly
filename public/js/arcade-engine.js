@@ -143,6 +143,12 @@ var ArcadeEngine = (function () {
     this._setupCanvas();
     this._resolveColors();
 
+    // Ensure AudioSystem is initialised + manifest loaded
+    // (may be a no-op if already init'd by splash-screen/terminal)
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.init) {
+      try { AudioSystem.init(); } catch (_) {}
+    }
+
     // Input
     this._input = new ArcadeInput(canvas);
     this._bindInput();
@@ -348,7 +354,7 @@ var ArcadeEngine = (function () {
   ArcadeEngine.prototype._bindInput = function () {
     var self = this;
     var events = ['tap', 'swipe', 'drag', 'dragstart', 'dragend',
-                  'doubletap', 'longpress', 'keyaction'];
+                  'doubletap', 'longpress', 'keyaction', 'anchortap'];
 
     events.forEach(function (evt) {
       self._input.on(evt, function (data) {
@@ -369,6 +375,17 @@ var ArcadeEngine = (function () {
             }
           }
         }
+
+        // Pause: long-press toggles pause (NOT double-tap, which games use for input)
+        if (evt === 'longpress' && self.state === STATE.PLAYING) {
+          self.setState(STATE.PAUSED);
+          return;
+        }
+        if (evt === 'longpress' && self.state === STATE.PAUSED) {
+          self.setState(STATE.PLAYING);
+          return;
+        }
+        // Keyboard Shift (secondary) still toggles pause for desktop players
         if (evt === 'keyaction' && data.action === 'secondary' &&
             self.state === STATE.PLAYING) {
           self.setState(STATE.PAUSED);

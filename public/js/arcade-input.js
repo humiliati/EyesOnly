@@ -255,25 +255,23 @@ var ArcadeInput = (function () {
           Math.abs(touch.clientX - this._lastTapX) < 30 &&
           Math.abs(touch.clientY - this._lastTapY) < 30) {
         this._emit('doubletap', pos);
-        this._emit('keyaction', { action: 'secondary' });
         this._lastTapTime = 0;
       } else {
         this._emit('tap', pos);
-        // Directional tap: if anchor is set, compute direction and emit
-        // swipe+keyaction with that direction instead of generic 'action'
-        var anchorDir = this._anchorDirection(pos.x, pos.y);
-        if (anchorDir) {
-          this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
-          this._emit('keyaction', { action: anchorDir });
-        } else if (this._anchor) {
-          // Tap landed in dead zone around anchor — emit anchortap (e.g. squish)
-          this._emit('anchortap', pos);
-        } else {
-          this._emit('keyaction', { action: 'action' });
-        }
         this._lastTapTime = now;
         this._lastTapX = touch.clientX;
         this._lastTapY = touch.clientY;
+      }
+      // Always emit directional / anchor events regardless of single vs double tap.
+      // This lets rapid tapping in Frogger move the frog on every tap.
+      var anchorDir = this._anchorDirection(pos.x, pos.y);
+      if (anchorDir) {
+        this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
+        this._emit('keyaction', { action: anchorDir });
+      } else if (this._anchor) {
+        this._emit('anchortap', pos);
+      } else {
+        this._emit('keyaction', { action: 'action' });
       }
       return;
     }
@@ -344,23 +342,22 @@ var ArcadeInput = (function () {
       var now = Date.now();
       if (now - this._lastTapTime < DOUBLE_TAP_WINDOW) {
         this._emit('doubletap', pos);
-        this._emit('keyaction', { action: 'secondary' });
         this._lastTapTime = 0;
       } else {
         this._emit('tap', pos);
-        var anchorDir = this._anchorDirection(pos.x, pos.y);
-        if (anchorDir) {
-          this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
-          this._emit('keyaction', { action: anchorDir });
-        } else if (this._anchor) {
-          // Tap landed in dead zone around anchor — emit anchortap (e.g. squish)
-          this._emit('anchortap', pos);
-        } else {
-          this._emit('keyaction', { action: 'action' });
-        }
         this._lastTapTime = now;
         this._lastTapX = e.clientX;
         this._lastTapY = e.clientY;
+      }
+      // Always emit directional / anchor events regardless of single vs double tap
+      var anchorDir = this._anchorDirection(pos.x, pos.y);
+      if (anchorDir) {
+        this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
+        this._emit('keyaction', { action: anchorDir });
+      } else if (this._anchor) {
+        this._emit('anchortap', pos);
+      } else {
+        this._emit('keyaction', { action: 'action' });
       }
     }
   };

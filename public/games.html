@@ -597,6 +597,14 @@
 
   <!-- Audio system for SFX -->
   <script src="js/audio-system.js?v=20260309d"></script>
+  <script>
+    // Pre-init AudioSystem so manifest loads before any minigame plays SFX.
+    // AudioContext won't unlock until user gesture, but the manifest fetch
+    // starts immediately so it's cached by the time a game fires its first sound.
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.init) {
+      try { AudioSystem.init(); } catch (_) {}
+    }
+  </script>
 
   <!-- Arcade engine (Phase 0 shared infrastructure) -->
   <script src="js/arcade-input.js?v=20260320a"></script>

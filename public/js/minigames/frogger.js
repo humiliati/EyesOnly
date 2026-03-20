@@ -55,16 +55,18 @@ window.FroggerGame = (function () {
     });
 
     // ── SFX mapping: generic engine keys → real audio manifest keys ──
+    // Keys must match entries in audio-manifest.json (which maps to .webm files on disk).
+    // DO NOT use sq-sq-* keys — those files are R2/CDN-only and don't exist locally.
     this.sfxMap = {
-      'hop':          'sq-sq-pickup-success1',   // frog jump
+      'hop':          'drop-1',         // short blip for frog jump
       // death/splat are randomized per-call in _die()
       'death':        'kitty-1',
       'splat':        'kitty-1',
       'game-over':    'game-over-1',
-      'goal-fanfare': 'toad',                    // slot filled
-      'level-clear':  'toad',                    // all slots clear
+      'goal-fanfare': 'toad',           // slot filled
+      'level-clear':  'toad',           // all slots clear
       'level-up':     'toad',
-      'game-start':   'sq-sq-pickup-success1'
+      'game-start':   'power-up-1'
     };
 
     // Game-specific state
@@ -376,7 +378,7 @@ window.FroggerGame = (function () {
 
   Frogger.prototype._triggerSquish = function () {
     this._squishTimer = 300; // 300ms squish cycle
-    this.playSFX('ui-01');   // gentle boop
+    this.playSFX('drop-1', { volume: 0.3 });   // gentle boop
   };
 
   Frogger.prototype._hop = function (dir) {
@@ -543,7 +545,7 @@ window.FroggerGame = (function () {
         if (!this._coyoteActive) {
           this._coyoteActive = true;
           this._coyoteTimer = 300; // 0.3 seconds
-          this.playSFX('sq-sq-pickup-success1', { volume: 0.3 }); // subtle warning splash
+          this.playSFX('water-1', { volume: 0.3 }); // subtle warning splash
         }
         this._coyoteTimer -= dt;
         if (this._coyoteTimer <= 0) {

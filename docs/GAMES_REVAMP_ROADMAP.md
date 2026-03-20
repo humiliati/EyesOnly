@@ -211,11 +211,110 @@ These three don't map to boss encounters. They get the shared infrastructure tre
 
 **Refactor scope**: Emoji bricks (🟩🟨🟥), paddle (🏓), ball (⚪). Add audio (bounce, break, death). Add currency. Already has touch — just needs polish and emoji renderer swap.
 
-### 3B. JezzBall
+### 3B. JezzBall → Field Containment Protocol
 
-**Current**: Mouse click to place walls. No touch.
+**Vision**: The most sophisticated JezzBall on the internet. Port gone-rogue's ricochet physics, fireball sprites, and particle FX into a containment-themed arcade game. Balls are escaped test subjects (fireballs) ricocheting off containment walls. Player deploys energy barriers to partition the field and trap them.
 
-**Refactor scope**: Tap to place wall at position, double-tap to toggle direction. Emoji walls (🧱), balls (⚪). Add audio (wall build, wall break, level clear). Add currency.
+**Current bugs** (pre-rewrite):
+- Mobile broken: `click` event doesn't fire reliably on touch; no way to choose H/V orientation
+- Ball spawning: balls can spawn inside border walls, causing immediate stuck bouncing
+- No touch input, no audio, no currency, no difficulty scaling
+
+#### JezzBall Sub-Phases
+
+**JB-0: Hotfix (immediate)**
+Fix mobile input and ball spawning on the existing 274-line implementation so it's playable while the full rewrite is planned.
+
+| Fix | Detail |
+|-----|--------|
+| Mobile input | Replace `click` listener with `pointerdown` (covers touch+mouse). Add tap+drag gesture: short drag determines H/V orientation from drag angle, falls back to last-used direction if tap is < 5px movement. |
+| Ball spawn safety | Validate spawn position is in open cell (grid value 0), retry up to 20 times. Minimum 2-cell margin from any wall. |
+| Touch direction toggle | Swipe gesture or quick drag angle > 45° from horizontal = vertical; < 45° = horizontal. Visual indicator shows current orientation at touch point. |
+
+**JB-1: ArcadeEngine rewrite**
+Rewrite as `ArcadeEngine` subclass (like Frogger). Port to fixed-timestep loop, emoji renderer, HUD, SFX map, currency.
+
+| Feature | Detail |
+|---------|--------|
+| Base class | `JezzBall.prototype = Object.create(ArcadeEngine.prototype)` |
+| Input via ArcadeInput | Tap to place wall origin. Drag angle determines H/V. Double-tap to toggle. |
+| Grid system | Upgrade from flat array to 2D typed array for faster flood-fill |
+| SFX map | Wall build → `coin-1`, wall break → `kitty-2`, ball bounce → `sq-sq-pickup-success1`, level clear → `toad`, game over → `game-over-1` |
+| Currency | `¢ = floor(score × 0.015)` |
+| HUD | Level, fill %, lives, direction indicator, currency earned |
+
+**JB-2: Gone-rogue ricochet physics**
+Port the ricochet system from `projectile-system.js` for ball movement.
+
+| Feature | Detail |
+|---------|--------|
+| Velocity normalization | Normalize dx/dy to unit vector × speed (from gone-rogue line 218-220) |
+| Axis-aligned bounce | Port wall bounce logic: test X/Y collision independently, flip only the penetrating axis (lines 255-302) |
+| Angular deflection | When ball hits a building-in-progress wall tip at an angle, deflect based on approach vector rather than simple axis flip |
+| Speed variance | Each ball gets a base speed (1.2-2.5) that increases 5% per level |
+| Ball-ball collision | Circle-circle detection (from `ArcadeEngine.collideCircle`), elastic response — balls deflect off each other |
+| Sub-step collision | At high speeds, step collision in sub-increments to prevent tunneling through thin walls |
+
+**JB-3: Fireball sprites & particle FX**
+Replace plain circles with gone-rogue's fireball sprite assets and add particle effects.
+
+| Asset | Source | Usage |
+|-------|--------|-------|
+| Fireball moving (7 frames, 80ms) | `assets/fireBallStylOo/.../fireballMoving1-7.png` | Ball idle/moving animation |
+| Fireball explosion (5 frames, 60ms) | `assets/fireBallStylOo/.../fireballExplosion1-5.png` | Ball hits building wall (life lost) |
+| FX001 smoke poof (5 frames, 60ms) | `assets/Sprites/Smoke/FX001/` | Wall segment destroyed |
+| FX002 knockback (8 frames, 40ms) | `assets/Sprites/Smoke/FX002/` | Ball-ball collision spark |
+| FX003 light flash (5 frames, 50ms) | `assets/Sprites/LightFX/FX003/` | Wall completes (energy seal) |
+
+| Effect | Detail |
+|--------|--------|
+| Ball trail | 3-frame ghost trail behind each ball using previous positions at reduced alpha |
+| Wall build glow | Building cells pulse phosphor-bright as they extend |
+| Wall complete flash | FX003 burst along completed wall line |
+| Containment fill | Trapped areas fill with a subtle phosphor wash animation (0 → 0.15 alpha over 300ms) |
+| Ball destruction warning | When fill % approaches threshold, remaining balls glow amber then red |
+
+**JB-4: Progressive difficulty & scoring**
+
+| Level | Balls | Speed | Special |
+|-------|-------|-------|---------|
+| 1 | 2 | 1.2 | Tutorial: arrow shows tap-to-build |
+| 2-3 | 3 | 1.4 | Normal bouncing |
+| 4-5 | 4 | 1.6 | Balls gain slight homing toward building walls |
+| 6-7 | 5 | 1.8 | Ball-ball collisions enabled |
+| 8-9 | 6 | 2.0 | "Phantom ball" — one ball is semi-transparent, harder to track |
+| 10+ | 6+lvl/3 | 2.0+lvl×0.08 | Speed ramp continues, occasional "splitter" ball that divides on wall hit |
+
+| Scoring | Points |
+|---------|--------|
+| Wall completed | +50 × wall_length_in_cells |
+| Area trapped (no balls) | +200 × percentage_trapped |
+| Level clear (≥75%) | +1000 |
+| Speed bonus | ×1.5 if cleared in < 30s |
+| No-damage bonus | +500 if no walls destroyed this level |
+
+**JB-5: Boss mapping (Containment Warden)**
+Create a BossAdapter so JezzBall can be mounted as a gone-rogue boss encounter.
+
+| Feature | Detail |
+|---------|--------|
+| Boss concept | "Containment Warden" — escaped test subjects (fireballs) in a research facility. Player must contain them before they breach the perimeter. |
+| `mount(combatState)` | Spawn balls based on boss HP remaining (more HP = fewer balls to start, HP acts as timer) |
+| `getHazards()` | Ball positions as hazard rects for gone-rogue collision pipeline |
+| `onMythicCheck()` | Clear level without losing any walls (perfect containment) |
+| Boss music | Tense electronic track from Aila Scott collection |
+| Damage mapping | `bossHP -= floor(trappedPercentage × 0.8)` — trapping 75% of the field does 60 damage |
+
+**JB-6: Polish & juice**
+
+| Feature | Detail |
+|---------|--------|
+| Screen shake | Subtle 2px shake when ball hits a building wall (life lost) |
+| Slow-motion | 200ms slow-mo when wall completes (dramatic pause) |
+| Combo system | Complete multiple walls within 3s = combo multiplier (×2, ×3, ×4) |
+| Replay ghost | After game over, show a ghost replay of your best run's wall placements |
+| Color themes | Balls tint by speed: green (slow) → amber (medium) → red (fast) |
+| Sound design | Per-ball-speed pitch shifting on bounce SFX (faster = higher pitch) |
 
 ### 3C. Minesweeper
 
