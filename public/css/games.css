@@ -355,7 +355,25 @@ html, body {
 }
 
 .games-inv-empty .games-inv-slot-num {
+  opacity: 0.35;
+}
+
+/* Empty placeholder slots — dashed border conveys "available" */
+.games-inv-empty {
+  border-style: dashed;
+  border-color: var(--panel-border-soft);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Empty placeholders label ("EMPTY") dimmer than occupied labels */
+.games-inv-empty .games-inv-slot-label {
+  opacity: 0.25;
+}
+
+/* Last visible empty slot fades off — implies expandability */
+.games-inv-fade-hint {
   opacity: 0.3;
+  pointer-events: none;
 }
 
 /* ---- Equipped slot highlight on inventory ---- */

@@ -467,6 +467,11 @@ const CardDisposalSystem = (function() {
   function _triggerIncineratorAnimation() {
     if (!_debriefFeedElement) return;
 
+    // Play incineration SFX
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.play) {
+      AudioSystem.play('rumble-1', { volume: 0.4 });
+    }
+
     // Add animation class
     _debriefFeedElement.classList.add('incinerator-active');
 

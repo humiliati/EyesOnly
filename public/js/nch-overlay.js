@@ -1804,20 +1804,38 @@ var NchOverlay = (function () {
         _initStarfield(opts.starfieldOpts || {});
       }
 
-      // Phase 8: Initialize constellation subsystems
-      if (typeof SuitNodeRenderer !== 'undefined') SuitNodeRenderer.init();
-      if (typeof ConstellationGamestate !== 'undefined') ConstellationGamestate.init();
-      if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init();
-      if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init();
-      if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init();
-      // Phase 10: Cascade chains (solve one → unlock next)
-      if (typeof ConstellationCascade !== 'undefined') ConstellationCascade.init();
-      // Phase 10: Star destroyer (endgame item — sacrifice forever pixels for coins)
-      if (typeof StarDestroyer !== 'undefined') StarDestroyer.init();
-      // Phase 9: Suit transformer (panther lens → diamond transformation)
-      if (typeof SuitTransformer !== 'undefined') SuitTransformer.init();
-      // Phase 9: Satellite scrubber (silver lens mechanic)
-      if (typeof SatelliteScrubber !== 'undefined') SatelliteScrubber.init();
+      // Phase 8+: Staggered constellation subsystem initialization
+      // These are loaded with 300ms intervals to avoid competing with the
+      // splash video decoder for CPU/GPU time.  The fan splay animation
+      // has been extended to ~2.7s to cover the full stagger window.
+      var _constellationQueue = [
+        function () { if (typeof SuitNodeRenderer !== 'undefined') SuitNodeRenderer.init(); },
+        function () { if (typeof ConstellationGamestate !== 'undefined') ConstellationGamestate.init(); },
+        function () { if (typeof ConstellationRewards !== 'undefined') ConstellationRewards.init(); },
+        function () { if (typeof ConstellationTracer !== 'undefined') ConstellationTracer.init(); },
+        function () { if (typeof ConstellationLoader !== 'undefined') ConstellationLoader.init(); },
+        // Phase 10: Cascade chains (solve one → unlock next)
+        function () { if (typeof ConstellationCascade !== 'undefined') ConstellationCascade.init(); },
+        // Phase 10: Star destroyer (endgame item — sacrifice forever pixels for coins)
+        function () { if (typeof StarDestroyer !== 'undefined') StarDestroyer.init(); },
+        // Phase 9: Suit transformer (panther lens → diamond transformation)
+        function () { if (typeof SuitTransformer !== 'undefined') SuitTransformer.init(); },
+        // Phase 9: Satellite scrubber (silver lens mechanic)
+        function () { if (typeof SatelliteScrubber !== 'undefined') SatelliteScrubber.init(); }
+      ];
+      // If splash was already seen, init everything immediately (no stagger needed)
+      var _splashActive = false;
+      try { _splashActive = sessionStorage.getItem('splash_seen') !== '1'; } catch (_) {}
+
+      if (_splashActive) {
+        // Stagger: 300ms between each subsystem init
+        _constellationQueue.forEach(function (fn, i) {
+          setTimeout(fn, (i + 1) * 300);
+        });
+      } else {
+        // No splash — fire all synchronously
+        _constellationQueue.forEach(function (fn) { fn(); });
+      }
 
       setInterval(_pollMode, 500);
 

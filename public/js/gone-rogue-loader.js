@@ -32,7 +32,7 @@
     'js/lever.js',
     'js/button.js',
     'js/resource-manager.js',
-    'js/card-disposal-system.js?v=20260307h',
+    // card-disposal-system.js — moved to sync in index.html (inventory drag-to-debrief needs it early)
     'js/drop-zone-detector.js',
     'js/commerce-drag-drop-system.js',
     'js/passive-items-system.js',

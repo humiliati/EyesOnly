@@ -798,6 +798,12 @@
         // Store item data for equipping to active slot
         _draggedInventoryItem = { item: item, index: index };
 
+        // Always set dataTransfer so the browser allows the drag operation
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', item.name || item.id || 'item');
+        }
+
         // Also notify CardDisposalSystem for incinerator functionality
         if (typeof CardDisposalSystem !== 'undefined') {
           CardDisposalSystem.handleDragStart(itemEl, item, index, 'inventory');

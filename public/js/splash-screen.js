@@ -248,13 +248,12 @@ const SplashScreen = (() => {
         moved = true;
       }
     } else {
-      var dragging = fanEl.querySelector('.coin-card-dragging');
-      if (dragging) {
-        if (placeholder.nextElementSibling !== dragging) {
-          fanEl.insertBefore(placeholder, dragging);
-          moved = true;
-        }
-      } else if (placeholder !== fanEl.lastElementChild) {
+      // Drag is past all visible cards → placeholder goes to the very end.
+      // The hidden .coin-card-dragging element is still in the DOM at its
+      // original position (display:none); appending the placeholder after
+      // it is correct — the hidden card doesn't occupy visual space and
+      // gets repositioned on drop via insertBefore(cardEl, placeholder).
+      if (placeholder !== fanEl.lastElementChild) {
         fanEl.appendChild(placeholder);
         moved = true;
       }
@@ -342,7 +341,8 @@ const SplashScreen = (() => {
       </div>
       <div class="splash-video-layer" id="splash-video-layer">
         ${VIDEO_SOURCES.map((v, i) =>
-          `<video id="splash-vid-${i}" muted loop playsinline preload="auto"
+          `<video id="splash-vid-${i}" muted loop playsinline
+                  preload="${i === 0 ? 'auto' : 'none'}"
                   ${i === 0 ? 'autoplay class="splash-video-active"' : ''}>
             <source src="${v.webm}" type="video/webm">
             <source src="${v.mp4}" type="video/mp4">
@@ -745,9 +745,14 @@ const SplashScreen = (() => {
   function startVideos() {
     const videos = splashEl.querySelectorAll('.splash-video-layer video');
     videos.forEach((v, i) => {
-      v.play().catch(err => {
-        console.warn('[Splash] video[' + i + '] play failed:', err.message);
-      });
+      // Only play the active (first) video; others load on-demand when
+      // the user hovers a different card, avoiding 3 unnecessary network
+      // requests that would 404 and churn the browser's decode pipeline.
+      if (v.classList.contains('splash-video-active')) {
+        v.play().catch(err => {
+          console.warn('[Splash] video[' + i + '] play failed:', err.message);
+        });
+      }
       // Surface source load failures to console for debugging
       v.addEventListener('error', function () {
         console.warn('[Splash] video[' + i + '] load error — check R2 filenames');
@@ -1652,6 +1657,15 @@ const SplashScreen = (() => {
 
   function removeSplash() {
     if (!splashEl) return;
+
+    // Signal non-splash systems to begin initializing now that the
+    // splash is exiting.  NchOverlay, DebriefFeedController, main.js,
+    // and constellation modules all defer until this event so they
+    // don't compete with the splash video decoder for CPU/GPU time.
+    try {
+      document.dispatchEvent(new CustomEvent('splash-exit'));
+    } catch (_) {}
+
     _disposeStarfield();
     Card3D.dispose();
     // Stop splash background videos

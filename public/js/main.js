@@ -727,10 +727,22 @@
     return R * c;
   }
 
-  // --- Initialize on DOM ready ---
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+  // --- Initialize on DOM ready (deferred if splash is active) ---
+  // Terminal, Missions, and StateMachine don't need to run while the
+  // splash screen is visible.  Deferring until 'splash-exit' keeps
+  // the main thread free for splash video playback.
+  var _splashSkipped = false;
+  try { _splashSkipped = sessionStorage.getItem('splash_seen') === '1'; } catch (_) {}
+
+  if (_splashSkipped) {
+    // No splash — init immediately
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
   } else {
-    start();
+    // Splash is showing — defer until it exits
+    document.addEventListener('splash-exit', start, { once: true });
   }
 })();

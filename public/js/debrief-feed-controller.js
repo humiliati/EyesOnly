@@ -2460,11 +2460,25 @@ const DebriefFeedController = (function() {
   };
 })();
 
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function() {
-    DebriefFeedController.init();
-  });
-} else {
-  DebriefFeedController.init();
-}
+// Auto-initialize — deferred if splash screen is active.
+// The debrief renders behind the splash, starts idle symbol refresh,
+// and schedules a theme video.  None of this needs to run while the
+// splash is consuming video-decode bandwidth.
+(function _autoInit() {
+  function _run() { DebriefFeedController.init(); }
+
+  var splashSkipped = false;
+  try { splashSkipped = sessionStorage.getItem('splash_seen') === '1'; } catch (_) {}
+
+  if (splashSkipped) {
+    // No splash — init on DOM ready as before
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _run);
+    } else {
+      _run();
+    }
+  } else {
+    // Splash is showing — defer until it exits
+    document.addEventListener('splash-exit', _run, { once: true });
+  }
+})();

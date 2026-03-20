@@ -399,7 +399,7 @@
      so cards have independent vanishing points for the fan spread */
   margin-top: 4vh;
   opacity: 0;
-  animation: splash-fan-in 0.8s ease-out 0.8s forwards;
+  animation: splash-fan-in 1.8s ease-out 1.0s forwards;
   transition: opacity 0.35s ease, transform 0.5s ease;
 }
 

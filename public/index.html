@@ -514,12 +514,15 @@
   <!-- NCH Overlay — portable capsule widget (porthole mode on all pages) -->
   <script src="js/nch-overlay.js?v=20260316d"></script>
   <script>
-    // Init the overlay in porthole mode. On this page (home/terminal),
-    // it will auto-transition to game mode when GoneRogue launches.
-    // autoStarfield: false because splash-screen.js handles its own
-    // starfield master canvas init.
-    document.addEventListener('DOMContentLoaded', function() {
-      NchOverlay.init({ autoStarfield: false });
+    // ── Constellation init: always on DOMContentLoaded ──
+    // NchOverlay + constellation subsystems are needed during splash
+    // (game is playable through splash-screen card portholes).
+    // Staggered loading is handled inside NchOverlay.init() to avoid
+    // competing with the splash video decoder for CPU/GPU time.
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof NchOverlay !== 'undefined') {
+        NchOverlay.init({ autoStarfield: false });
+      }
       if (typeof PuzzleState !== 'undefined') {
         PuzzleState.init();
       }
@@ -574,6 +577,8 @@
   <script src="js/awol-difficulty.js?v=20260319a"></script>
   <!-- Tooltip system: must load sync so history toggle and interjections work immediately -->
   <script src="js/tooltip-system.js?v=20260319a"></script>
+  <!-- Card disposal system: must load sync so inventory drag-to-debrief incineration works immediately -->
+  <script src="js/card-disposal-system.js?v=20260319a"></script>
   <!-- Item popup module (reusable zoom-to-detail for inventory items) -->
   <script src="js/item-popup.js"></script>
 

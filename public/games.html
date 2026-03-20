@@ -764,6 +764,49 @@
       });
     })();
 
+    /* ---- Slot visibility: max 12 default, hide excess empties, fade last empty ---- */
+    (function manageSlotVisibility() {
+      var grid = document.getElementById('decryption-inventory');
+      if (!grid) return;
+
+      var MAX_DEFAULT = 12;
+      var slots = grid.querySelectorAll('.games-inv-slot');
+      var occupiedCount = 0;
+
+      // Count occupied slots
+      slots.forEach(function (s) {
+        if (s.querySelector('.games-inv-occupied')) occupiedCount++;
+      });
+
+      // Determine how many slots to show:
+      // Always show all occupied + at least 2 empty placeholders, up to MAX_DEFAULT
+      var visibleCount = Math.min(Math.max(occupiedCount + 2, 5), MAX_DEFAULT);
+
+      // If user has more items, expand (ecosystem max ~16)
+      if (occupiedCount > MAX_DEFAULT - 2) visibleCount = Math.min(occupiedCount + 2, 16);
+
+      var emptyShown = 0;
+      slots.forEach(function (s, i) {
+        var isOccupied = !!s.querySelector('.games-inv-occupied');
+        if (i >= visibleCount && !isOccupied) {
+          s.style.display = 'none';
+        }
+      });
+
+      // Add fade class to the last visible empty slot
+      var lastEmptySlot = null;
+      for (var i = slots.length - 1; i >= 0; i--) {
+        if (slots[i].style.display === 'none') continue;
+        if (slots[i].querySelector('.games-inv-empty')) {
+          lastEmptySlot = slots[i];
+          break;
+        }
+      }
+      if (lastEmptySlot) {
+        lastEmptySlot.classList.add('games-inv-fade-hint');
+      }
+    })();
+
     /* ---- Initialize magnifying glass drag + starfield ---- */
     (function initMagDrag() {
       if (typeof MagnifyingGlassDrag === 'undefined') return;

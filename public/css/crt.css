@@ -2687,6 +2687,23 @@ body.amber-mode #scanlines::after {
   .active-item-label {
     display: none;
   }
+
+  /* ── Mobile Inventory Layout Fix ── */
+  /* Hide empty slots so they don't wrap into the middle of log-column */
+  .inventory-item-empty {
+    display: none !important;
+  }
+
+  /* Remove min-height that forces empty space */
+  .inventory-grid {
+    min-height: auto !important;
+  }
+
+  /* Fade trailing edge of inventory items */
+  .inventory-items {
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
 }
 
 /* --- Gone Rogue Mode Header Squash (Mobile) --- */
@@ -4115,10 +4132,21 @@ body.cascade-active {
   cursor: grabbing;
 }
 
+/* Incinerator idle animation — pulsing glow when item hovers over debrief */
+@keyframes incinerator-idle {
+  0%, 100% {
+    background-color: rgba(255, 120, 0, 0.08);
+    box-shadow: 0 0 12px rgba(255, 120, 0, 0.2);
+  }
+  50% {
+    background-color: rgba(255, 80, 0, 0.18);
+    box-shadow: 0 0 24px rgba(255, 80, 0, 0.4);
+  }
+}
+
 /* Debrief feed as drop target */
 .debrief-drop-target {
-  background: rgba(255, 165, 0, 0.2);
-  box-shadow: 0 0 20px rgba(255, 165, 0, 0.4);
+  animation: incinerator-idle 1.2s ease-in-out infinite;
   outline: 2px dashed rgba(255, 165, 0, 0.6);
   outline-offset: 4px;
 }
