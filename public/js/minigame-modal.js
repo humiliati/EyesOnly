@@ -7,6 +7,7 @@ window.MinigameModal = (function () {
 
   var overlay, scene, cabinet, bezel, canvas, titleEl, closeBtn;
   var pauseOverlay, currentGame, paused;
+  var _animating = false; // true while the 3D roll-in is in flight
 
   /* Game registry — maps data-minigame keys to their global objects */
   var GAMES = {
@@ -20,7 +21,10 @@ window.MinigameModal = (function () {
 
   /* ── Double-click guard state ── */
   var _lastOverlayClick = 0;
-  var DBL_CLICK_WINDOW = 400; // ms — must click twice within this window
+  var DBL_CLICK_WINDOW = 400;
+
+  /* ── 3D starting pose (tilted flat on table) ── */
+  var TILT_TRANSFORM = 'rotateX(82deg) rotateZ(15deg) scale(0.6)';
 
   function buildDOM() {
     if (overlay) return;
@@ -43,14 +47,12 @@ window.MinigameModal = (function () {
                 'ARROWS / WASD to move &middot; SPACE to fire &middot; ESC to pause' +
               '</span>' +
             '</div>' +
-            /* Pause overlay lives inside the bezel */
             '<div class="minigame-pause-overlay" id="minigame-pause">' +
               '<div class="minigame-pause-title">PAUSED</div>' +
               '<button class="minigame-pause-btn" id="minigame-resume">Resume Game</button>' +
               '<button class="minigame-pause-btn exit-btn" id="minigame-exit">Exit Game</button>' +
             '</div>' +
           '</div>' +
-          /* Arcade control panel decoration (desktop) */
           '<div class="minigame-control-panel">' +
             '<div class="minigame-joystick"></div>' +
             '<div class="minigame-arcade-btn btn-red"></div>' +
@@ -59,7 +61,6 @@ window.MinigameModal = (function () {
             '<div class="minigame-arcade-btn btn-blue"></div>' +
           '</div>' +
         '</div>' +
-        /* Table legs (desktop) */
         '<div class="minigame-cabinet-legs">' +
           '<div class="minigame-cabinet-leg"></div>' +
           '<div class="minigame-cabinet-leg"></div>' +
@@ -76,28 +77,24 @@ window.MinigameModal = (function () {
     closeBtn     = document.getElementById('minigame-close');
     pauseOverlay = document.getElementById('minigame-pause');
 
-    /* Close button → shows pause menu instead of instant-closing */
+    /* Close button → shows pause menu */
     closeBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       showPause();
     });
 
-    /* Overlay background: single click does nothing.
-       Double-click toggles pause on/off.
-       While paused, double-click again closes pause (back to game). */
+    /* Overlay background: single click = nothing, double-click toggles pause */
     overlay.addEventListener('click', function (e) {
       if (e.target !== overlay) return;
       var now = Date.now();
       if (now - _lastOverlayClick < DBL_CLICK_WINDOW) {
-        // Double-click detected — toggle pause
-        _lastOverlayClick = 0; // reset so next single click is inert
+        _lastOverlayClick = 0;
         if (paused) {
           hidePause();
         } else {
           showPause();
         }
       } else {
-        // Single click — just record timestamp, do nothing
         _lastOverlayClick = now;
       }
     });
@@ -119,7 +116,7 @@ window.MinigameModal = (function () {
 
     window.addEventListener('resize', handleResize);
 
-    /* Escape → toggle pause (not instant close) */
+    /* Escape → toggle pause */
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && overlay.classList.contains('minigame-overlay-open')) {
         e.preventDefault();
@@ -130,6 +127,26 @@ window.MinigameModal = (function () {
         }
       }
     });
+
+    /* When the 3D roll-in animation finishes, strip all 3D transforms
+       so the canvas has a clean flat coordinate space for input.
+       Without this, getBoundingClientRect() returns warped values
+       and click→canvas coordinate conversion is wrong. */
+    scene.addEventListener('transitionend', function (e) {
+      if (e.target !== scene) return;
+      if (!_animating) return;
+      _animating = false;
+      // Kill perspective + preserve-3d on parents so canvas rect is clean
+      scene.style.transition = 'none';
+      scene.style.transform  = 'none';
+      scene.style.transformStyle = 'flat';
+      overlay.style.perspective = 'none';
+      // Re-size canvas now that transforms are stripped (rect is accurate)
+      sizeCanvas();
+      if (currentGame && currentGame.resize) {
+        currentGame.resize(canvas);
+      }
+    });
   }
 
   /* ── Pause / unpause ── */
@@ -137,7 +154,6 @@ window.MinigameModal = (function () {
     if (paused) return;
     paused = true;
     if (pauseOverlay) pauseOverlay.classList.add('active');
-    // Notify game of pause (if supported)
     if (currentGame && currentGame.pause) currentGame.pause();
   }
 
@@ -148,33 +164,38 @@ window.MinigameModal = (function () {
     if (currentGame && currentGame.resume) currentGame.resume();
   }
 
-  /* ── Canvas sizing — 70% larger on desktop ── */
+  /* ── Canvas sizing ── */
   function sizeCanvas() {
-    if (!canvas || !overlay || !bezel) return;
+    if (!canvas || !overlay) return;
 
-    var header = bezel.querySelector('.minigame-modal-header');
-    var footer = bezel.querySelector('.minigame-modal-footer');
-    var hh = header ? header.offsetHeight : 34;
-    var fh = footer ? footer.offsetHeight : 28;
+    var isMobile = window.innerWidth < 769;
+    var hh = 34, fh = 28;
+    var header = bezel ? bezel.querySelector('.minigame-modal-header') : null;
+    var footer = bezel ? bezel.querySelector('.minigame-modal-footer') : null;
+    if (header) hh = header.offsetHeight;
+    if (footer) fh = footer.offsetHeight;
 
-    // Bezel internal dimensions
-    var bezelRect = bezel.getBoundingClientRect();
-    var availW = bezelRect.width - 6;   // minus bezel padding
-    var availH = bezelRect.height - hh - fh - 6;
+    var w, h;
 
-    // Fallback if bezel hasn't laid out yet
-    if (availW < 100 || availH < 100) {
-      var isMobile = window.innerWidth < 769;
-      availW = isMobile
+    // Only trust bezel.getBoundingClientRect when transforms are stripped
+    if (!_animating && bezel) {
+      var bezelRect = bezel.getBoundingClientRect();
+      w = bezelRect.width - 6;
+      h = bezelRect.height - hh - fh - 6;
+    }
+
+    // Fallback: compute from viewport
+    if (!w || w < 100 || !h || h < 100) {
+      w = isMobile
         ? Math.min(window.innerWidth - 32, 600)
         : Math.min(window.innerWidth - 80, 1010);
-      availH = isMobile
+      h = isMobile
         ? Math.min(window.innerHeight - 80, 460) - hh - fh
         : Math.min(window.innerHeight - 160, 700) - hh - fh;
     }
 
-    var w = Math.floor(Math.max(200, availW));
-    var h = Math.floor(Math.max(150, availH));
+    w = Math.floor(Math.max(200, w));
+    h = Math.floor(Math.max(150, h));
 
     canvas.width  = w;
     canvas.height = h;
@@ -207,17 +228,46 @@ window.MinigameModal = (function () {
     if (pauseOverlay) pauseOverlay.classList.remove('active');
     _lastOverlayClick = 0;
 
-    // Show overlay — the CSS transition on .minigame-cabinet-scene
-    // handles the 3D roll-in animation automatically
+    // ── Reset 3D transform state for the roll-in animation ──
+    // 1. Restore perspective on overlay
+    overlay.style.perspective = '1200px';
+    // 2. Force scene to the tilted starting pose (no transition)
+    scene.style.transition     = 'none';
+    scene.style.transformStyle = 'preserve-3d';
+    scene.style.transform      = TILT_TRANSFORM;
+
+    // Show overlay (opacity 0→1 via CSS transition on overlay)
     overlay.classList.add('minigame-overlay-open');
     document.body.style.overflow = 'hidden';
 
-    // Size canvas after a frame so the layout has resolved
-    requestAnimationFrame(function () {
-      sizeCanvas();
-      currentGame = game;
-      game.start(canvas);
-    });
+    // 3. Force reflow so the browser registers the tilted pose
+    void scene.offsetHeight;
+
+    // 4. Re-enable transition and animate to flat
+    _animating = true;
+    scene.style.transition = 'transform 1s cubic-bezier(0.22, 1, 0.36, 1)';
+    scene.style.transform  = 'rotateX(0deg) rotateZ(0deg) scale(1)';
+
+    // Size canvas with viewport fallback (transforms still active)
+    sizeCanvas();
+    currentGame = game;
+    game.start(canvas);
+
+    // Safety: if transitionend never fires (e.g. reduced-motion),
+    // strip transforms after 1.2s anyway
+    setTimeout(function () {
+      if (_animating) {
+        _animating = false;
+        scene.style.transition     = 'none';
+        scene.style.transform      = 'none';
+        scene.style.transformStyle = 'flat';
+        overlay.style.perspective  = 'none';
+        sizeCanvas();
+        if (currentGame && currentGame.resize) {
+          currentGame.resize(canvas);
+        }
+      }
+    }, 1200);
 
     // SFX
     if (window.AudioSystem && AudioSystem.playSFX) {
@@ -227,6 +277,7 @@ window.MinigameModal = (function () {
 
   /* ── Close game (for real) ── */
   function closeForReal() {
+    _animating = false;
     paused = false;
     if (pauseOverlay) pauseOverlay.classList.remove('active');
     if (currentGame && currentGame.stop) currentGame.stop();

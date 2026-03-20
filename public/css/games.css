@@ -1200,7 +1200,7 @@ html, body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, background 0.6s ease;
-  perspective: 1200px;
+  /* perspective set/stripped via JS for clean canvas coordinates */
 }
 
 .minigame-overlay-open {
@@ -1209,16 +1209,11 @@ html, body {
   background: rgba(0, 0, 0, 0.92);
 }
 
-/* ── The 3D scene container ── */
+/* ── The 3D scene container — transforms managed by JS ── */
 .minigame-cabinet-scene {
   position: relative;
-  transform-style: preserve-3d;
-  transform: rotateX(82deg) rotateZ(15deg) scale(0.6);
-  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.minigame-overlay-open .minigame-cabinet-scene {
-  transform: rotateX(0deg) rotateZ(0deg) scale(1);
+  /* transform-style, transform, transition all set/stripped by JS
+     to ensure clean canvas coordinate space after animation */
 }
 
 /* ── Cabinet body: the cocktail table ── */
@@ -1511,13 +1506,6 @@ html, body {
 
 /* ── Mobile: simpler, near-fullscreen ── */
 @media (max-width: 768px) {
-  .minigame-cabinet-scene {
-    transform: none !important;
-    transition: none !important;
-  }
-  .minigame-overlay-open .minigame-cabinet-scene {
-    transform: none !important;
-  }
   .minigame-cabinet {
     width: calc(100vw - 16px);
     max-height: calc(100vh - 32px);
