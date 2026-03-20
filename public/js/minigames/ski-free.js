@@ -85,9 +85,11 @@ window.SkiFreeGame = (function () {
   var INTRO_DURATION = 90;
 
   // ── Projectile config ──
-  var PROJECTILE_SPEED = 6;    // px/frame, travels downhill (positive Y)
+  var PROJECTILE_SPEED = 7;    // px/frame, omnidirectional
   var PROJECTILE_SIZE = 3;
   var PROJECTILE_COOLDOWN = 12; // frames between shots
+  var PROJECTILE_RANGE = 500;  // px max travel before despawn
+  var PROJECTILE_TRAIL_LEN = 6; // frames of trail history
 
   // ════════════════════════════════════════════════════════════
 
@@ -237,8 +239,8 @@ window.SkiFreeGame = (function () {
       else if (data.action === 'right') this._steerX = 1;
       else if (data.action === 'down') this._tuck = true;
       else if (data.action === 'up') this._tuck = false;
-      // Space = fire projectile
-      else if (data.action === 'action') this._fireProjectile();
+      // Space = fire projectile downhill (default direction)
+      else if (data.action === 'action') this._fireProjectileAt(this._player.x, H);
     }
 
     // Swipe: left/right steer, up/down speed (legacy fallback)
@@ -266,9 +268,9 @@ window.SkiFreeGame = (function () {
       this._tuck = false;
     }
 
-    // Tap = fire projectile
+    // Tap = fire projectile toward tap position (omnidirectional)
     if (type === 'tap') {
-      this._fireProjectile();
+      this._fireProjectileAt(data.x, data.y);
     }
   };
 
@@ -434,15 +436,29 @@ window.SkiFreeGame = (function () {
       this._updatePursuer(this._pursuers[pi], pi);
     }
 
-    // ── Update projectiles ──
+    // ── Update projectiles (omnidirectional) ──
     if (this._shotCooldown > 0) this._shotCooldown--;
     for (var pr = this._projectiles.length - 1; pr >= 0; pr--) {
       var proj = this._projectiles[pr];
-      proj.y += PROJECTILE_SPEED;  // travel downhill (toward bottom)
-      proj.y -= this._speed;       // offset by terrain scroll
-      if (proj.y > H + 20 || proj.y < -20) { this._projectiles.splice(pr, 1); continue; }
+      // Record trail position before moving
+      proj.trail.push({ x: proj.x, y: proj.y });
+      if (proj.trail.length > PROJECTILE_TRAIL_LEN) proj.trail.shift();
+
+      // Move along velocity vector
+      proj.x += proj.vx * PROJECTILE_SPEED;
+      proj.y += proj.vy * PROJECTILE_SPEED;
+      // Offset Y by terrain scroll so projectiles stay world-relative
+      proj.y -= this._speed;
+      proj.traveled += PROJECTILE_SPEED;
+
+      // Cull: out of bounds or exceeded range
+      if (proj.x < -30 || proj.x > W + 30 || proj.y < -30 || proj.y > H + 30 ||
+          proj.traveled > PROJECTILE_RANGE) {
+        this._projectiles.splice(pr, 1); continue;
+      }
 
       // Check hit on pursuers
+      var projHit = false;
       for (var pk = this._pursuers.length - 1; pk >= 0; pk--) {
         var pur = this._pursuers[pk];
         if (Math.abs(proj.x - pur.x) < T * 0.8 && Math.abs(proj.y - pur.y) < T * 0.8) {
@@ -453,6 +469,28 @@ window.SkiFreeGame = (function () {
           if (pur.hp <= 0) {
             this._killPursuer(pk);
           }
+          projHit = true;
+          break;
+        }
+      }
+      if (projHit) continue;
+
+      // Check hit on breakable obstacles
+      for (var po = this._obstacles.length - 1; po >= 0; po--) {
+        var obs = this._obstacles[po];
+        if (obs.breakable && Math.abs(proj.x - obs.x) < T * 0.6 && Math.abs(proj.y - obs.y) < T * 0.6) {
+          this._projectiles.splice(pr, 1);
+          this.playSFX('hit');
+          // Drop collectible from breakable
+          if (obs.drop === 'currency') {
+            this.addScore(50);
+            this._spawnParticle(obs.x, obs.y, '+50', 40);
+          } else if (obs.drop === 'intel') {
+            this._intelCount++; this.addScore(200);
+            this._spawnParticle(obs.x, obs.y, '+200', 40);
+          }
+          this._spawnParticle(obs.x, obs.y, EMOJI.poof, 20);
+          this._obstacles.splice(po, 1);
           break;
         }
       }
@@ -542,13 +580,23 @@ window.SkiFreeGame = (function () {
     this._pursuers.splice(idx, 1);
   };
 
-  // ── Fire projectile ──
-  SkiFree.prototype._fireProjectile = function () {
+  // ── Fire projectile toward target (omnidirectional) ──
+  SkiFree.prototype._fireProjectileAt = function (targetX, targetY) {
     if (this._shotCooldown > 0) return;
+    var px = this._player.x, py = this._player.y;
+    var dx = targetX - px, dy = targetY - py;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 5) return;  // too close to player, ignore
+    var vx = dx / dist, vy = dy / dist;
+
     this._shotCooldown = PROJECTILE_COOLDOWN;
     this._projectiles.push({
-      x: this._player.x,
-      y: this._player.y + this._tileSize * 0.5
+      x: px, y: py,
+      vx: vx, vy: vy,
+      rotation: Math.atan2(vy, vx),
+      traveled: 0,
+      trail: [],           // recent positions for animated tail
+      animTime: Date.now()
     });
     this.playSFX('shoot');
   };
@@ -720,12 +768,45 @@ window.SkiFreeGame = (function () {
       this.drawEmoji(ctx, pk.emoji, pk.x, pk.y + bob, T * 0.7, { glow: true, glowColor: this.colors.amber });
     }
 
-    // ── Projectiles ──
-    ctx.fillStyle = ph;
+    // ── Projectiles (animated, rotated toward target) ──
     for (var pr = 0; pr < this._projectiles.length; pr++) {
       var pj = this._projectiles[pr];
-      ctx.save(); ctx.shadowColor = ph; ctx.shadowBlur = 6;
-      ctx.beginPath(); ctx.arc(pj.x, pj.y, PROJECTILE_SIZE, 0, Math.PI * 2); ctx.fill();
+
+      // Trail: gradient tail behind the projectile
+      if (pj.trail.length > 1) {
+        ctx.lineCap = 'round';
+        for (var tri = 1; tri < pj.trail.length; tri++) {
+          var tAlpha = (tri / pj.trail.length) * 0.45;
+          var tWidth = (tri / pj.trail.length) * (PROJECTILE_SIZE * 1.5);
+          ctx.strokeStyle = 'rgba(255,200,80,' + tAlpha + ')';
+          ctx.lineWidth = tWidth;
+          ctx.beginPath();
+          ctx.moveTo(pj.trail[tri - 1].x, pj.trail[tri - 1].y);
+          ctx.lineTo(pj.trail[tri].x, pj.trail[tri].y);
+          ctx.stroke();
+        }
+      }
+
+      // Head: rotated glowing sprite
+      ctx.save();
+      ctx.translate(pj.x, pj.y);
+      ctx.rotate(pj.rotation);
+
+      // Animated pulse: size oscillates
+      var pulsePhase = ((Date.now() - pj.animTime) * 0.02) % (Math.PI * 2);
+      var pulseR = PROJECTILE_SIZE * (1.0 + 0.3 * Math.sin(pulsePhase));
+
+      // Outer glow
+      ctx.shadowColor = '#FF8800';
+      ctx.shadowBlur = pulseR * 3;
+      ctx.fillStyle = '#FFCC44';
+      ctx.beginPath(); ctx.arc(0, 0, pulseR, 0, Math.PI * 2); ctx.fill();
+
+      // Inner bright core
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(0, 0, pulseR * 0.45, 0, Math.PI * 2); ctx.fill();
+
       ctx.restore();
     }
 
@@ -761,8 +842,9 @@ window.SkiFreeGame = (function () {
 
       // Carving: scaleX flips based on direction, narrows during hard turns
       var dir = this._steerX;
-      // Flip: going right = normal, going left = mirror
-      var flipX = dir < -0.1 ? -1 : 1;
+      // ⛷️ emoji faces left natively; flip when steering RIGHT so
+      // the emoji's back leads the forward direction (reverse stance)
+      var flipX = dir > 0.1 ? -1 : 1;
       // Narrow during carving: compress scaleX based on turn intensity via sine
       var turnIntensity = Math.abs(dir);
       var narrowFactor = 1.0 - turnIntensity * 0.35 * (0.5 + 0.5 * Math.sin(Date.now() * 0.008));
