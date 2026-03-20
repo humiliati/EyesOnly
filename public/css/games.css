@@ -1367,8 +1367,9 @@ html, body {
   display: block;
   background: #060808;
   image-rendering: pixelated;
-  flex: 1;
-  width: 100%;
+  /* No flex:1 or width:100% — sizeCanvas() sets explicit pixel dims.
+     flex/width would stretch the display beyond the buffer → pixelation. */
+  flex: none;
   min-height: 0;
   position: relative;
   z-index: 1;

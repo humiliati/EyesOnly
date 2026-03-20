@@ -67,8 +67,6 @@ window.MinigameModal = (function () {
         '<div class="minigame-cabinet-legs">' +
           '<div class="minigame-cabinet-leg"></div>' +
           '<div class="minigame-cabinet-leg"></div>' +
-          '<div class="minigame-cabinet-leg"></div>' +
-          '<div class="minigame-cabinet-leg"></div>' +
         '</div>' +
       '</div>';
 
@@ -141,21 +139,34 @@ window.MinigameModal = (function () {
       if (e.target !== scene) return;
       if (!_animating) return;
       _animating = false;
-      // Kill perspective + preserve-3d on scene/cabinet so canvas rect is clean.
-      // Control panel keeps its OWN perspective (set in CSS) — it's a sibling
-      // of bezel, not a canvas ancestor, so it can't warp canvas coords.
+
+      /* ── Staged 3D strip for smooth landing ──
+         Step 1: kill the transition and set transform to 'none'
+                 (visually identical to rotateX(0) rotateZ(0) scale(1))
+         Step 2: next frame, strip preserve-3d / perspective so canvas
+                 getBoundingClientRect is accurate, then resize.
+         Splitting across frames avoids a single-frame visual pop. */
+
       scene.style.transition = 'none';
       scene.style.transform  = 'none';
-      scene.style.transformStyle = 'flat';
-      overlay.style.perspective = 'none';
-      cabinet.style.transformStyle = '';
-      cabinet.style.overflow = 'hidden';  // restore after animation
-      // Re-size canvas now that transforms are stripped (rect is accurate)
-      sizeCanvas();
-  
-      if (currentGame && currentGame.resize) {
-        currentGame.resize(canvas);
-      }
+
+      // Fade out depth faces (they're already perpendicular = invisible,
+      // but this prevents any sub-pixel flash during context change)
+      var faces = cabinet.querySelectorAll('.minigame-cab-depth');
+      for (var i = 0; i < faces.length; i++) faces[i].style.opacity = '0';
+
+      requestAnimationFrame(function () {
+        scene.style.transformStyle = 'flat';
+        overlay.style.perspective  = 'none';
+        cabinet.style.transformStyle = '';
+        cabinet.style.overflow = 'hidden';
+
+        // Re-size canvas now that transforms are stripped (rect is accurate)
+        sizeCanvas();
+        if (currentGame && currentGame.resize) {
+          currentGame.resize(canvas);
+        }
+      });
     });
   }
 
@@ -294,20 +305,23 @@ window.MinigameModal = (function () {
     scene.style.transform      = TILT_TRANSFORM;
     // 3. Cabinet needs preserve-3d so box-depth faces render during tilt
     cabinet.style.transformStyle = 'preserve-3d';
+    // 4. Reset overflow (transitionend sets hidden; CSS default is visible)
+    cabinet.style.overflow = '';
+    // 5. Restore depth face visibility (transitionend fades them out)
+    var faces = cabinet.querySelectorAll('.minigame-cab-depth');
+    for (var i = 0; i < faces.length; i++) faces[i].style.opacity = '';
 
     // Show overlay (opacity 0→1 via CSS transition on overlay)
     overlay.classList.add('minigame-overlay-open');
     document.body.style.overflow = 'hidden';
 
-    // Size canvas with viewport fallback (transforms still active)
+    // Mark animating BEFORE sizeCanvas so it uses the viewport fallback
+    // instead of bezel.getBoundingClientRect() (which is warped by the
+    // 78° tilt + perspective, giving totally wrong dimensions).
+    _animating = true;
     sizeCanvas();
     currentGame = game;
     game.start(canvas);
-
-    // Double-rAF: first rAF lets the browser apply the tilted pose,
-    // second rAF fires after the first paint frame, so the transition
-    // genuinely starts from the tilted pose (not batched to identity).
-    _animating = true;
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         scene.style.transition = 'transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)';
@@ -320,17 +334,21 @@ window.MinigameModal = (function () {
     setTimeout(function () {
       if (_animating) {
         _animating = false;
-        scene.style.transition     = 'none';
-        scene.style.transform      = 'none';
-        scene.style.transformStyle = 'flat';
-        overlay.style.perspective  = 'none';
-        cabinet.style.transformStyle = '';
+        scene.style.transition = 'none';
+        scene.style.transform  = 'none';
+        var sf = cabinet.querySelectorAll('.minigame-cab-depth');
+        for (var j = 0; j < sf.length; j++) sf[j].style.opacity = '0';
 
-        sizeCanvas();
-    
-        if (currentGame && currentGame.resize) {
-          currentGame.resize(canvas);
-        }
+        requestAnimationFrame(function () {
+          scene.style.transformStyle  = 'flat';
+          overlay.style.perspective   = 'none';
+          cabinet.style.transformStyle = '';
+          cabinet.style.overflow = 'hidden';
+          sizeCanvas();
+          if (currentGame && currentGame.resize) {
+            currentGame.resize(canvas);
+          }
+        });
       }
     }, 1400);
 
