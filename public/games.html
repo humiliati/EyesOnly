@@ -1129,6 +1129,95 @@
       }
     })();
 
+    /* ---- Drag-scroll: auto-scroll inventory strip when dragging near edges ---- */
+    (function initDragScroll() {
+      var scrollWrap = document.getElementById('decryption-scroll');
+      if (!scrollWrap) return;
+
+      var _scrollRaf = null;
+      var EDGE_ZONE = 50; // px from edge to trigger scroll
+      var SCROLL_SPEED = 4; // px per frame
+
+      scrollWrap.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        var rect = scrollWrap.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var w = rect.width;
+
+        if (_scrollRaf) cancelAnimationFrame(_scrollRaf);
+
+        if (x < EDGE_ZONE) {
+          // Scroll left
+          (function scrollLeft() {
+            scrollWrap.scrollLeft -= SCROLL_SPEED;
+            _scrollRaf = requestAnimationFrame(scrollLeft);
+          })();
+        } else if (x > w - EDGE_ZONE) {
+          // Scroll right
+          (function scrollRight() {
+            scrollWrap.scrollLeft += SCROLL_SPEED;
+            _scrollRaf = requestAnimationFrame(scrollRight);
+          })();
+        }
+      });
+
+      scrollWrap.addEventListener('dragleave', function() {
+        if (_scrollRaf) { cancelAnimationFrame(_scrollRaf); _scrollRaf = null; }
+      });
+
+      scrollWrap.addEventListener('drop', function() {
+        if (_scrollRaf) { cancelAnimationFrame(_scrollRaf); _scrollRaf = null; }
+      });
+
+      // Also remove the mask once scrolled (reveal right edge content)
+      scrollWrap.addEventListener('scroll', function() {
+        if (scrollWrap.scrollLeft > 10) {
+          scrollWrap.classList.add('scroll-active');
+        } else {
+          scrollWrap.classList.remove('scroll-active');
+        }
+      });
+    })();
+
+    /* ---- Currency display: read from canonical eyesonly_gamestate.cryptos ---- */
+    (function initCurrencyDisplay() {
+      var el = document.getElementById('currency-value');
+      if (!el) return;
+
+      function readCurrency() {
+        var total = 0;
+        // 1. Primary source: eyesonly_gamestate.cryptos (same as terminal)
+        try {
+          var gs = JSON.parse(localStorage.getItem('eyesonly_gamestate') || '{}');
+          total = gs.cryptos || 0;
+        } catch (_) {}
+        // 2. Add puzzleCoins from eyesonly_account (QR puzzles, arcade awards)
+        try {
+          var acct = JSON.parse(localStorage.getItem('eyesonly_account') || '{}');
+          total += (acct.puzzleCoins || 0);
+        } catch (_) {}
+        return Math.floor(total);
+      }
+
+      // Set initial value
+      var initial = readCurrency();
+      if (initial > 0) el.textContent = String(initial).padStart(8, '0');
+
+      // Listen for currency changes from any source
+      document.addEventListener('currency-updated', function(e) {
+        var val = readCurrency();
+        el.textContent = String(val).padStart(8, '0');
+      });
+
+      // Also poll on storage events (cross-tab sync)
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'eyesonly_gamestate' || e.key === 'eyesonly_account') {
+          var val = readCurrency();
+          el.textContent = String(val).padStart(8, '0');
+        }
+      });
+    })();
+
     /* ---- Register item popups ---- */
     (function initItemPopups() {
       if (typeof ItemPopup === 'undefined') return;

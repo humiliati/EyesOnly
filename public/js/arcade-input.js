@@ -264,6 +264,9 @@ var ArcadeInput = (function () {
         if (anchorDir) {
           this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
           this._emit('keyaction', { action: anchorDir });
+        } else if (this._anchor) {
+          // Tap landed in dead zone around anchor — emit anchortap (e.g. squish)
+          this._emit('anchortap', pos);
         } else {
           this._emit('keyaction', { action: 'action' });
         }
@@ -348,6 +351,9 @@ var ArcadeInput = (function () {
         if (anchorDir) {
           this._emit('swipe', { direction: anchorDir, velocity: 0.5, x: pos.x, y: pos.y });
           this._emit('keyaction', { action: anchorDir });
+        } else if (this._anchor) {
+          // Tap landed in dead zone around anchor — emit anchortap (e.g. squish)
+          this._emit('anchortap', pos);
         } else {
           this._emit('keyaction', { action: 'action' });
         }
@@ -414,13 +420,20 @@ var ArcadeInput = (function () {
    * @param {number|null} x — anchor x in canvas coordinates (null to disable)
    * @param {number|null} y — anchor y in canvas coordinates
    */
-  ArcadeInput.prototype.setAnchor = function (x, y) {
+  /**
+   * @param {number|null} x — anchor x in canvas coordinates (null to disable)
+   * @param {number|null} y — anchor y in canvas coordinates
+   * @param {number} [deadZone] — radius in canvas px where taps don't produce
+   *   a direction (default 20). Set to roughly half the player sprite size.
+   */
+  ArcadeInput.prototype.setAnchor = function (x, y, deadZone) {
     if (x == null || y == null) {
       this._anchor = null;
     } else {
       if (!this._anchor) this._anchor = {};
       this._anchor.x = x;
       this._anchor.y = y;
+      this._anchor.deadZone = (deadZone != null) ? deadZone : 20;
     }
   };
 
@@ -438,8 +451,10 @@ var ArcadeInput = (function () {
     if (!this._anchor) return null;
     var dx = tx - this._anchor.x;
     var dy = ty - this._anchor.y;
-    // Dead zone: taps very close to anchor don't produce a direction
-    if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return null;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var dz = this._anchor.deadZone || 20;
+    // Dead zone: taps within radius of anchor emit 'anchortap' (squish), not a direction
+    if (dist < dz) return null;
     if (Math.abs(dx) > Math.abs(dy)) {
       return dx > 0 ? 'right' : 'left';
     }

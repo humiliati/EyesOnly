@@ -71,6 +71,11 @@ window.FroggerGame = (function () {
     this._visualY = 0;
     this._lerpSpeed = 0.22;         // lerp factor per frame (0-1, higher = snappier)
 
+    // Squish animation (tap on frog dead zone)
+    this._squishTimer = 0;          // ms remaining
+    this._squishScaleX = 1.0;       // horizontal scale for rendering
+    this._squishScaleY = 1.0;       // vertical scale for rendering
+
     // Boss adapter state
     this._bossHP = 0;
     this._bossMaxHP = 0;
@@ -180,6 +185,12 @@ window.FroggerGame = (function () {
   // ════════════════════════════════════════════
 
   Frogger.prototype.onInput = function (type, data) {
+    // Tap on frog dead zone → squish bounce (no movement)
+    if (type === 'anchortap') {
+      this._triggerSquish();
+      return;
+    }
+
     if (!this._alive || this._hopCooldown > 0) return;
 
     var dir = null;
@@ -189,12 +200,15 @@ window.FroggerGame = (function () {
       // (ArcadeInput converts taps to swipe+keyaction when anchor is set)
       dir = data.direction || data.action;
     }
-    // Plain 'tap' without anchor falls through as null — no action
-    // (directional taps are already converted by ArcadeInput)
 
     if (!dir || dir === 'action' || dir === 'secondary') return;
 
     this._hop(dir);
+  };
+
+  Frogger.prototype._triggerSquish = function () {
+    this._squishTimer = 300; // 300ms squish cycle
+    this.playSFX('ui-01');   // gentle boop
   };
 
   Frogger.prototype._hop = function (dir) {
@@ -236,6 +250,25 @@ window.FroggerGame = (function () {
     // Hop cooldown
     if (this._hopCooldown > 0) this._hopCooldown -= dt;
 
+    // Squish animation decay
+    if (this._squishTimer > 0) {
+      this._squishTimer -= dt;
+      if (this._squishTimer <= 0) {
+        this._squishTimer = 0;
+        this._squishScaleX = 1.0;
+        this._squishScaleY = 1.0;
+      } else {
+        // Bounce curve: quick squash then overshoot stretch then settle
+        // t goes 1→0 as timer counts down
+        var t = this._squishTimer / 300;
+        // sin-based bounce: squash at start, overshoot, settle
+        var bounce = Math.sin(t * Math.PI * 2.5) * t;
+        // scaleX squashes (gets wider), scaleY stretches (gets taller) — and vice versa
+        this._squishScaleX = 1.0 + bounce * 0.25;   // ±25% width wobble
+        this._squishScaleY = 1.0 - bounce * 0.25;   // inverse on height
+      }
+    }
+
     // Death respawn timer
     if (!this._alive) {
       this._deathTimer -= dt;
@@ -263,7 +296,8 @@ window.FroggerGame = (function () {
       if (this._input) {
         this._input.setAnchor(
           this._visualX * T + T / 2,
-          this._hudOffset + this._visualY * T + T / 2
+          this._hudOffset + this._visualY * T + T / 2,
+          T * 0.45  // dead zone ≈ half tile — taps on the frog trigger squish, not move
         );
       }
     }
@@ -311,7 +345,7 @@ window.FroggerGame = (function () {
       // Check vehicle collision
       for (var i = 0; i < lane.objs.length; i++) {
         var o = lane.objs[i];
-        if (f.col >= o.x - 0.3 && f.col < o.x + o.w + 0.3) {
+        if (f.col >= o.x - 0.15 && f.col < o.x + o.w + 0.15) {
           // Track if killed by train (for mythic check)
           if (lane.type === 'train') this._trainImpactKill = true;
           this._die();
@@ -323,7 +357,7 @@ window.FroggerGame = (function () {
       var onLog = false;
       for (var i = 0; i < lane.objs.length; i++) {
         var o = lane.objs[i];
-        if (f.col >= o.x - 0.4 && f.col < o.x + o.w + 0.4) {
+        if (f.col >= o.x - 0.35 && f.col < o.x + o.w + 0.35) {
           onLog = true;
           // Ride the log (move both logical and visual to stay synced)
           var drift = lane.speed * (dt / 1000);
@@ -480,15 +514,29 @@ window.FroggerGame = (function () {
       }
     }
 
-    // ── Draw frog (lerped smooth position) ──
+    // ── Draw frog (lerped smooth position + squish transform) ──
     if (this._alive && this._frog) {
       var fx = this._visualX * T + T / 2;
       var fy = hudY + this._visualY * T + T / 2;
-      this.drawEmoji(ctx, EMOJI.player, fx, fy, T * 0.85, {
-        glow: true,
-        glowColor: this.colors.phosphor,
-        glowRadius: 10
-      });
+
+      // Apply squish squash-and-stretch if active
+      if (this._squishTimer > 0) {
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.scale(this._squishScaleX, this._squishScaleY);
+        this.drawEmoji(ctx, EMOJI.player, 0, 0, T * 0.85, {
+          glow: true,
+          glowColor: this.colors.phosphor,
+          glowRadius: 10
+        });
+        ctx.restore();
+      } else {
+        this.drawEmoji(ctx, EMOJI.player, fx, fy, T * 0.85, {
+          glow: true,
+          glowColor: this.colors.phosphor,
+          glowRadius: 10
+        });
+      }
     }
 
     // ── Death animation ──

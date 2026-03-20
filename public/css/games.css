@@ -274,12 +274,28 @@ html, body {
   overflow-y: hidden;
   margin-bottom: 10px;
   max-width: 535px; /* ~5 slots: 3 items + 2 empty placeholders */
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
-  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--phosphor-dim, #1a9c1a) transparent;
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
   position: relative;
 }
-.games-inventory-scroll::-webkit-scrollbar { display: none; }
+/* Thin styled scrollbar for webkit browsers */
+.games-inventory-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.games-inventory-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+.games-inventory-scroll::-webkit-scrollbar-thumb {
+  background: var(--phosphor-dim, #1a9c1a);
+  border-radius: 3px;
+  min-width: 30px;
+}
+.games-inventory-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--phosphor, #33ff33);
+}
 
 /* Remove fade mask once user scrolls (JS toggles this class) */
 .games-inventory-scroll.scroll-active {
