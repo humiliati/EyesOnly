@@ -24,7 +24,7 @@ window.MinigameModal = (function () {
   var DBL_CLICK_WINDOW = 400;
 
   /* ── 3D starting pose (tilted flat on table) ── */
-  var TILT_TRANSFORM = 'rotateX(85deg) rotateZ(12deg) scale(0.55) translateY(40px)';
+  var TILT_TRANSFORM = 'rotateX(78deg) rotateZ(-8deg) scale(0.58) translateY(55px)';
 
   function buildDOM() {
     if (overlay) return;
@@ -81,6 +81,11 @@ window.MinigameModal = (function () {
     titleEl      = document.getElementById('minigame-title');
     closeBtn     = document.getElementById('minigame-close');
     pauseOverlay = document.getElementById('minigame-pause');
+
+    // Move box-depth faces OUT of cabinet onto the scene so they
+    // aren't clipped by cabinet's overflow:hidden after animation.
+    var depthFaces = cabinet.querySelectorAll('.minigame-cab-depth');
+    depthFaces.forEach(function (face) { scene.appendChild(face); });
 
     /* Close button → shows pause menu */
     closeBtn.addEventListener('click', function (e) {
@@ -149,8 +154,10 @@ window.MinigameModal = (function () {
       scene.style.transformStyle = 'flat';
       overlay.style.perspective = 'none';
       cabinet.style.transformStyle = '';
+      cabinet.style.overflow = 'hidden';  // restore after animation
       // Re-size canvas now that transforms are stripped (rect is accurate)
       sizeCanvas();
+      syncDepthFaces();
       if (currentGame && currentGame.resize) {
         currentGame.resize(canvas);
       }
@@ -170,6 +177,21 @@ window.MinigameModal = (function () {
     paused = false;
     if (pauseOverlay) pauseOverlay.classList.remove('active');
     if (currentGame && currentGame.resume) currentGame.resume();
+  }
+
+  /* ── Sync depth-face dimensions to actual cabinet size ── */
+  function syncDepthFaces() {
+    if (!cabinet || !scene) return;
+    var w = cabinet.offsetWidth;
+    var h = cabinet.offsetHeight;
+    var cabLeft   = scene.querySelector('.cab-left');
+    var cabRight  = scene.querySelector('.cab-right');
+    var cabBottom = scene.querySelector('.cab-bottom');
+    var cabBack   = scene.querySelector('.cab-back');
+    if (cabLeft)   { cabLeft.style.height = h + 'px'; }
+    if (cabRight)  { cabRight.style.height = h + 'px'; cabRight.style.left = w + 'px'; }
+    if (cabBottom) { cabBottom.style.width = w + 'px'; cabBottom.style.top = h + 'px'; }
+    if (cabBack)   { cabBack.style.width = w + 'px'; cabBack.style.height = h + 'px'; }
   }
 
   /* ── Canvas sizing ── */
@@ -209,6 +231,8 @@ window.MinigameModal = (function () {
     canvas.height = h;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
+
+    syncDepthFaces();
   }
 
   function handleResize() {
@@ -217,6 +241,51 @@ window.MinigameModal = (function () {
     if (currentGame && currentGame.resize) {
       currentGame.resize(canvas);
     }
+  }
+
+  /* ── Wire arcade control-panel visual feedback ── */
+  function wireControlPanel() {
+    if (!overlay) return;
+    var joystick = overlay.querySelector('.minigame-joystick');
+    var buttons  = Array.from(overlay.querySelectorAll('.minigame-arcade-btn'));
+
+    var joyKeys = {
+      ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+      a: 'left', A: 'left', d: 'right', D: 'right',
+      w: 'up', W: 'up', s: 'down', S: 'down'
+    };
+    var btnKeys = { ' ': 0, Enter: 0, z: 1, Z: 1, x: 2, X: 2, c: 3, C: 3 };
+    var held = {};
+    var joyTimer = null;
+
+    function onDown(e) {
+      if (!overlay.classList.contains('minigame-overlay-open') || held[e.key]) return;
+      held[e.key] = true;
+      var dir = joyKeys[e.key];
+      if (dir && joystick) {
+        joystick.className = 'minigame-joystick joystick-' + dir;
+        clearTimeout(joyTimer);
+        joyTimer = setTimeout(function () {
+          joystick.className = 'minigame-joystick';
+        }, 160);
+      }
+      var bi = btnKeys[e.key];
+      if (bi !== undefined && buttons[bi]) {
+        buttons[bi].classList.add('btn-pressed');
+        setTimeout(function () { buttons[bi].classList.remove('btn-pressed'); }, 140);
+      }
+    }
+    function onUp(e) { delete held[e.key]; }
+
+    document.addEventListener('keydown', onDown);
+    document.addEventListener('keyup', onUp);
+    // Auto-clean when modal closes
+    overlay.addEventListener('transitionend', function cleanup() {
+      if (!overlay.classList.contains('minigame-overlay-open')) {
+        document.removeEventListener('keydown', onDown);
+        document.removeEventListener('keyup', onUp);
+      }
+    });
   }
 
   /* ── Open game ── */
@@ -245,6 +314,8 @@ window.MinigameModal = (function () {
     scene.style.transform      = TILT_TRANSFORM;
     // 3. Cabinet needs preserve-3d so box-depth faces render during tilt
     cabinet.style.transformStyle = 'preserve-3d';
+    // 4. Cabinet overflow visible so bezel edges aren't clipped during tilt
+    cabinet.style.overflow = 'visible';
 
     // Show overlay (opacity 0→1 via CSS transition on overlay)
     overlay.classList.add('minigame-overlay-open');
@@ -273,12 +344,17 @@ window.MinigameModal = (function () {
         scene.style.transformStyle = 'flat';
         overlay.style.perspective  = 'none';
         cabinet.style.transformStyle = '';
+        cabinet.style.overflow = 'hidden';
         sizeCanvas();
+        syncDepthFaces();
         if (currentGame && currentGame.resize) {
           currentGame.resize(canvas);
         }
       }
     }, 1200);
+
+    // Wire control-panel visual feedback (joystick + button presses)
+    wireControlPanel();
 
     // SFX
     if (window.AudioSystem && AudioSystem.playSFX) {

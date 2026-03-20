@@ -1200,7 +1200,10 @@ html, body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, background 0.6s ease;
-  /* perspective set/stripped via JS for clean canvas coordinates */
+  /* Strong perspective so the roll-in reads as real depth.
+     JS strips this after animation for clean canvas coords. */
+  perspective: 1400px;
+  perspective-origin: 50% 35%;
 }
 
 .minigame-overlay-open {
@@ -1226,7 +1229,9 @@ html, body {
   max-height: min(780px, calc(100vh - 80px));
   background: #0d0d0d;
   border-radius: 14px;
-  overflow: hidden;
+  /* visible during 3D roll-in so box-depth faces aren't clipped;
+     JS restores overflow:hidden after the animation lands. */
+  overflow: visible;
   /* Cabinet body: dark frame with blue-black inlay */
   border: 3px solid #1a1a2a;
   box-shadow:
@@ -1395,63 +1400,95 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 18px;
-    padding: 8px 20px;
-    background:
-      linear-gradient(180deg,
-        #141420 0%, #0c0c14 50%, #0a0a10 100%);
-    border-top: 1px solid #222238;
-    /* Own 3D context — independent of scene, can't warp canvas coords */
+    gap: 22px;
+    padding: 12px 28px 18px;
+    /* Angled toward viewer like a real cocktail table control face */
     perspective: 500px;
     transform-style: preserve-3d;
-  }
-  .minigame-arcade-btn {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.08);
+    transform: rotateX(20deg);
+    transform-origin: top center;
+    /* Surface: distinctly lighter than the black overlay so it reads */
+    background: linear-gradient(180deg, #22223a 0%, #1a1a2e 50%, #14142a 100%);
+    border-top: 2px solid rgba(28, 255, 155, 0.35);
     box-shadow:
-      inset 0 1px 2px rgba(255,255,255,0.08),
-      0 2px 4px rgba(0,0,0,0.5),
-      0 4px 8px rgba(0,0,0,0.4);
-    /* Pop up from the table surface */
-    transform: translateZ(8px);
-    transition: transform 0.15s ease;
-  }
-  .minigame-arcade-btn:hover {
-    transform: translateZ(4px);  /* push down on hover */
-  }
-  .minigame-arcade-btn.btn-red    { background: radial-gradient(circle at 40% 35%, #ff4444, #991111); }
-  .minigame-arcade-btn.btn-yellow { background: radial-gradient(circle at 40% 35%, #ffcc33, #997711); }
-  .minigame-arcade-btn.btn-blue   { background: radial-gradient(circle at 40% 35%, #4488ff, #112299); }
-  .minigame-arcade-btn.btn-white  { background: radial-gradient(circle at 40% 35%, #eeeeff, #888899); }
-  .minigame-joystick {
-    width: 10px;
-    height: 22px;
-    background: linear-gradient(180deg, #444 0%, #222 100%);
-    border-radius: 5px 5px 3px 3px;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.35);
+      inset 0 4px 12px rgba(0, 0, 0, 0.7),
+      0 -1px 0 rgba(28, 255, 155, 0.18);
+    border-radius: 0 0 12px 12px;
     position: relative;
-    /* Stick pokes up higher than buttons */
-    transform: translateZ(14px);
   }
+  /* Phosphor accent seam where the table face meets the monitor */
+  .minigame-control-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 30%;
+    right: 30%;
+    height: 3px;
+    background: rgba(28, 255, 155, 0.25);
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 0 8px rgba(28, 255, 155, 0.3);
+  }
+  /* Buttons: 3D pucks that pop off the surface */
+  .minigame-arcade-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    box-shadow:
+      inset 0 2px 5px rgba(255, 255, 255, 0.22),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+      0 4px 0 rgba(0, 0, 0, 0.7),
+      0 5px 10px rgba(0, 0, 0, 0.55);
+    transform: translateZ(14px);
+    transition: transform 0.07s ease, box-shadow 0.07s ease, filter 0.07s ease;
+    cursor: default;
+  }
+  /* Button depressed — toggled by JS on keypress */
+  .minigame-arcade-btn.btn-pressed {
+    transform: translateZ(3px);
+    box-shadow:
+      inset 0 3px 6px rgba(0, 0, 0, 0.6),
+      0 1px 0 rgba(0, 0, 0, 0.7);
+    filter: brightness(1.6) saturate(1.3);
+  }
+  .minigame-arcade-btn.btn-red    { background: radial-gradient(circle at 38% 32%, #ff7777 0%, #dd1111 45%, #880808 100%); }
+  .minigame-arcade-btn.btn-yellow { background: radial-gradient(circle at 38% 32%, #ffee66 0%, #ddaa00 45%, #886600 100%); }
+  .minigame-arcade-btn.btn-blue   { background: radial-gradient(circle at 38% 32%, #7799ff 0%, #1144ee 45%, #0a2299 100%); }
+  .minigame-arcade-btn.btn-white  { background: radial-gradient(circle at 38% 32%, #ffffff 0%, #ccccee 45%, #8888aa 100%); }
+  /* Joystick — taller shaft, red ball top */
+  .minigame-joystick {
+    width: 14px;
+    height: 32px;
+    background: linear-gradient(180deg, #4a4a5a 0%, #2a2a38 50%, #1a1a24 100%);
+    border-radius: 7px 7px 4px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 2px 0 4px rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.6);
+    transform: translateZ(20px);
+    transition: transform 0.07s ease;
+    position: relative;
+  }
+  /* Joystick deflected — toggled by JS on arrow/WASD keypress */
+  .minigame-joystick.joystick-left  { transform: translateZ(12px) rotateZ(-18deg); }
+  .minigame-joystick.joystick-right { transform: translateZ(12px) rotateZ(18deg); }
+  .minigame-joystick.joystick-up    { transform: translateZ(12px) rotateX(-18deg); }
+  .minigame-joystick.joystick-down  { transform: translateZ(12px) rotateX(18deg); }
   .minigame-joystick::after {
     content: '';
-    width: 16px;
-    height: 16px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    background: radial-gradient(circle at 40% 35%, #cc2222, #771111);
+    background: radial-gradient(circle at 35% 28%, #ee3333 0%, #aa1111 55%, #770a0a 100%);
     position: absolute;
-    top: -10px;
-    left: -3px;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 -1px 4px rgba(0,0,0,0.3);
+    top: -14px;
+    left: -4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.5), inset 0 1px 5px rgba(255,255,255,0.2);
   }
 }
 
 /* ── Cabinet 3D box faces — give the table real depth during roll-in ──
-   These are side/bottom/back panels of the cocktail cabinet box.
+   These live on the SCENE (moved by JS), not inside the cabinet,
+   so cabinet overflow:hidden can't clip them.
    At identity (face-on) they're perpendicular to screen = invisible.
    During the tilted roll-in they catch light and sell the depth.         */
 
@@ -1467,30 +1504,30 @@ html, body {
   width: 80px;           /* exaggerated table thickness */
   height: 100%;
   transform-origin: left center;
-  transform: rotateY(90deg);
-  background: linear-gradient(90deg, #0e0e1a 0%, #060610 100%);
+  transform: rotateY(-90deg);
+  background: linear-gradient(to right, #0c0c1a 0%, #070710 100%);
   border-right: 1px solid #1a1a2a;
 }
 
 .minigame-cab-depth.cab-right {
   top: 0;
-  right: 0;
+  left: 0;             /* JS sets left = cabinet width */
   width: 80px;
   height: 100%;
-  transform-origin: right center;
-  transform: rotateY(-90deg);
-  background: linear-gradient(270deg, #0e0e1a 0%, #060610 100%);
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  background: linear-gradient(to left, #0c0c1a 0%, #070710 100%);
   border-left: 1px solid #1a1a2a;
 }
 
 .minigame-cab-depth.cab-bottom {
-  bottom: 0;
+  top: 0;              /* JS sets top = cabinet height */
   left: 0;
   width: 100%;
   height: 80px;
-  transform-origin: bottom center;
-  transform: rotateX(90deg);
-  background: linear-gradient(180deg, #0c0c18 0%, #050509 100%);
+  transform-origin: top center;
+  transform: rotateX(-90deg);
+  background: linear-gradient(to bottom, #0c0c18 0%, #050509 100%);
   border-top: 2px solid #1a1a2a;
 }
 
@@ -1500,7 +1537,7 @@ html, body {
   width: 100%;
   height: 100%;
   transform: translateZ(-80px);
-  background: #050508;
+  background: #040408;
   border: 2px solid #111122;
   border-radius: 14px;
 }
