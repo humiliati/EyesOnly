@@ -111,6 +111,31 @@
     .type-badge-puzzle { background: #1a1a2a; color: var(--blue); }
     .type-badge-game { background: #2a1a2a; color: #c084fc; }
 
+    /* SFX Browser panel (game mode, right column) */
+    .sfx-browser { margin-top: 16px; }
+    .sfx-browser-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .sfx-browser-header a { font-size: 10px; color: var(--blue); text-decoration: none; }
+    .sfx-browser-header a:hover { text-decoration: underline; }
+    .sfx-search { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #ddd; font-family: var(--font); font-size: 11px; padding: 5px 8px; border-radius: 3px; margin-bottom: 6px; }
+    .sfx-search:focus { outline: none; border-color: var(--phosphor-dim); }
+    .sfx-cat-section { margin-bottom: 4px; }
+    .sfx-cat-header { display: flex; align-items: center; gap: 6px; padding: 5px 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; font-size: 10px; letter-spacing: 0.1em; color: #999; transition: border-color 0.15s; }
+    .sfx-cat-header:hover { border-color: var(--phosphor-dim); color: #ccc; }
+    .sfx-cat-header .sfx-cat-chevron { font-size: 8px; transition: transform 0.2s; }
+    .sfx-cat-header.open .sfx-cat-chevron { transform: rotate(90deg); }
+    .sfx-cat-header .sfx-cat-count { margin-left: auto; color: #555; font-size: 9px; }
+    .sfx-cat-items { display: none; padding: 2px 0 2px 8px; }
+    .sfx-cat-items.open { display: block; }
+    .sfx-item { display: flex; align-items: center; gap: 5px; padding: 3px 6px; border: none; background: none; color: #888; font-family: var(--font); font-size: 10px; cursor: pointer; width: 100%; text-align: left; border-radius: 2px; transition: background 0.1s, color 0.1s; }
+    .sfx-item:hover { background: #0a2a1a; color: var(--phosphor); }
+    .sfx-item .sfx-play { color: var(--phosphor-dim); font-size: 9px; flex-shrink: 0; width: 12px; text-align: center; }
+    .sfx-item .sfx-id { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sfx-item .sfx-copy { color: #555; font-size: 9px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+    .sfx-item:hover .sfx-copy { opacity: 1; }
+    .sfx-item.sfx-playing { color: var(--phosphor); background: rgba(28,255,155,0.06); }
+    .sfx-copied-toast { position: fixed; bottom: 60px; right: 20px; background: var(--phosphor); color: #000; padding: 4px 12px; border-radius: 3px; font-family: var(--font); font-size: 10px; opacity: 0; transition: opacity 0.2s; z-index: 9999; pointer-events: none; }
+    .sfx-copied-toast.show { opacity: 1; }
+
     /* Responsive */
     @media (max-width: 1000px) {
       .layout { grid-template-columns: 1fr; }
@@ -123,6 +148,7 @@
   <h1>EYES ONLY // CONTENT DESIGNER</h1>
   <div class="meta">
     <a href="/games.html">VIEW LIVE FIELD KIT</a> &bull;
+    <a href="/portal/sound-designer.html">MEDIA DESIGNER</a> &bull;
     <a href="/qr-stickers.html">PRINT STICKERS</a>
   </div>
 </header>
@@ -347,6 +373,18 @@
         ✓ Call <span style="color:var(--phosphor);">MinigameModal.register(gameId, getter)</span><br>
         ✗ Must NOT access DOM outside the canvas
       </div>
+
+      <!-- SFX Browser — loaded from audio-manifest.json -->
+      <div class="sfx-browser" id="sfx-browser">
+        <div class="sfx-browser-header">
+          <label style="margin:0;">SFX BROWSER <span style="color:#555;">(click to copy, ♪ to preview)</span></label>
+          <a href="/portal/sound-designer.html" target="_blank">Open Media Portal ↗</a>
+        </div>
+        <input type="text" class="sfx-search" id="sfx-search" placeholder="Search 526 sounds…" aria-label="Search sound effects">
+        <div id="sfx-categories">
+          <div style="font-size:10px;color:#555;padding:8px;">Loading manifest…</div>
+        </div>
+      </div>
     </div>
 
     <!-- Existing puzzle export -->
@@ -394,6 +432,8 @@
 <script src="js/lib/weighted-table.js"></script>
 <script src="js/lib/projectile-system.js"></script>
 <script src="js/lib/difficulty-ramp.js"></script>
+<script src="js/lib/screen-fx.js"></script>
+<script src="js/lib/loot-drop.js"></script>
 
 <script>
 (function () {
@@ -1144,6 +1184,19 @@
     '//   this.addScore(points)  /  this.loseLife()',
     '//   this.playSFX(name)     /  ArcadeEngine.collideAABB(a, b)',
     '//   this.isKeyHeld("up"|"down"|"left"|"right"|"action")',
+    '//',
+    '// AVAILABLE SFX (use the SFX Browser panel on the right):',
+    '//   Movement:    "jump-1" thru "jump-7", "ascend-1", "descend-1",',
+    '//                "footsteps-1" thru "footsteps-4", "escape"',
+    '//   Combat:      "hit-1" thru "hit-4", "attack-1" thru "attack-5",',
+    '//                "impact-1" thru "impact-4", "explosion_large",',
+    '//                "enemy-defeated", "enemy-die-1"',
+    '//   Collectible: "coin-1", "coin-2", "coin-3", "grab-item-1",',
+    '//                "power-up-1" thru "power-up-3", "success-1"',
+    '//   UI:          "ui-01" thru "ui-07"',
+    '//   Retro (sq):  "sq-sq-jump-big", "sq-sq-coin1", "sq-sq-explosion1",',
+    '//                "sq-sq-laser1", "sq-sq-pickup-success1", "sq-sq-fail1"',
+    '//   Environment: "whoosh-1", "metal-hit-1", "rumble-1", "wood"',
     '// ============================================================',
     '',
     '(function () {',
@@ -1167,56 +1220,108 @@
     '  MyGame.prototype.onStart = function () {',
     '    this._player = {',
     '      x: this.logicalW / 2,',
-    '      y: this.logicalH / 2,',
-    '      size: 24',
+    '      y: this.logicalH - 60,',
+    '      w: 24, h: 24,',
+    '      vy: 0,',
+    '      grounded: true',
     '    };',
+    '    this._coins = [];',
     '    this._timer = 0;',
+    '    this._spawnTimer = 0;',
+    '    this.playSFX("ui-04");  // menu confirmation beep',
     '  };',
     '',
     '  // ── Input ──',
     '  MyGame.prototype.onInput = function (type, data) {',
     '    var p = this._player;',
-    '    if (type === "keyaction") {',
-    '      if (data.action === "up")    p.y -= 10;',
-    '      if (data.action === "down")  p.y += 10;',
-    '      if (data.action === "left")  p.x -= 10;',
-    '      if (data.action === "right") p.x += 10;',
+    '    if (type === "tap" || type === "keyaction" && data.action === "up") {',
+    '      if (p.grounded) {',
+    '        p.vy = -8;',
+    '        p.grounded = false;',
+    '        this.playSFX("jump-3");  // movement → jump',
+    '      }',
     '    }',
-    '    if (type === "tap") {',
-    '      // Example: teleport to tap position',
-    '      p.x = data.x;',
-    '      p.y = data.y;',
+    '    if (type === "keyaction") {',
+    '      if (data.action === "left")  p.x -= 16;',
+    '      if (data.action === "right") p.x += 16;',
     '    }',
     '  };',
     '',
     '  // ── Logic (60fps fixed timestep) ──',
     '  MyGame.prototype.onUpdate = function (dt) {',
+    '    var p = this._player;',
+    '    var W = this.logicalW;',
+    '    var H = this.logicalH;',
     '    this._timer++;',
-    '    this.addScore(1);',
     '',
     '    // Held-key movement',
-    '    if (this.isKeyHeld("left"))  this._player.x -= 2;',
-    '    if (this.isKeyHeld("right")) this._player.x += 2;',
-    '    if (this.isKeyHeld("up"))    this._player.y -= 2;',
-    '    if (this.isKeyHeld("down"))  this._player.y += 2;',
+    '    if (this.isKeyHeld("left"))  p.x -= 2;',
+    '    if (this.isKeyHeld("right")) p.x += 2;',
     '',
-    '    // Clamp to screen',
-    '    var p = this._player;',
+    '    // Gravity',
+    '    p.vy += 0.4;',
+    '    p.y += p.vy;',
+    '    if (p.y >= H - 60) { p.y = H - 60; p.vy = 0; p.grounded = true; }',
+    '',
+    '    // Clamp horizontal',
     '    if (p.x < 0) p.x = 0;',
-    '    if (p.x > this.logicalW) p.x = this.logicalW;',
-    '    if (p.y < 0) p.y = 0;',
-    '    if (p.y > this.logicalH) p.y = this.logicalH;',
+    '    if (p.x > W - p.w) p.x = W - p.w;',
+    '',
+    '    // Spawn coins',
+    '    this._spawnTimer++;',
+    '    if (this._spawnTimer > 60) {',
+    '      this._spawnTimer = 0;',
+    '      this._coins.push({',
+    '        x: Math.random() * (W - 20),',
+    '        y: -10,',
+    '        vy: 1 + Math.random() * 1.5',
+    '      });',
+    '    }',
+    '',
+    '    // Update coins + collect',
+    '    for (var i = this._coins.length - 1; i >= 0; i--) {',
+    '      var c = this._coins[i];',
+    '      c.y += c.vy;',
+    '      if (c.y > H + 20) {',
+    '        this._coins.splice(i, 1);',
+    '        this.loseLife();',
+    '        this.playSFX("sq-sq-fail1");  // retro → miss/fail',
+    '        continue;',
+    '      }',
+    '      // Collision check',
+    '      if (ArcadeEngine.collideAABB(',
+    '        { x: p.x, y: p.y, w: p.w, h: p.h },',
+    '        { x: c.x, y: c.y, w: 16, h: 16 }',
+    '      )) {',
+    '        this._coins.splice(i, 1);',
+    '        this.addScore(100);',
+    '        this.playSFX("coin-1");  // collectible → coin pickup',
+    '      }',
+    '    }',
     '  };',
     '',
     '  // ── Render ──',
     '  MyGame.prototype.onDraw = function (ctx, W, H) {',
     '    var p = this._player;',
     '',
+    '    // Draw ground line',
+    '    ctx.strokeStyle = this.colors.phosphorDim;',
+    '    ctx.beginPath();',
+    '    ctx.moveTo(0, H - 36);',
+    '    ctx.lineTo(W, H - 36);',
+    '    ctx.stroke();',
+    '',
     '    // Draw player',
-    '    this.drawEmoji(ctx, "🚀", p.x, p.y, p.size, {',
+    '    this.drawEmoji(ctx, "🚀", p.x + p.w / 2, p.y + p.h / 2, p.w, {',
     '      glow: true,',
     '      glowColor: this.colors.phosphor',
     '    });',
+    '',
+    '    // Draw coins',
+    '    for (var i = 0; i < this._coins.length; i++) {',
+    '      var c = this._coins[i];',
+    '      this.drawEmoji(ctx, "🪙", c.x + 8, c.y + 8, 16);',
+    '    }',
     '',
     '    // Draw HUD',
     '    this.drawText(ctx, "SCORE: " + this.score, 10, 20, 12,',
@@ -1468,6 +1573,175 @@
   // ---- Init ----
   loadCategories();
   loadPuzzles();
+
+  // ============================================================
+  // SFX BROWSER — Loads audio-manifest.json, renders category
+  // accordion with click-to-copy and audio preview.
+  // ============================================================
+  (function initSfxBrowser() {
+    var container = document.getElementById('sfx-categories');
+    var searchInput = document.getElementById('sfx-search');
+    if (!container) return;
+
+    var _sfxAudio = null;    // single reusable Audio element
+    var _sfxPlaying = null;  // currently playing button element
+
+    // Category display names & icons
+    var CAT_META = {
+      ui:          { icon: '🖥', label: 'UI' },
+      movement:    { icon: '🏃', label: 'MOVEMENT' },
+      combat:      { icon: '⚔️', label: 'COMBAT' },
+      magic:       { icon: '✨', label: 'MAGIC' },
+      environment: { icon: '🌲', label: 'ENVIRONMENT' },
+      collectible: { icon: '💰', label: 'COLLECTIBLE' },
+      creature:    { icon: '🐾', label: 'CREATURE' },
+      music:       { icon: '🎵', label: 'MUSIC' },
+      card:        { icon: '🃏', label: 'CARD' },
+      sfx:         { icon: '🔊', label: 'SFX (RETRO)' }
+    };
+
+    // Category priority for game designers (most useful first)
+    var CAT_ORDER = ['movement', 'combat', 'collectible', 'ui', 'environment', 'magic', 'sfx', 'creature', 'card', 'music'];
+
+    fetch('/audio/audio-manifest.json')
+      .then(function (r) { return r.json(); })
+      .then(function (manifest) {
+        // Group by category
+        var cats = {};
+        var total = 0;
+        Object.keys(manifest).forEach(function (id) {
+          if (id === '_meta') return;
+          var entry = manifest[id];
+          var cat = entry.category || 'sfx';
+          if (!cats[cat]) cats[cat] = [];
+          cats[cat].push({ id: id, src: entry.src });
+          total++;
+        });
+
+        searchInput.placeholder = 'Search ' + total + ' sounds…';
+        container.innerHTML = '';
+
+        // Build accordion sections
+        CAT_ORDER.forEach(function (cat) {
+          var items = cats[cat];
+          if (!items || items.length === 0) return;
+          items.sort(function (a, b) { return a.id.localeCompare(b.id); });
+
+          var meta = CAT_META[cat] || { icon: '🔈', label: cat.toUpperCase() };
+
+          var section = document.createElement('div');
+          section.className = 'sfx-cat-section';
+          section.setAttribute('data-cat', cat);
+
+          var header = document.createElement('div');
+          header.className = 'sfx-cat-header';
+          header.innerHTML = '<span class="sfx-cat-chevron">▶</span> ' +
+            meta.icon + ' ' + meta.label +
+            '<span class="sfx-cat-count">' + items.length + '</span>';
+
+          var itemsDiv = document.createElement('div');
+          itemsDiv.className = 'sfx-cat-items';
+
+          items.forEach(function (entry) {
+            var btn = document.createElement('button');
+            btn.className = 'sfx-item';
+            btn.setAttribute('data-sfx-id', entry.id);
+            btn.setAttribute('data-sfx-src', entry.src);
+            btn.innerHTML = '<span class="sfx-play">♪</span>' +
+              '<span class="sfx-id">' + entry.id + '</span>' +
+              '<span class="sfx-copy">COPY</span>';
+            itemsDiv.appendChild(btn);
+          });
+
+          section.appendChild(header);
+          section.appendChild(itemsDiv);
+          container.appendChild(section);
+
+          // Toggle accordion
+          header.addEventListener('click', function () {
+            var isOpen = header.classList.toggle('open');
+            itemsDiv.classList.toggle('open', isOpen);
+          });
+        });
+
+        // Click handler for items (delegated)
+        container.addEventListener('click', function (e) {
+          var item = e.target.closest('.sfx-item');
+          if (!item) return;
+
+          var sfxId = item.getAttribute('data-sfx-id');
+          var sfxSrc = item.getAttribute('data-sfx-src');
+          var clickedPlay = e.target.closest('.sfx-play');
+
+          if (clickedPlay) {
+            // Preview playback
+            if (_sfxPlaying) _sfxPlaying.classList.remove('sfx-playing');
+            if (_sfxAudio) { _sfxAudio.pause(); _sfxAudio = null; }
+
+            if (_sfxPlaying === item) {
+              _sfxPlaying = null;
+              return;
+            }
+
+            _sfxAudio = new Audio(sfxSrc);
+            _sfxAudio.volume = 0.5;
+            _sfxAudio.play().catch(function () {});
+            item.classList.add('sfx-playing');
+            _sfxPlaying = item;
+            _sfxAudio.addEventListener('ended', function () {
+              item.classList.remove('sfx-playing');
+              _sfxPlaying = null;
+            });
+          } else {
+            // Copy the playSFX call to clipboard
+            var snippet = 'this.playSFX(\'' + sfxId + '\');';
+            navigator.clipboard.writeText(snippet).then(function () {
+              sfxCopiedToast(sfxId);
+            });
+          }
+        });
+
+        // Search filter
+        searchInput.addEventListener('input', function () {
+          var q = searchInput.value.toLowerCase().trim();
+          var sections = container.querySelectorAll('.sfx-cat-section');
+          sections.forEach(function (section) {
+            var items = section.querySelectorAll('.sfx-item');
+            var visCount = 0;
+            items.forEach(function (item) {
+              var id = item.getAttribute('data-sfx-id');
+              var match = !q || id.toLowerCase().indexOf(q) !== -1;
+              item.style.display = match ? '' : 'none';
+              if (match) visCount++;
+            });
+            section.style.display = visCount ? '' : 'none';
+            // Auto-open matching categories during search
+            if (q && visCount > 0) {
+              section.querySelector('.sfx-cat-header').classList.add('open');
+              section.querySelector('.sfx-cat-items').classList.add('open');
+            }
+            // Update count
+            section.querySelector('.sfx-cat-count').textContent = visCount;
+          });
+        });
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div style="font-size:10px;color:var(--red);padding:8px;">Failed to load audio manifest: ' + err.message + '</div>';
+      });
+
+    // Tiny toast for copy confirmation
+    var _copiedEl = document.createElement('div');
+    _copiedEl.className = 'sfx-copied-toast';
+    document.body.appendChild(_copiedEl);
+    var _copiedTimer = null;
+
+    function sfxCopiedToast(id) {
+      _copiedEl.textContent = 'Copied: this.playSFX(\'' + id + '\')';
+      _copiedEl.classList.add('show');
+      clearTimeout(_copiedTimer);
+      _copiedTimer = setTimeout(function () { _copiedEl.classList.remove('show'); }, 1500);
+    }
+  })();
 
   } // end initApp
 

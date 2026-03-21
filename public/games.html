@@ -90,6 +90,7 @@
             <div class="postit-label">STATUS</div>
             <div class="games-v2-nav-stat" id="nav-stat-qr">3 QR Live</div>
             <div class="games-v2-nav-stat" id="nav-stat-arcade">6 Arcade</div>
+            <a href="/highscore/" class="games-v2-nav-designer" data-sound="ui-03">&#9733; High Scores</a>
             <a href="/puzzle-designer" class="games-v2-nav-designer">&#9881; Designer Portal</a>
           </div>
         </aside>
@@ -512,6 +513,7 @@
           <!-- Bottom status bar -->
           <div class="games-footer-strip">
             <span class="games-footer-sig">EYES ONLY // FIELD KIT v1.0</span>
+            <a href="/highscore/" class="games-footer-hiscore" data-sound="ui-03">&#9733; HIGH SCORES</a>
             <span class="games-footer-time" id="games-clock">00:00:00</span>
           </div>
 
@@ -533,6 +535,7 @@
         <a href="/booking.html" class="games-v2-tape-btn" data-sound="card-01">&#9824; BKNG<span class="tape-tooltip">Book a Mission</span></a>
         <a href="/partners.html" class="games-v2-tape-btn" data-sound="card-01">&#9829; PRTNRS<span class="tape-tooltip">Partner Sign-Up</span></a>
         <a href="/contact.html" class="games-v2-tape-btn" data-sound="card-01">&#9827; CNTCT<span class="tape-tooltip">Contact Us</span></a>
+        <a href="/highscore/" class="games-v2-tape-btn" data-sound="card-01">&#9733; HISCR<span class="tape-tooltip">High Scores</span></a>
         <a href="/puzzle-designer" class="games-v2-tape-btn" data-sound="card-01">&#9881; DSGNR<span class="tape-tooltip">Puzzle Designer</span></a>
       </div>
       <span class="games-v2-footer-clock" id="games-clock">00:00:00</span>
@@ -627,6 +630,8 @@
   <script src="js/lib/weighted-table.js"></script>
   <script src="js/lib/projectile-system.js"></script>
   <script src="js/lib/difficulty-ramp.js"></script>
+  <script src="js/lib/screen-fx.js"></script>
+  <script src="js/lib/loot-drop.js"></script>
 
   <!-- Designer games (load after minigame-modal for self-registration) -->
   <script src="js/minigames/goat-runner.js"></script>
@@ -836,6 +841,34 @@
         var total = grid.querySelectorAll('.games-arcade-tile').length;
         if (badge) badge.textContent = total + ' GAMES';
       }
+    })();
+
+    /* ---- Arcade tile: high scores + launch flash ---- */
+    (function enhanceArcadeTiles() {
+      var tiles = document.querySelectorAll('.games-arcade-tile[data-minigame]');
+      tiles.forEach(function (tile) {
+        var gameId = tile.getAttribute('data-minigame');
+
+        // Inject high score badge if the player has one
+        try {
+          var hsKey = 'arcade_highscore_' + gameId;
+          var hs = parseInt(localStorage.getItem(hsKey), 10);
+          if (hs && hs > 0) {
+            var badge = document.createElement('div');
+            badge.className = 'games-arcade-hiscore';
+            badge.innerHTML = 'HI <span class="games-arcade-hiscore-value">' + hs.toLocaleString() + '</span>';
+            tile.appendChild(badge);
+          }
+        } catch (_) {}
+
+        // Launch flash animation on click
+        tile.addEventListener('click', function () {
+          tile.classList.add('arcade-tile-launching');
+          setTimeout(function () {
+            tile.classList.remove('arcade-tile-launching');
+          }, 450);
+        });
+      });
     })();
 
     /* ---- Puzzle popup binding ---- */

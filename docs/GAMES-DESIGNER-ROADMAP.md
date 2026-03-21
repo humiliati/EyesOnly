@@ -1,297 +1,300 @@
-# /games Revamp & Designer Portal Roadmap
+# Games Designer Pipeline — Roadmap
 
-> **Status:** Planning — March 18, 2026
-> **Depends on:** QR Puzzle Pipeline (complete), Auth Gate (complete), QR Encode (complete)
+## Current Architecture
 
----
+The platform already has two parallel content systems that a Games Designer would bridge:
 
-## The Problem
+**Puzzle Designer Portal** (`/puzzle-designer.html`) — a three-column CRUD editor with category management, code editor, live preview, QR generation, and a publish/archive lifecycle. Puzzles are stored server-side via `/api/ops`, loaded dynamically, and launched through `PuzzlePopup.register()`. Designers paste JS into a textarea, hit save, and it's live.
 
-**Mobile:** `/games` works well — single-column vertical scroll fits the phone. QR redirect → puzzle popup is snappy. But there's no visual distinction between "you just scanned a QR code" and "you're browsing the field kit." The arrival should feel louder.
+**Arcade Engine** (`arcade-engine.js`) — a canvas-based game framework providing a 60fps loop, state machine (MENU → PLAYING → PAUSED → GAME_OVER), unified input (tap/swipe/drag/keyboard via `ArcadeInput`), collision helpers, emoji/text rendering, scoring, currency, high scores, and a boss-encounter adapter for the roguelike. Games subclass `ArcadeEngine`, override lifecycle hooks (`onInit`, `onStart`, `onUpdate`, `onDraw`, `onInput`, `onResize`), and export via `instance.asMinigame()`. Six games are hardcoded in `minigame-modal.js`'s `GAMES` registry and wired to buttons in `games.html`.
 
-**Desktop:** Every row is a full-width single column stretching across 1400+ px. It's a wall of text. No spatial navigation. The left-column / torso pattern from the terminal UI canon isn't being used at all. There are zero `@media` desktop breakpoints in games.css.
-
-**Portal:** The designer portal can create/edit/publish puzzles, but can't manage categories, reorder items, archive/restore, or maintain the structure of the games page itself. Years from now, it'll be a bloated mess.
+The gap: puzzles have a designer pipeline; arcade games don't. Every arcade game is a hand-coded JS file with a hardcoded DOM button and registry entry. There's no way for a designer to create, test, or deploy a new arcade game without touching three files and redeploying.
 
 ---
 
-## Part 1: Designer Portal — Full CRUD & Category Management
+## What the Games Designer Pipeline Needs
 
-### 1.1 Category System
+### Phase 1 — Dynamic Game Registry ✅
 
-Add a `qr_categories` table to D1:
+**Goal:** Decouple the game list from hardcoded HTML/JS so new games can appear without editing `games.html` or `minigame-modal.js`.
 
-```sql
-CREATE TABLE IF NOT EXISTS qr_categories (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  slug        TEXT    NOT NULL UNIQUE,
-  label       TEXT    NOT NULL,         -- Display name: "QR FIELD OPS", "RECON", etc.
-  emoji       TEXT    DEFAULT '📁',
-  sort_order  INTEGER DEFAULT 0,
-  status      TEXT    DEFAULT 'live',   -- live | archived
-  created_at  INTEGER DEFAULT (unixepoch() * 1000)
-);
-```
+**Status: IMPLEMENTED**
 
-Add `category_slug` to `qr_puzzles` (nullable, defaults to 'qr-field-ops').
+1. **`MinigameModal.register(gameId, getterFn)`** — Public method on `MinigameModal` that pushes into the `GAMES` map at runtime. The six built-in games still register at load time; designer games register when their dynamically-loaded script executes.
 
-**Portal UI:** A "Categories" sidebar section listing all categories with drag-to-reorder. Click to filter puzzle list. "+" to create new category. The category label, emoji, and sort order map directly to the `games-row` section on the live page.
+2. **`MinigameModal.getRegisteredIds()`** — Returns all registered game IDs for dynamic grid rendering.
 
-### 1.2 Puzzle Lifecycle Management
+3. **Dynamic arcade grid in `games.html`** — After static tile wiring, `injectDynamicArcadeTiles()` queries `getRegisteredIds()`, creates `<button>` tiles for any IDs not already in the grid, wires click → `MinigameModal.open(id)`, and updates the game count badge.
 
-| Action | Current | Target |
-|--------|---------|--------|
-| Create | ✅ POST /api/ops/puzzles | ✅ No change |
-| Edit | ✅ PUT /api/ops/puzzles/:slug | ✅ No change |
-| Publish | ✅ POST /api/ops/puzzles/:slug/publish | ✅ No change |
-| Archive | ✅ DELETE soft-deletes | Add "ARCHIVED" view in portal with restore button |
-| Restore | ❌ | POST /api/ops/puzzles/:slug/restore → sets status=draft |
-| Duplicate | ❌ | POST /api/ops/puzzles/:slug/clone → copies with new slug |
-| Reorder | ❌ | PUT /api/ops/puzzles/reorder → batch update chain_order |
-| Move category | ❌ | PUT /api/ops/puzzles/:slug with category_slug |
-| Preview as player | ❌ | Link to /games#slug (opens in new tab) |
-| Delete permanently | ❌ | Not implemented. Archive is final. Codes never die. |
-
-### 1.3 Archive vs. Delete Philosophy
-
-**Never permanently delete.** QR codes printed on physical media can't be recalled. An archived puzzle should:
-
-- Disappear from the live /games page (status != 'live')
-- Remain accessible in the portal's ARCHIVED filter
-- Keep its QR code visible in the portal (so you can look up what that coffee mug pointed to)
-- Optionally show a "MISSION EXPIRED" message if a player scans the old code
-- Be restorable to draft with one click
-
-### 1.4 QR Code Display in Portal
-
-After save/publish, the portal already shows a QR code (client-side qrcodejs). Additionally:
-
-- Show the QR PNG from the server (`/api/ops/puzzles/:slug/qr`) so it's the canonical image
-- "Download PNG" button (for coffee mugs, stickers, posters)
-- "Print Sticker" button (opens single-sticker print view)
-- Show puzzle URL in a copyable field
-- Status badge on the QR: DRAFT (grey overlay), LIVE (green border), ARCHIVED (red strikethrough)
-
-### 1.5 Portal Buttons Wiring Checklist
-
-| Button | Wired? | Notes |
-|--------|--------|-------|
-| + NEW PUZZLE | ✅ | Populates blank template |
-| REFRESH | ✅ | Reloads puzzle list |
-| SAVE | ✅ | POST or PUT depending on currentSlug |
-| PUBLISH (GO LIVE) | ✅ | Sets status=live |
-| ARCHIVE | ✅ | Soft delete |
-| COPY template | ✅ | Clipboard copy of blank template |
-| EXPORT puzzle | ✅ | Fetches static puzzle source |
-| DOWNLOAD QR | ✅ | Downloads qrcodejs canvas as PNG |
-| PRINT STICKER | ⬜ | Open single-sticker print view |
-| RESTORE from archive | ⬜ | New button in archived view |
-| DUPLICATE puzzle | ⬜ | Clone with new slug |
-| REORDER (drag) | ⬜ | Drag-to-reorder in puzzle list |
-| MOVE to category | ⬜ | Dropdown or drag to category |
-| PREVIEW as player | ⬜ | Opens /games#slug in new tab |
-| + NEW CATEGORY | ⬜ | Create category with label/emoji |
-| VIEW ARCHIVED | ⬜ | Filter toggle showing archived puzzles |
-| LOGOUT | ✅ | AuthGate.logout() |
+4. **Self-registration pattern** — New games drop a JS file that creates an ArcadeEngine subclass, instantiates it, and calls `MinigameModal.register('game-id', function () { return instance.asMinigame(); })`. The dynamic grid picks it up automatically.
 
 ---
 
-## Part 2: /games Desktop Revamp
+### Phase 2 — Game Designer Portal ✅
 
-### 2.1 The Vision: Two Modes, One Page
+**Goal:** Give designers the same edit-preview-publish workflow that puzzles have, but for ArcadeEngine games.
 
-**Mobile (≤768px):** What we have now — vertical scroll, expandable rows, QR-first. When arriving via QR code, the puzzle popup dominates. The page underneath is a compact field kit.
+**Status: IMPLEMENTED** — All four features landed in `puzzle-designer.html` (frontend-only, no DB migration; game metadata stored as JSON in existing `tag_class` field).
 
-**Desktop (>768px):** A spatial "dossier" layout. The left column is a persistent category nav (same pattern as the terminal's RogueSidebar / torso). The main area shows the currently selected category's contents with room to breathe. Special elements like the decoder ring and arcade grid get more visual real estate.
+1. **Content-type toggle** ✅ — PUZZLE / GAME toggle at top of editor. Swaps form fields, labels, templates, and preview mode. Type filter in the left list (ALL / PUZZLES / GAMES) with type badges.
 
-### 2.2 Desktop Layout (Proposed)
+2. **Game blank template** ✅ — `BLANK_GAME_TEMPLATE` constant: complete ArcadeEngine subclass scaffold with constructor, prototype chain, all lifecycle hooks, and MinigameModal.register() call. Inserted when designer clicks "+ NEW GAME".
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  HEADER: EYESONLY SPY GAMES: Field Kit  [BKNG] [PRTNRS] [CNTCT]   │
-├────────────────┬────────────────────────────────────────────────────┤
-│  LEFT NAV      │  MAIN CONTENT AREA                                │
-│  (sticky)      │                                                    │
-│                │  ┌─────────────────────────────────────────────┐  │
-│  ◆ DECRYPT     │  │  DECODER RING           ACTIVE ITEM SLOT   │  │
-│  ◆ PUZZLES     │  │  [  canvas  ]           [equipped item]    │  │
-│  ◆ QR OPS  ←   │  │                                            │  │
-│  ◆ ARCADE      │  └─────────────────────────────────────────────┘  │
-│  ◆ STR-CHRON   │                                                    │
-│  ◆ GONE ROGUE  │  ┌──────────┐ ┌──────────┐ ┌──────────┐         │
-│                │  │ CIPHER   │ │ RECON    │ │ RIDDLES  │         │
-│  ────────────  │  │ WHEEL    │ │ JIGSAW   │ │ 3-STAGE  │         │
-│  STATUS:       │  │ [emoji]  │ │ [emoji]  │ │ [emoji]  │         │
-│  3 QR LIVE     │  │          │ │          │ │          │         │
-│  6 ARCADE      │  └──────────┘ └──────────┘ └──────────┘         │
-│                │                                                    │
-│  [DESIGNER ⚙]  │  + designer-created puzzles flow in here          │
-├────────────────┴────────────────────────────────────────────────────┤
-│  FOOTER: EYES ONLY // FIELD KIT v1.0                    00:00:00   │
-└─────────────────────────────────────────────────────────────────────┘
-```
+3. **Live canvas preview** ✅ — Canvas element in preview pane with PLAY / STOP / RESTART controls. `startGamePreview()` evaluates game code, intercepts `MinigameModal.register()` to capture the instance, starts it on the preview canvas. `stopGamePreview()` tears down cleanly.
 
-### 2.3 Key Differences from Mobile
+4. **Validation layer** ✅ — 6-point validation before publish: ArcadeEngine.call present, prototype chain set, onDraw defined, onUpdate defined, MinigameModal.register() call, valid gameId. Results rendered as a checklist panel with pass/fail indicators.
 
-| Element | Mobile | Desktop |
-|---------|--------|---------|
-| Category rows | Vertically stacked, chevron-expandable | Left nav links, click to scroll/filter |
-| Puzzle items | List items with tag badges | Card tiles in a responsive grid (2-3 up) |
-| Decoder ring | Full-width inline | Pinned hero element at top of content |
-| Arcade games | 3×2 button grid | 6-up tile grid with hover previews |
-| Gone Rogue launcher | Full-width card | Feature card with seed input alongside |
-| Inventory | Horizontal scroll strip | 2-row grid, always visible |
-| QR redirect arrival | Popup over page | Popup + category auto-selected in nav |
+**Game metadata storage:** `tag_class` field stores `{ type: 'game', gameId, difficulty }` as JSON. `isGameItem()` / `getGameMeta()` helpers detect type. No DB migration needed.
 
-### 2.4 Left Nav Implementation
+---
 
-Reuse the RogueSidebar pattern from UI-CANON.md but adapted for the games page:
+### Phase 3 — Genre Helpers (Optional Modules) ✅ (Core Set)
 
-```css
-@media (min-width: 769px) {
-  .games-content {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 0;
-  }
+**Goal:** Let designers build common game types faster by providing pre-built physics/camera/level modules they can import.
 
-  .games-left-nav {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-    border-right: 1px solid var(--panel-border-soft);
-    padding: 8px;
-  }
+These are optional mix-ins, not required. A designer can always write raw `onUpdate`/`onDraw` from scratch.
 
-  .games-main {
-    padding: 12px 16px;
-    overflow-y: auto;
-  }
-}
+**Status: 8 MODULES BUILT, 2 GAMES REFACTORED**
 
-@media (max-width: 768px) {
-  .games-left-nav { display: none; }
+| Module | File | Status | Provides |
+|--------|------|--------|----------|
+| `SideScrollCamera` | `js/lib/side-scroll-camera.js` | ✅ Built + validated | Auto-scroll, speed ramp, parallax, screen shake, world↔screen coords |
+| `PlatformPhysics` | `js/lib/platform-physics.js` | ✅ Built + validated | Gravity, jump/double-jump, one-way platforms, friction, nudge, AABB |
+| `ParticleEmitter` | `js/lib/particle-emitter.js` | ✅ Built + validated | Burst/stream particles, fade, gravity, integrates with drawEmoji() |
+| `WeightedTable` | `js/lib/weighted-table.js` | ✅ Built + validated | Weighted random selection, pickN, pickFiltered, dynamic add/remove |
+| `ProjectileSystem` | `js/lib/projectile-system.js` | ✅ Built + validated | Omnidirectional fire, cooldown, trail, collision (circle + AABB), draw |
+| `DifficultyRamp` | `js/lib/difficulty-ramp.js` | ✅ Built + validated | Section-based + linear difficulty curves, lerp, scale, easing |
+| `ScreenFX` | `js/lib/screen-fx.js` | ✅ Built + validated | Full-screen flash, vignette, fade — extracted from Gone Rogue combat flash |
+| `LootDrop` | `js/lib/loot-drop.js` | ✅ Built + validated | Physics scatter, bob, blink-decay, platform collision, auto-collect |
+| `TileMap` | — | ⬜ Planned | Grid-based level storage, tile collision, scrolling render |
+| `SpriteSheet` | — | ⬜ Planned | Frame-based animation from sprite strip images |
+| `EnemyPatrol` | — | ⬜ Planned | Waypoint movement, edge-turn, aggro-chase patterns |
+
+All modules are standalone IIFEs with no dependencies, loaded as `<script>` tags in both `games.html` and `puzzle-designer.html` (for game preview).
+
+**Extraction sources (Gone Rogue → Arcade helpers):**
+- `ScreenFX` ← Gone Rogue's `_triggerCombatFlash()` + `StrCombatEngine.triggerCombatFlash()` pattern (CSS class toggle → canvas overlay with fade algebra)
+- `LootDrop` ← Gone Rogue's `CurrencySpawning.scatterPostCombatNodes()` pattern (directional scatter, boundary validation, decay timer → physics bounce, platform collision, blink-decay)
+- `WeightedTable` ← Ski Free's `OBSTACLE_TABLE` + `pickObstacle()` pattern
+- `DifficultyRamp` ← Ski Free's `SECTIONS[]` + `getSection()` pattern
+- `ProjectileSystem` ← Ski Free's projectile fire/move/collide/draw lifecycle
+
+**Refactored games:**
+- **Goat Runner** — uses all 8 modules: `SideScrollCamera`, `PlatformPhysics`, `ParticleEmitter`, `WeightedTable`, `DifficultyRamp`, `ProjectileSystem`, `ScreenFX`, `LootDrop`. Constructor instantiates all for safe MENU-state rendering.
+- **Ski Free** — refactored to use `WeightedTable` (obstacle spawning), `DifficultyRamp` (section system), `ProjectileSystem` (fire/move/collide/draw), `ParticleEmitter` (text/emoji particles). 1108→972 lines (~12% reduction).
+
+**Usage pattern** (validated by both games):
+```js
+// Inside a designer's game constructor
+function MyGame() {
+  ArcadeEngine.call(this, { gameId: 'my-game', title: 'MY GAME', lives: 3 });
+  this._cam = new SideScrollCamera(400, 300, { speed: 2.0 });
+  this._physics = new PlatformPhysics({ gravity: 0.5, jumpForce: -9.0 });
+  this._emitter = new ParticleEmitter(200);
+  this._bullets = new ProjectileSystem({ speed: 7, range: 500, cooldown: 12 });
+  this._ramp = new DifficultyRamp({ sections: [...] });
+  this._spawner = new WeightedTable([...]);
 }
 ```
 
-The left nav items are generated from: static categories (DECRYPTION, PUZZLES, ARCADE, etc.) + dynamic categories from the designer portal's `qr_categories` table.
+---
 
-### 2.5 Puzzle Tiles (Desktop Cards)
+### Phase 4 — Community & Sharing
 
-Instead of list items, puzzles on desktop render as cards in a CSS grid:
+**Goal:** Let designers share games and fork each other's work.
 
-```css
-@media (min-width: 769px) {
-  .games-puzzle-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
-  }
+- **Public game gallery** — A `/games/community` page showing all published designer games with play counts and ratings
+- **Fork button** — Clone another designer's game source into your own draft
+- **Version history** — Store previous code versions so designers can roll back
+- **Embed codes** — Generate `<iframe>` snippets for embedding games on external sites
 
-  .games-puzzle-card {
-    border: 1px solid var(--panel-border-soft);
-    border-radius: 8px;
-    padding: 16px;
-    background: var(--phosphor-glow);
-    cursor: pointer;
-    transition: border-color 0.2s, transform 0.15s;
-  }
+**Estimated effort:** Large. This is a social feature layer and can wait until the pipeline is proven.
 
-  .games-puzzle-card:hover {
-    border-color: var(--phosphor);
-    transform: translateY(-2px);
-  }
+---
+
+## Test Game: Goat Runner
+
+A side-scrolling platformer to validate the entire pipeline end-to-end: designer game JS file → self-registration via `MinigameModal.register()` → dynamic arcade tile → plays in MinigameModal cabinet.
+
+### Concept
+
+**Title:** Goat Runner
+**Theme:** Eyes Only espionage — player sprints across aladdin-style rooftops, vaulting chasms, tethering poles to control steep descents, collecting intel drops, and reaching the extraction helicopter. A herd of goat followers trails behind, inheriting the player's path.
+
+**Core fantasy:** Fluid downhill momentum. The player is always moving right, gravity pulling them down the roofscape. Tethering a pole slows and steers the descent; vaulting launches over gaps. The goats following behind prove the path was smooth — if they survive, you played well.
+
+### Input Design
+
+The input philosophy maps gesture type to player intent, keeping mobile and desktop equally viable through ArcadeInput's unified event system:
+
+**Drag = Tether (continuous control)**
+Touch-and-hold activates the tether. Drag direction controls descent angle; drag length controls braking force. Short drag = fast and risky, long drag = slow and stable. The drag vector is lerped for smoothness so goat followers don't jitter.
+
+**Tap = Vault (discrete commitment)**
+Quick tap = small hop. The player commits to an arc — no mid-air steering (except tether reattach, below). On desktop, Space/Up fires the same vault.
+
+**Double-tap = Pole Strike (emergency action)**
+Knockback burst that clears nearby obstacles. One use per life — the "oh shit" button. Sparingly available so it stays meaningful.
+
+**Critical transitions:**
+- Tether → Vault: release drag + tap within 100ms = vault. Input buffer prevents "I tried to jump but dropped instead."
+- Vault → Tether: while airborne, touch + drag = reattach tether. This is the clutch save mechanic.
+- Drag always wins after threshold: once drag is detected (>10px, >120ms), lock into tether mode. Micro-jitter deadzone prevents accidental mode switches.
+
+### Entities
+
+| Entity | Emoji | Size | Behavior |
+|--------|-------|------|----------|
+| Player | 🏃 | 0.8T × 1.0T | Gravity, vault, tether, left/right nudge |
+| Rooftop | ▬ (rect) | variable × 0.3T | Static platforms, procedurally spaced |
+| Satellite Dish | 📡 | 0.7T × 0.7T | Static obstacle on rooftop, jump over |
+| AC Unit | 📦 | 0.6T × 0.6T | Breakable (1 hit), may drop intel |
+| Laser Wire | ⚡ | 1.5T × 0.1T | Blinks on/off every 90 frames, duck under |
+| Intel Drop | 💼 | 0.5T × 0.5T | Collectible, +200 score |
+| Drone | 🛸 | 0.8T × 0.5T | Tracks player X with lag, fires down every 120 frames |
+| Helicopter | 🚁 | 1.5T × 1.0T | Level-end extraction point at 5000m |
+| Goat | 🐐 | 0.5T × 0.5T | Follows player path via position ring buffer, 6 goats |
+
+### Terrain Generation
+
+Procedural segment system — no hand-designed levels:
+
+```
+Segment = {
+  platforms: [{ x, w, obstacles: [...] }],
+  gap: number,        // gap width before next segment
+  difficulty: number  // 0-1, controls obstacle density
 }
 ```
 
-### 2.6 QR Redirect — Making Arrival "Louder"
+Segments queue and scroll left. Difficulty ramps with distance. Every 2000m a drone spawns. At 5000m the extraction helicopter appears. Camera auto-scrolls right at a constant base speed that accelerates gently with distance.
 
-When a player scans a QR code on mobile, the current flow is: page loads → puzzle popup auto-opens. This works but feels generic. To make it louder:
-
-**Mobile arrival splash (300ms):** Before the puzzle popup opens, flash a full-screen "MISSION ACTIVATED" overlay with the puzzle emoji and title. The qr-router.js already has a 400ms delay — use it for the splash, then open the puzzle.
+### Architecture (ArcadeEngine subclass)
 
 ```
-┌─────────────────────────┐
-│                         │
-│       ☕                │
-│                         │
-│  MISSION ACTIVATED      │
-│  CAFÉ DEAD DROP         │
-│                         │
-│  ████████████ loading   │
-│                         │
-└─────────────────────────┘
-       ↓ 400ms ↓
-  [Puzzle popup opens]
+GoatRunner extends ArcadeEngine
+├── _camera        { x, speed, shakeTimer, shakeIntensity }
+├── _player        { x, y, vx, vy, w, h, grounded, tethering, canVault }
+├── _goats[]       { x, y, delay } — follow player via _posHistory ring buffer
+├── _posHistory[]  { x, y } — ring buffer of player positions (last 300 frames)
+├── _platforms[]   { x, y, w, h }
+├── _obstacles[]   { x, y, w, h, type, hp, active }
+├── _collectibles[]{ x, y, type }
+├── _enemies[]     { x, y, type, hp, fireTimer }
+├── _projectiles[] { x, y, vx, vy }
+├── _particles[]   { x, y, text, life, vx, vy }
+├── _distance      number (score basis)
+├── _difficulty     number (0-1, ramps with distance)
+│
+├── onStart()      → reset all state, seed initial platforms
+├── onInput()      → vault (tap), tether (drag), strike (doubletap), duck (keyaction:down)
+├── onUpdate(dt)   → camera scroll, gravity, tether physics, platform collision,
+│                    obstacle collision, enemy AI, goat pathing, segment spawning,
+│                    extraction check, difficulty ramp
+├── onDraw(ctx)    → parallax BG, platforms, obstacles, collectibles,
+│                    goats, player, enemies, projectiles, particles, HUD
+└── onResize()     → recalc camera viewport
 ```
 
-**Desktop arrival:** Same splash but positioned in the main content area (not full-screen), with the left nav auto-highlighting the correct category.
+### Visual Style
 
-### 2.7 "Toy" Elements for Desktop
+CRT phosphor aesthetic matching the existing arcade cabinet:
+- Dark background (#060808) with parallax city silhouette layers in phosphor-dim green
+- Platforms rendered as solid rects with phosphor border glow
+- Player and enemies drawn with `drawEmoji()` + glow
+- Goats drawn with `drawEmoji()` at reduced alpha, trailing behind
+- HUD: distance counter, lives, intel count — same layout as ski-free
+- Screen shake on hit, particle burst on collectible pickup
 
-Desktop has screen real estate to spare. Use it for "toy" elements that don't make sense on mobile:
+### Implementation Sprints
 
-- **Decoder ring hero:** Full 300px canvas with ring manipulation, always visible when DECRYPTION category is selected
-- **Arcade attract mode:** Tiny animated previews in the game tiles (miniature game loops running in background)
-- **Constellation viewer:** If player has earned constellation rewards, show a small star map in the left nav footer
-- **QR Field Ops map:** A visual map of all QR waypoints (placeholder dots) showing which puzzles have been solved
-- **Chain visualizer:** When hovering a puzzle in a treasure hunt chain, show the full chain path with arrows
+**Sprint 1 — Pipeline plumbing (Phase 1)** ✅
+- `MinigameModal.register()` method
+- Dynamic arcade grid rendering
+- Self-registration pattern validated
+
+**Sprint 2 — Platformer core** ✅
+- `GoatRunner` ArcadeEngine subclass (`/public/js/minigames/goat-runner.js`)
+- Camera scrolling + parallax background (via `SideScrollCamera`)
+- Gravity + vault + tether physics (via `PlatformPhysics`)
+- Procedural platform generation with gap scaling
+- Platform collision (land on top, block sides)
+- Goat followers via position history ring buffer
+- Wire into `games.html` script loading
+- Fixed constructor crash: all state pre-initialized for safe MENU-state rendering
+- Refactored to use all three Phase 3 core modules
+- *Delivered: player can run, vault, and tether across procedural rooftops with goat followers*
+
+**Sprint 2.5 — Genre helpers + refactors (Phase 3)** ✅
+- Built 6 genre helper modules (see Phase 3 table above)
+- Refactored Goat Runner → `SideScrollCamera` + `PlatformPhysics` + `ParticleEmitter`
+- Refactored Ski Free → `WeightedTable` + `DifficultyRamp` + `ProjectileSystem` + `ParticleEmitter`
+- All modules wired into `games.html` + `puzzle-designer.html`
+- *Delivered: reusable module library validated by two production games*
+
+**Sprint 3 — Obstacles + combat** ✅
+- Obstacle types: satellite dish (📡), AC unit (📦), laser wire (⚡) — all via `WeightedTable` (`obstacleTable.pick()`)
+- Breakable AC units with intel drops, double-obstacle spawning at high difficulty
+- Drone enemy tracks player X with lerp, fires downward via `ProjectileSystem` (`this._droneBullets`)
+- Player counter-fire on pole strike via `ProjectileSystem` (`this._bullets.fireAt()` at nearest drone)
+- Drone→player and player→drone collision via `collideFirst()` module calls
+- `DifficultyRamp` 5-section integration: Rooftops → District Edge → Contested Zone → Drone Corridor → Extraction Run
+- Section flash HUD (amber text center-screen on threshold crossing), kill count display
+- Hit/death/respawn with invulnerability frames
+- Removed all hand-rolled `this._projectiles` / `this._difficulty` — fully module-driven
+- *Delivered: full gameplay loop with scoring, 21 module integration points, zero stale references*
+
+**Sprint 4 — Polish + extraction** ✅
+- Extraction helicopter (🚁) spawns at 4800m, approaches with spotlight beam, hovers at screen right
+- 3-phase victory sequence: approach → boarding (player rises, confetti bursts) → fly away → GAME_OVER
+- Score bonuses on extraction: +5000 base, +1000/life, +500/goat, +300/intel, +200/kill
+- Victory overlay with breakdown text ("Extraction +5000 | Lives ×3 | Goats ×4")
+- Player invulnerable during boarding/flyaway, normal gameplay paused
+- Difficulty ramp tuned: Drone Corridor peak intensified (0.65 obst, 0.008 drone), Extraction Run eased to 4800m
+- Landing particle burst (💨) on big falls, shake on heavy impacts
+- Drone kill polish: dual burst (💥 + 🔥), screen shake
+- Section transition: SFX fanfare + screen shake on zone change
+- High score + currency wired via ArcadeEngine's `_onGameOver()` (currencyRate: 0.015)
+- *Delivered: shippable game with complete gameplay loop, 1009 lines*
+
+**Sprint 5 — Designer portal (Phase 2)** ✅
+- Game/puzzle content-type toggle in puzzle-designer.html
+- Game blank template
+- Canvas preview in editor with play/stop/restart
+- 6-point validation + publish flow
+- *Delivered: a non-developer can create and publish a game through the portal*
 
 ---
 
-## Part 3: Implementation Phases
+## File Inventory (New + Modified)
 
-### Phase 1: Portal CRUD (Current Sprint)
-- Add category CRUD endpoints + migration
-- Add archive/restore/duplicate/reorder to portal UI
-- Wire remaining portal buttons (PRINT STICKER, PREVIEW, VIEW ARCHIVED)
-- Add "MISSION EXPIRED" fallback for archived puzzle QR codes
-
-### Phase 1.5: Lazy-Load Scalability (When Needed)
-- Currently `/api/puzzles/live` returns all live puzzles with full `puzzle_js` source (~3-4KB each)
-- Comfortable to ~200-300 live puzzles before first-time mobile visitors feel latency
-- Fix when needed: split into metadata-only list endpoint + on-demand `/api/puzzles/live/:slug` for JS
-- Archived puzzles already cost zero at scan-time (status != 'live')
-- D1 storage limit (~50K puzzles with QR images) is the theoretical hard cap
-
-### Phase 2: Desktop Layout Foundation
-- Add `games-left-nav` and `games-main` containers to games.html
-- Write desktop media queries in games.css (grid layout, sticky nav)
-- Convert row items to card tiles on desktop (keep list items on mobile)
-- Add smooth scroll-to-section on left nav click
-
-### Phase 3: QR Arrival Polish
-- Build the "MISSION ACTIVATED" splash overlay
-- Wire it into qr-router.js (before puzzle popup open)
-- Add category auto-highlight in left nav on QR arrival
-- Desktop: animate the splash into the content area
-
-### Phase 4: Desktop Toys
-- Decoder ring hero element (larger canvas, pinned)
-- Arcade attract mode (tiny game loops in tiles)
-- Chain visualizer on puzzle hover
-- QR waypoint map (static placeholder → dynamic from D1)
-
-### Phase 5: Grafcet Integration
-- Puzzle slugs become gate nodes in the grafcet system
-- M-mode QR Deploy panel creates puzzles + assigns to map zones
-- Door-contract solver checks puzzle completion before advancing
-- Proc-gen treasure hunts: chain_order + next_slug + grafcet graph
+| File | Status | Purpose |
+|------|--------|---------|
+| `public/js/minigame-modal.js` | **Modified** ✅ | `register()` + `getRegisteredIds()` methods |
+| `public/games.html` | **Modified** ✅ | Dynamic arcade grid, lib + game script tags |
+| `public/js/minigames/goat-runner.js` | **New** ✅ | Goat Runner test game (uses all 8 genre modules) |
+| `public/js/minigames/ski-free.js` | **Refactored** ✅ | Uses 4 genre modules (1108→972 lines) |
+| `public/js/lib/side-scroll-camera.js` | **New** ✅ | Camera helper module |
+| `public/js/lib/platform-physics.js` | **New** ✅ | Gravity/jump/collision module |
+| `public/js/lib/particle-emitter.js` | **New** ✅ | Burst/stream particle module |
+| `public/js/lib/weighted-table.js` | **New** ✅ | Weighted random selection module |
+| `public/js/lib/projectile-system.js` | **New** ✅ | Projectile lifecycle module |
+| `public/js/lib/difficulty-ramp.js` | **New** ✅ | Difficulty curve module |
+| `public/js/lib/screen-fx.js` | **New** ✅ | Screen flash/vignette/fade module |
+| `public/js/lib/loot-drop.js` | **New** ✅ | Physics-based loot scatter module |
+| `public/puzzle-designer.html` | **Modified** ✅ | Game/puzzle toggle, canvas preview, validation, lib scripts |
+| `server: /api/ops` | **No change** | Game metadata stored in existing `tag_class` field as JSON |
 
 ---
 
-## File Impact Summary
+## Risk / Open Questions
 
-| File | Phase | Change |
-|------|-------|--------|
-| `migrations/0015_qr_categories.sql` | 1 | New table |
-| `migrations/0014_qr_puzzles.sql` | 1 | Add category_slug column (ALTER) |
-| `src/worker/routes/puzzle-designer.ts` | 1 | Category CRUD + restore/clone/reorder endpoints |
-| `public/puzzle-designer.html` | 1 | Category sidebar, archive view, remaining buttons |
-| `public/games.html` | 2 | Add left-nav + main containers, restructure content |
-| `public/css/games.css` | 2-4 | Desktop breakpoints, card grid, left nav, toys |
-| `public/js/qr-router.js` | 3 | Splash overlay before puzzle open |
-| `public/css/qr-splash.css` | 3 | New: splash animation styles |
-| `public/js/puzzles/qr-custom.js` | 1 | Category-aware injection |
-| `public/js/games-nav.js` | 2 | New: left nav interaction + scroll-to-section |
+1. **Code editor limitations** — The puzzle designer uses a plain `<textarea>` for code. For games (which are typically 500+ lines), a proper code editor (CodeMirror/Monaco) would significantly improve the designer experience. Worth adding in Phase 2?
+
+2. **Asset pipeline** — The current games use only emoji and canvas drawing. If designers want sprite sheets or audio, we'd need an asset upload system. Defer until demand exists.
+
+3. **Security** — Designer game code runs in the same page context as the main app. A malicious or buggy game could access localStorage, the DOM, or other globals. Sandboxing options: `<iframe sandbox>` for preview, CSP restrictions for published games. Worth scoping before community sharing (Phase 4).
+
+4. **Mobile performance** — Complex designer games on low-end mobile could degrade. The ArcadeEngine's 600px max canvas width and 60fps cap help, but there's no memory/CPU budget enforcement.
+
+5. **Boss adapter** — Should designer games be mountable as boss encounters in the roguelike? The `onBossMount`/`onBossUnmount`/`onGetHazards` hooks exist in ArcadeEngine but require careful integration. Defer until the pipeline is stable.

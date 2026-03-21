@@ -42,6 +42,26 @@
   var OBS_AC    = 'ac';
   var OBS_LASER = 'laser';
 
+  /* ── Weighted obstacle table (via WeightedTable module) ── */
+  var obstacleTable = new WeightedTable([
+    { type: OBS_DISH,  weight: 40, wMul: 0.7,  hMul: 0.7,  hp: -1, emoji: '📡' },
+    { type: OBS_AC,    weight: 35, wMul: 0.6,  hMul: 0.6,  hp:  1, emoji: '📦' },
+    { type: OBS_LASER, weight: 25, wMul: 1.5,  hMul: 0.15, hp: -1, emoji: '⚡' }
+  ]);
+
+  /* ── Difficulty ramp (via DifficultyRamp module) ── */
+  var difficultyRamp = new DifficultyRamp({
+    metric: 'distance',
+    range: [0, 6000],
+    sections: [
+      { name: 'Rooftops',        at: 0,    obstChance: 0.20, droneChance: 0.000, gapMul: 0.5, platShrink: 0.0 },
+      { name: 'District Edge',   at: 800,  obstChance: 0.35, droneChance: 0.001, gapMul: 0.6, platShrink: 0.1 },
+      { name: 'Contested Zone',  at: 2000, obstChance: 0.50, droneChance: 0.004, gapMul: 0.7, platShrink: 0.2 },
+      { name: 'Drone Corridor',  at: 3500, obstChance: 0.65, droneChance: 0.008, gapMul: 0.9, platShrink: 0.35 },
+      { name: 'Extraction Run',  at: 4800, obstChance: 0.40, droneChance: 0.003, gapMul: 0.7, platShrink: 0.2 }
+    ]
+  });
+
   // ──────────────────────────────────────────────────────────
   // CONSTRUCTOR
   // ──────────────────────────────────────────────────────────
@@ -53,6 +73,18 @@
       lives:  3,
       currencyRate: 0.015
     });
+
+    this.sfxMap = {
+      'hop':        'drop-1',
+      'hit':        'hit-1',
+      'death':      'kitty-1',
+      'game-over':  'game-over-1',
+      'collect':    'coin-2',
+      'explosion':  'metal-hit-1',
+      'shoot':      'drop-1',
+      'drone-kill': 'metal-hit-1',
+      'game-start': 'power-up-1'
+    };
 
     // Pre-init all state so onDraw never reads undefined
     // (onDraw fires during MENU state before onStart runs)
@@ -69,6 +101,22 @@
     });
     this._emitter = new ParticleEmitter(300);
 
+    // Player projectiles (tap-to-aim counter-fire)
+    this._bullets = new ProjectileSystem({
+      speed: 8, range: 400, cooldown: 18, trailLength: 4
+    });
+
+    // Drone projectiles (enemy fire — slower, no cooldown)
+    this._droneBullets = new ProjectileSystem({
+      speed: 4, range: 600, cooldown: 0, trailLength: 0, maxActive: 20
+    });
+
+    // Screen effects (flash, vignette, fade)
+    this._screenFX = new ScreenFX();
+
+    // Loot drops (physics scatter + collect)
+    this._loot = new LootDrop(30);
+
     this._player = { x: 0, y: 0, vx: 0, vy: 0, w: 20, h: 24, grounded: false, tethering: false, canDoubleJump: true, ducking: false, invulnTimer: 0 };
     this._tether = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, smoothAngle: 0, smoothBrake: 0 };
     this._goats = [];
@@ -78,16 +126,21 @@
     this._obstacles = [];
     this._collectibles = [];
     this._enemies = [];
-    this._projectiles = [];
     this._distance = 0;
-    this._difficulty = 0;
     this._intelCount = 0;
+    this._killCount = 0;
+    this._sectionFlash = 0;
     this._inputBuffer = { vaultPending: false, timer: 0 };
     this._strikeAvailable = true;
     this._strikeCooldown = 0;
     this._tutorialPhase = 0;
     this._tutorialTimer = 0;
     this._nextPlatX = 0;
+
+    // Extraction helicopter + victory
+    this._helicopter = null;     // { x, y, bobTimer }
+    this._victoryPhase = 0;      // 0=none, 1=heli approaching, 2=boarding, 3=flying away
+    this._victoryTimer = 0;
   }
 
   GoatRunner.prototype = Object.create(ArcadeEngine.prototype);
@@ -107,6 +160,11 @@
     this._cam.resize(W, H);
     this._cam.reset();
     this._emitter.clear();
+    this._bullets.clear();
+    this._droneBullets.clear();
+    this._screenFX.clear();
+    this._loot.clear();
+    difficultyRamp.reset();
 
     // Player
     this._player = {
@@ -131,7 +189,6 @@
     this._obstacles = [];
     this._collectibles = [];
     this._enemies = [];
-    this._projectiles = [];
 
     // Goats
     this._goats = [];
@@ -151,10 +208,16 @@
 
     // Progress
     this._distance = 0;
-    this._difficulty = 0;
     this._intelCount = 0;
+    this._killCount = 0;
+    this._sectionFlash = 0;
     this._tutorialPhase = 0;
     this._tutorialTimer = 0;
+
+    // Extraction helicopter
+    this._helicopter = null;
+    this._victoryPhase = 0;
+    this._victoryTimer = 0;
   };
 
   // ──────────────────────────────────────────────────────────
@@ -171,22 +234,32 @@
 
   GoatRunner.prototype._generatePlatforms = function (W, H) {
     var cameraRight = this._cam.x + W + SPAWN_AHEAD;
+    var gapMul = difficultyRamp.get('gapMul', 0.5);
+    var platShrink = difficultyRamp.get('platShrink', 0);
+    var obstChance = difficultyRamp.get('obstChance', 0.2);
+    var t = difficultyRamp.t();
 
     while (this._nextPlatX < cameraRight) {
-      var gap = MIN_GAP + Math.random() * (MAX_GAP - MIN_GAP) * (0.5 + this._difficulty * 0.5);
-      var platW = MIN_PLAT_W + Math.random() * (MAX_PLAT_W - MIN_PLAT_W) * (1 - this._difficulty * 0.3);
+      var gap = MIN_GAP + Math.random() * (MAX_GAP - MIN_GAP) * gapMul;
+      var platW = MIN_PLAT_W + Math.random() * (MAX_PLAT_W - MIN_PLAT_W) * (1 - platShrink);
       var prevPlat = this._platforms[this._platforms.length - 1];
       var prevY = prevPlat ? prevPlat.y : H * 0.65;
 
-      var yShift = (Math.random() - 0.4) * 60 * (0.5 + this._difficulty);
+      var yShift = (Math.random() - 0.4) * 60 * (0.5 + t);
       var newY = Math.max(H * 0.3, Math.min(H * 0.8, prevY + yShift));
 
       var platX = this._nextPlatX + gap;
       this._platforms.push({ x: platX, y: newY, w: platW, h: PLAT_H });
 
-      if (Math.random() < this._difficulty * 0.5 && platW > 150) {
+      // Obstacles (via DifficultyRamp obstChance + WeightedTable)
+      if (Math.random() < obstChance && platW > 150) {
         this._spawnObstacle(platX, newY, platW);
       }
+      // Double obstacle on wider platforms at high difficulty
+      if (t > 0.6 && Math.random() < (obstChance * 0.3) && platW > 250) {
+        this._spawnObstacle(platX, newY, platW);
+      }
+
       if (Math.random() < 0.3) {
         this._collectibles.push({
           x: platX + platW * 0.5, y: newY - this._T * 1.5,
@@ -199,21 +272,14 @@
 
   GoatRunner.prototype._spawnObstacle = function (platX, platY, platW) {
     var T = this._T;
-    var roll = Math.random();
-    var type, w, h, ox;
-    if (roll < 0.4) {
-      type = OBS_DISH; w = T * 0.7; h = T * 0.7;
-      ox = platX + 40 + Math.random() * (platW - 80);
-    } else if (roll < 0.75) {
-      type = OBS_AC; w = T * 0.6; h = T * 0.6;
-      ox = platX + 40 + Math.random() * (platW - 80);
-    } else {
-      type = OBS_LASER; w = T * 1.5; h = T * 0.15;
-      ox = platX + 30 + Math.random() * (platW - 60);
-    }
+    var tpl = obstacleTable.pick();
+    var w = T * tpl.wMul;
+    var h = T * tpl.hMul;
+    var ox = platX + 40 + Math.random() * Math.max(0, platW - 80);
+
     this._obstacles.push({
       x: ox, y: platY - h, w: w, h: h,
-      type: type, hp: type === OBS_AC ? 1 : -1, active: true, blinkTimer: 0
+      type: tpl.type, hp: tpl.hp, active: true, blinkTimer: 0
     });
   };
 
@@ -286,15 +352,36 @@
       emoji: '⚡', count: 12, speed: 4, life: 30, gravity: 0
     });
 
-    // Push enemies
+    // Push enemies (melee AoE)
     for (var e = 0; e < this._enemies.length; e++) {
       var en = this._enemies[e];
       if (Math.hypot(en.x - cx, en.y - cy) < radius) {
         en.hp--;
         if (en.hp <= 0) {
+          this._loot.scatter(en.x, en.y, [
+            { emoji: '🪙', value: 100, type: 'coin' },
+            { emoji: '🪙', value: 100, type: 'coin' },
+            { emoji: '💼', value: 300, type: 'intel' }
+          ]);
           this._enemies.splice(e, 1); e--;
           this.addScore(500);
+          this._killCount++;
+          this.playSFX('drone-kill');
         }
+      }
+    }
+
+    // Fire a bullet at the nearest drone (counter-fire)
+    if (this._enemies.length > 0 && this._bullets.canFire()) {
+      var nearest = null, nearDist = Infinity;
+      for (var ne = 0; ne < this._enemies.length; ne++) {
+        var ned = Math.hypot(this._enemies[ne].x - cx, this._enemies[ne].y - cy);
+        if (ned < nearDist) { nearDist = ned; nearest = this._enemies[ne]; }
+      }
+      if (nearest) {
+        var cam = this._cam;
+        this._bullets.fireAt(p.x + p.w / 2, p.y + p.h / 2, cam.toScreen(nearest.x), nearest.y);
+        this.playSFX('shoot');
       }
     }
 
@@ -314,9 +401,25 @@
     var W = this.logicalW;
     var H = this.logicalH;
 
+    // During victory boarding/flyaway, skip normal gameplay — only update heli + particles + fx
+    if (this._victoryPhase >= 2) {
+      this._emitter.update();
+      this._screenFX.update();
+      this._updateHelicopter(W, H);
+      cam.update(this._distance);
+      return;
+    }
+
     // Distance + difficulty
     this._distance += cam.speed;
-    this._difficulty = Math.min(1, this._distance / 5000);
+    difficultyRamp.update(this._distance);
+    if (difficultyRamp.sectionChanged()) {
+      this._sectionFlash = 120;
+      this.playSFX('game-start');  // section transition fanfare
+      this._cam.shake(6, 3);
+      this._screenFX.flash('#ffaa00', 10, 0.2);  // amber section flash
+    }
+    if (this._sectionFlash > 0) this._sectionFlash--;
     this.score = Math.floor(this._distance);
 
     // Camera scroll (SideScrollCamera handles speed ramp + shake)
@@ -359,8 +462,21 @@
     // Friction (PlatformPhysics)
     phys.applyFriction(p, 0);
 
+    // Track pre-collision fall speed for landing effects
+    var preLandVy = p.vy;
+    var wasAirborne = !p.grounded;
+
     // Platform collision (PlatformPhysics)
     phys.collidePlatforms(p, this._platforms, cam.x);
+
+    // Landing particle burst (big falls)
+    if (wasAirborne && p.grounded && preLandVy > 6) {
+      var landIntensity = Math.min(8, Math.floor(preLandVy - 4));
+      this._emitter.burst(p.x + cam.x + p.w / 2, p.y + p.h, {
+        emoji: '💨', count: landIntensity, speed: 2, life: 15, gravity: 0.1
+      });
+      if (preLandVy > 9) this._cam.shake(4, 2);
+    }
 
     // Fell off screen
     if (phys.isFallenOff(p, H)) {
@@ -388,9 +504,12 @@
               obs.active = false;
               this.addScore(100);
               this._emitter.burst(obs.x, obs.y, { emoji: '💥', count: 5, speed: 3, life: 20 });
-              if (Math.random() < 0.4) {
-                this._collectibles.push({ x: obs.x, y: obs.y - T, type: 'intel', collected: false });
-              }
+              this._screenFX.flash('#ff8800', 4, 0.15); // orange break flash
+              // Scatter loot from destroyed AC unit
+              var acLoot = [{ emoji: '🪙', value: 50, type: 'coin' }];
+              if (Math.random() < 0.4) acLoot.push({ emoji: '💼', value: 200, type: 'intel' });
+              if (Math.random() < 0.25) acLoot.push({ emoji: '🪙', value: 50, type: 'coin' });
+              this._loot.scatter(obs.x, obs.y, acLoot);
             }
           } else {
             this._playerHit();
@@ -426,7 +545,7 @@
     }
 
     // Enemy spawning
-    if (this._distance > 500 && this._enemies.length === 0 && Math.random() < 0.002 * this._difficulty) {
+    if (this._distance > 500 && this._enemies.length === 0 && Math.random() < difficultyRamp.get('droneChance', 0)) {
       this._enemies.push({ x: cam.x + W + 50, y: H * 0.15, type: 'drone', hp: 3, fireTimer: 120 });
     }
 
@@ -437,30 +556,67 @@
       en.fireTimer--;
       if (en.fireTimer <= 0) {
         en.fireTimer = 100 + Math.floor(Math.random() * 40);
-        this._projectiles.push({ x: en.x, y: en.y + T * 0.5, vx: 0, vy: 4, enemy: true });
+        this._droneBullets.fire(cam.toScreen(en.x), en.y + T * 0.5, 0, 4);
       }
       if (en.x < cam.x - 200) { this._enemies.splice(ei, 1); ei--; }
     }
 
-    // Projectiles
-    for (var pi = this._projectiles.length - 1; pi >= 0; pi--) {
-      var pr = this._projectiles[pi];
-      pr.x += pr.vx; pr.y += pr.vy;
-      if (pr.enemy && p.invulnTimer <= 0) {
-        var psx = pr.x - cam.x;
-        if (Math.abs(psx - (p.x + p.w / 2)) < T * 0.6 && Math.abs(pr.y - (p.y + p.h / 2)) < T * 0.6) {
-          this._playerHit();
-          this._projectiles.splice(pi, 1);
-          continue;
+    // Projectile systems (screen-space, scrollY = 0)
+    this._bullets.update(W, H, 0);
+    this._droneBullets.update(W, H, 0);
+
+    // Drone bullets → player collision
+    if (p.invulnTimer <= 0) {
+      var droneHit = this._droneBullets.collideFirst(p.x + p.w / 2, p.y + p.h / 2, T * 0.6);
+      if (droneHit) this._playerHit();
+    }
+
+    // Player bullets → enemy collision
+    for (var bi = 0; bi < this._enemies.length; bi++) {
+      var ben = this._enemies[bi];
+      var benSX = cam.toScreen(ben.x);
+      var bulletHit = this._bullets.collideFirst(benSX, ben.y, T * 0.8);
+      if (bulletHit) {
+        ben.hp--;
+        if (ben.hp <= 0) {
+          this._emitter.burst(ben.x, ben.y, { emoji: '💥', count: 8, speed: 4, life: 25 });
+          this._emitter.burst(ben.x, ben.y, { emoji: '🔥', count: 4, speed: 2, life: 35, gravity: 0.12 });
+          this._screenFX.flash('#ff4400', 6, 0.2); // explosion flash
+          this._loot.scatter(ben.x, ben.y, [
+            { emoji: '🪙', value: 100, type: 'coin' },
+            { emoji: '🪙', value: 100, type: 'coin' },
+            { emoji: '💼', value: 300, type: 'intel' }
+          ]);
+          this.addScore(500);
+          this._killCount++;
+          this._cam.shake(8, 3);
+          this._enemies.splice(bi, 1); bi--;
+          this.playSFX('drone-kill');
         }
-      }
-      if (pr.y > H + 50 || pr.y < -50 || pr.x < cam.x - 100 || pr.x > cam.x + W + 100) {
-        this._projectiles.splice(pi, 1);
       }
     }
 
-    // Particles (ParticleEmitter)
+    // Particles + screen effects + loot
     this._emitter.update();
+    this._screenFX.update();
+    this._loot.updateWithPlatforms(this._platforms, cam.x);
+
+    // Loot collection (player world-space center)
+    var playerWX = p.x + cam.x + p.w / 2;
+    var playerWY = p.y + p.h / 2;
+    var collected = this._loot.collectNear(playerWX, playerWY, T * 1.5);
+    for (var ci2 = 0; ci2 < collected.length; ci2++) {
+      var item = collected[ci2];
+      if (item.type === 'intel') {
+        this._intelCount++;
+        this.addScore(item.value);
+        this._emitter.burst(item.x, item.y, { emoji: '💼', count: 3, speed: 2, life: 20 });
+      } else {
+        this.addScore(item.value);
+        this._emitter.burst(item.x, item.y, { emoji: '✨', count: 3, speed: 2, life: 18 });
+      }
+      this.playSFX('collect');
+    }
 
     // Goat position history
     this._posHistory[this._posHistoryIdx] = { x: p.x + cam.x, y: p.y };
@@ -498,6 +654,108 @@
     if (this._tutorialTimer > 300 && this._tutorialPhase < 1) this._tutorialPhase = 1;
     if (this._tutorialTimer > 600 && this._tutorialPhase < 2) this._tutorialPhase = 2;
     if (this._tutorialTimer > 900) this._tutorialPhase = 3;
+
+    // ── Extraction helicopter ──
+    this._updateHelicopter(W, H);
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // EXTRACTION HELICOPTER + VICTORY
+  // ──────────────────────────────────────────────────────────
+
+  var HELI_SPAWN_DIST = 4800;
+  var HELI_LAND_DIST  = 5000;
+
+  GoatRunner.prototype._updateHelicopter = function (W, H) {
+    var cam = this._cam;
+    var p = this._player;
+
+    // Phase 0 → 1: Spawn helicopter when approaching extraction distance
+    if (this._victoryPhase === 0 && this._distance >= HELI_SPAWN_DIST) {
+      this._victoryPhase = 1;
+      this._helicopter = {
+        x: cam.x + W + 200,   // starts off-screen right (world coords)
+        y: H * 0.18,
+        bobTimer: 0,
+        targetX: cam.x + W * 0.7  // hover target
+      };
+      this._emitter.burst(cam.x + W * 0.5, H * 0.3, { emoji: '📡', count: 6, speed: 2, life: 40, gravity: 0 });
+    }
+
+    if (!this._helicopter) return;
+    var heli = this._helicopter;
+    heli.bobTimer++;
+
+    // Phase 1: Helicopter approaches from the right and hovers
+    if (this._victoryPhase === 1) {
+      heli.targetX = cam.x + W * 0.7;
+      heli.x = _lerp(heli.x, heli.targetX, 0.03);
+      heli.y = H * 0.18 + Math.sin(heli.bobTimer * 0.04) * 6;
+
+      // Player touches helicopter → boarding
+      var heliSX = cam.toScreen(heli.x);
+      if (Math.abs((p.x + p.w / 2) - heliSX) < this._T * 2.5 &&
+          Math.abs((p.y + p.h / 2) - heli.y) < this._T * 2.0) {
+        this._victoryPhase = 2;
+        this._victoryTimer = 0;
+
+        // Celebration burst
+        this._emitter.burst(heli.x, heli.y, { emoji: '🎉', count: 20, speed: 5, life: 50, gravity: 0.05 });
+        this._emitter.burst(heli.x, heli.y, { emoji: '⭐', count: 15, speed: 4, life: 40, gravity: 0 });
+        this._cam.shake(20, 8);
+        this._screenFX.flash('#ffffff', 15, 0.6);    // white victory flash
+        this._screenFX.vignette('#001a0f', 0.4, 180); // phosphor vignette lingers
+        this.playSFX('collect');
+
+        // Score bonuses
+        var aliveGoats = 0;
+        for (var g = 0; g < this._goats.length; g++) {
+          if (this._goats[g].alive) aliveGoats++;
+        }
+        this.addScore(5000);                        // extraction bonus
+        this.addScore(this.lives * 1000);           // life bonus
+        this.addScore(aliveGoats * 500);            // goat survival bonus
+        this.addScore(this._intelCount * 300);      // intel bonus
+        this.addScore(this._killCount * 200);       // combat bonus
+      }
+    }
+
+    // Phase 2: Boarding — player rises toward heli, brief pause
+    if (this._victoryPhase === 2) {
+      this._victoryTimer++;
+      heli.y = H * 0.18 + Math.sin(heli.bobTimer * 0.04) * 4;
+
+      // Player lifts toward helicopter
+      p.vy = -2;
+      p.y = _lerp(p.y, heli.y - 10, 0.06);
+      p.x = _lerp(p.x, cam.toScreen(heli.x), 0.06);
+      p.grounded = false;
+
+      // Confetti bursts during boarding
+      if (this._victoryTimer % 15 === 0) {
+        var confettiEmoji = ['🎊', '✨', '🌟', '💫'][Math.floor(Math.random() * 4)];
+        this._emitter.burst(heli.x, heli.y + 20, { emoji: confettiEmoji, count: 5, speed: 3, life: 30, gravity: 0.08 });
+      }
+
+      if (this._victoryTimer >= 120) {
+        this._victoryPhase = 3;
+        this._victoryTimer = 0;
+      }
+    }
+
+    // Phase 3: Fly away — helicopter + player rise off screen, then trigger game over (as a win)
+    if (this._victoryPhase === 3) {
+      this._victoryTimer++;
+      heli.y -= 2.5;
+      heli.x += 1.5;
+      p.y = _lerp(p.y, heli.y - 10, 0.1);
+      p.x = _lerp(p.x, cam.toScreen(heli.x), 0.1);
+
+      if (this._victoryTimer >= 90) {
+        // End game — score already boosted, GAME_OVER overlay shows high score + currency
+        this.setState('GAME_OVER');
+      }
+    }
   };
 
   // ──────────────────────────────────────────────────────────
@@ -505,8 +763,11 @@
   // ──────────────────────────────────────────────────────────
 
   GoatRunner.prototype._playerHit = function () {
+    if (this._victoryPhase >= 2) return;  // invulnerable during extraction
     this._player.invulnTimer = 90;
     this._cam.shake(10, 4);
+    this._screenFX.flash('#ff2222', 8, 0.35);   // red hit flash
+    this._screenFX.vignette('#220000', 0.3, 40); // brief damage vignette
     this.loseLife();
     this.playSFX('hit');
   };
@@ -645,15 +906,45 @@
       });
     }
 
-    // Enemy projectiles
-    for (var pri = 0; pri < this._projectiles.length; pri++) {
-      var pr = this._projectiles[pri];
-      var prsx = cam.toScreen(pr.x);
-      if (pr.enemy) {
-        ctx.fillStyle = this.colors.red;
-        ctx.shadowColor = this.colors.red; ctx.shadowBlur = 6;
-        ctx.beginPath(); ctx.arc(prsx, pr.y, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
+    // Player bullets (ProjectileSystem — green phosphor)
+    this._bullets.draw(ctx, { color: this.colors.phosphorBright, radius: 3, glowColor: this.colors.phosphor, glowRadius: 6 });
+
+    // Drone bullets (ProjectileSystem — red glow)
+    this._droneBullets.draw(ctx, { color: this.colors.red, radius: 3, glowColor: this.colors.red, glowRadius: 6 });
+
+    // Loot drops (LootDrop — physics scatter)
+    this._loot.draw(ctx, cam.x, this, T * 0.45);
+
+    // Extraction helicopter
+    if (this._helicopter) {
+      var heliSX = cam.toScreen(this._helicopter.x);
+      var heliY = this._helicopter.y;
+
+      // Rotor blur (spinning line)
+      var rotorAngle = this._helicopter.bobTimer * 0.3;
+      ctx.strokeStyle = 'rgba(28,255,155,0.3)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(heliSX - Math.cos(rotorAngle) * T * 1.2, heliY - T * 0.6);
+      ctx.lineTo(heliSX + Math.cos(rotorAngle) * T * 1.2, heliY - T * 0.6);
+      ctx.stroke();
+
+      // Helicopter emoji
+      this.drawEmoji(ctx, '🚁', heliSX, heliY, T * 1.5, {
+        glow: true, glowColor: this.colors.phosphorBright, glowRadius: 10
+      });
+
+      // Spotlight beam during approach
+      if (this._victoryPhase === 1) {
+        ctx.save();
+        ctx.globalAlpha = 0.08 + Math.sin(this._helicopter.bobTimer * 0.06) * 0.04;
+        ctx.fillStyle = this.colors.phosphor;
+        ctx.beginPath();
+        ctx.moveTo(heliSX - T * 0.5, heliY + T * 0.5);
+        ctx.lineTo(heliSX - T * 2, H);
+        ctx.lineTo(heliSX + T * 2, H);
+        ctx.lineTo(heliSX + T * 0.5, heliY + T * 0.5);
+        ctx.fill();
+        ctx.restore();
       }
     }
 
@@ -666,6 +957,25 @@
     // HUD (outside shake)
     this._drawHUD(ctx, W, H);
     this._drawTutorial(ctx, W, H);
+
+    // Victory overlay text (drawn outside shake, on top of everything)
+    if (this._victoryPhase >= 2) {
+      ctx.save();
+      var vAlpha = this._victoryPhase === 2 ? Math.min(1, this._victoryTimer / 40) : 1;
+      ctx.globalAlpha = vAlpha * 0.95;
+      this.drawText(ctx, '✦ EXTRACTION COMPLETE ✦', W / 2, H * 0.40, 18, this.colors.amber, 'center');
+      if (this._victoryPhase === 2 && this._victoryTimer > 30) {
+        var aliveGoats = 0;
+        for (var vg = 0; vg < this._goats.length; vg++) { if (this._goats[vg].alive) aliveGoats++; }
+        ctx.globalAlpha = vAlpha * 0.7;
+        this.drawText(ctx, 'Extraction +5000  |  Lives ×' + this.lives + '  |  Goats ×' + aliveGoats, W / 2, H * 0.48, 11, this.colors.phosphor, 'center');
+        this.drawText(ctx, 'Intel ×' + this._intelCount + '  |  Kills ×' + this._killCount, W / 2, H * 0.54, 11, this.colors.phosphorDim, 'center');
+      }
+      ctx.restore();
+    }
+
+    // Screen FX (flash, vignette — topmost layer)
+    this._screenFX.draw(ctx, W, H);
   };
 
   // ──────────────────────────────────────────────────────────
@@ -688,6 +998,21 @@
       this.drawText(ctx, '×' + aliveGoats, 28, 38, 11, this.colors.phosphorDim, 'left');
     }
     if (this._strikeAvailable) this.drawEmoji(ctx, '⚡', W - 25, 38, 14);
+
+    // Kill count
+    if (this._killCount > 0) {
+      this.drawEmoji(ctx, '🛸', 14, 56, 12);
+      this.drawText(ctx, '×' + this._killCount, 28, 56, 11, this.colors.red, 'left');
+    }
+
+    // Section name flash
+    if (this._sectionFlash > 0) {
+      var flashAlpha = Math.min(1, this._sectionFlash / 40);
+      var secName = difficultyRamp.sectionName() || '';
+      ctx.save(); ctx.globalAlpha = flashAlpha * 0.9;
+      this.drawText(ctx, '// ' + secName.toUpperCase() + ' //', W / 2, H * 0.18, 16, this.colors.amber, 'center');
+      ctx.restore();
+    }
   };
 
   GoatRunner.prototype._drawTutorial = function (ctx, W, H) {

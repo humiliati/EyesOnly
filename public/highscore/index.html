@@ -44,7 +44,10 @@
           <span class="title-main">HIGHSCORE LEADERBOARDS</span>
           <span class="title-sub">Human vs Agent Competition</span>
         </div>
-        <button type="button" class="back-btn" onclick="window.location.href='../'">&larr; Back</button>
+        <div class="header-actions">
+          <button type="button" class="back-btn" onclick="window.location.href='/games.html'">&larr; Arcade</button>
+          <button type="button" class="back-btn" onclick="window.location.href='../'">&larr; Home</button>
+        </div>
       </header>
 
       <div class="highscore-container">
@@ -54,9 +57,9 @@
             <span class="tab-icon">🥷</span>
             <span class="tab-label">Gone Rogue</span>
           </button>
-          <button class="tab-btn" data-game="street_chronicles">
-            <span class="tab-icon">🗺️</span>
-            <span class="tab-label">Street-Chronicles</span>
+          <button class="tab-btn" data-game="arcade_games">
+            <span class="tab-icon">🕹️</span>
+            <span class="tab-label">Arcade</span>
           </button>
           <button class="tab-btn" data-game="eyesonly_live">
             <span class="tab-icon">🎯</span>
@@ -99,23 +102,35 @@
             </div>
           </div>
 
-          <!-- Street-Chronicles Tab -->
-          <div class="tab-panel" id="panel-street_chronicles">
+          <!-- Arcade Games Tab -->
+          <div class="tab-panel" id="panel-arcade_games">
+            <!-- Arcade sub-navigation -->
+            <div class="arcade-sub-nav" id="arcade-sub-nav">
+              <button class="arcade-sub-btn active" data-arcade="all">ALL</button>
+              <!-- Subcategory buttons injected dynamically from localStorage -->
+            </div>
+
+            <!-- Personal best summary strip -->
+            <div class="arcade-bests" id="arcade-bests">
+              <!-- Populated by JS from eyesonly_arcade_highscores -->
+            </div>
+
+            <!-- Arcade leaderboard table -->
             <div class="leaderboard-table-container">
               <table class="leaderboard-table">
                 <thead>
                   <tr>
                     <th class="rank-col">Rank</th>
                     <th class="name-col">Name</th>
-                    <th class="mode-col">Mode</th>
+                    <th class="game-col">Game</th>
                     <th class="score-col">Score</th>
-                    <th class="stats-col">Completed</th>
-                    <th class="stats-col">Items Found</th>
+                    <th class="stats-col">Best Run</th>
+                    <th class="stats-col">Date</th>
                   </tr>
                 </thead>
-                <tbody id="leaderboard-street_chronicles">
+                <tbody id="leaderboard-arcade_games">
                   <tr class="empty-row">
-                    <td colspan="6">No scores recorded yet. Complete street exploration to submit!</td>
+                    <td colspan="6">No arcade scores yet. Play some arcade games to see your scores!</td>
                   </tr>
                 </tbody>
               </table>
