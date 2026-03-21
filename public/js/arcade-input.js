@@ -184,6 +184,7 @@ var ArcadeInput = (function () {
       if (self._touchId !== null && self._touchMoved) {
         self._touchDragging = true;
         var pos = self._canvasXY(self._touchStartX, self._touchStartY);
+        pos.touch = true;
         self._emit('dragstart', pos);
       }
     }, DRAG_MIN_TIME);
@@ -210,6 +211,7 @@ var ArcadeInput = (function () {
       var pos = this._canvasXY(touch.clientX, touch.clientY);
       pos.dx = dx;
       pos.dy = dy;
+      pos.touch = true;
       this._emit('drag', pos);
     }
   };

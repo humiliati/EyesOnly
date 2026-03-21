@@ -153,10 +153,11 @@ window.SkiFreeGame = (function () {
     this._dragX = 0;
     this._dragY = 0;
 
-    // Extraction
+    // Extraction (distance scales per level — long early runs, shorter later)
     this._extractionDist = 7000;
     this._extracted = false;
     this._extractionTimer = 0;
+    this._extractionPhase = 'none'; // none, clearing, approach, mount, rideoff, done
 
     // Entity scale: player + pursuers spawn at 50% size
     this._entityScale = 0.5;
@@ -175,7 +176,7 @@ window.SkiFreeGame = (function () {
 
     // ── Difficulty scaling ──
     var dm = this.difficultyMultiplier();
-    // Scale base speed: T1 slower, T3 faster
+    // Scale base speed: U1 slower, U3 faster
     this._baseSpeed = 2.0 * dm;
     this._maxSpeed = 4.5 * dm;
     // Adjust lives
@@ -222,14 +223,22 @@ window.SkiFreeGame = (function () {
     this._dragStartX = 0;
     this._extracted = false;
     this._extractionTimer = 0;
+    this._extractionPhase = 'none';
+    this._motoX = 0;
+    this._motoY = 0;
     this._introTimer = 0;
     this._introComplete = false;
 
+    // Extraction distance: lvl 1 = 10000m (long intro run), scales down to 5000m by lvl 5+
+    var lvl = this.level || 1;
+    this._extractionDist = Math.max(5000, 10000 - (lvl - 1) * 1200);
+
     difficultyRamp.reset();
 
-    // Sparse initial obstacles well below screen
-    for (var i = 0; i < 3; i++) {
-      this._spawnObstacleAt(H + (i * 180 + 400 + Math.random() * 120));
+    // Only ONE sparse obstacle far below screen on level 1; more on later levels
+    var initCount = Math.min(3, lvl);
+    for (var i = 0; i < initCount; i++) {
+      this._spawnObstacleAt(H + (i * 220 + 600 + Math.random() * 150));
     }
   };
 
@@ -272,9 +281,13 @@ window.SkiFreeGame = (function () {
     }
 
     // Drag: relative X delta for responsive steering, Y for speed control
-    var DRAG_STEER_SENS = 80;
+    // Mouse (desktop) needs higher divisor to avoid twitchy carving;
+    // touch events use coarser coordinates so keep responsive.
+    var DRAG_STEER_SENS_TOUCH = 80;
+    var DRAG_STEER_SENS_MOUSE = 140;
     if (type === 'dragstart') {
       this._dragActive = true;
+      this._dragIsTouch = !!(data.touch);  // ArcadeInput tags touch events
       this._dragStartX = data.x;
       this._dragX = data.x;
       this._dragY = data.y;
@@ -282,7 +295,10 @@ window.SkiFreeGame = (function () {
     if (type === 'drag' && this._dragActive) {
       this._dragX = data.x;
       this._dragY = data.y;
-      var dxRel = (data.x - this._dragStartX) / DRAG_STEER_SENS;
+      var sens = this._dragIsTouch ? DRAG_STEER_SENS_TOUCH : DRAG_STEER_SENS_MOUSE;
+      var dxRel = (data.x - this._dragStartX) / sens;
+      // Apply slight easing curve to soften desktop mouse: reduce extremes
+      if (!this._dragIsTouch) dxRel = Math.sign(dxRel) * Math.pow(Math.abs(dxRel), 1.3);
       this._steerX = Math.max(-1, Math.min(1, dxRel));
     }
     if (type === 'dragend') {
@@ -311,15 +327,90 @@ window.SkiFreeGame = (function () {
   SkiFree.prototype.onUpdate = function (dt) {
     var W = this.logicalW, H = this.logicalH, T = this._tileSize;
 
-    // ── Extraction animation ──
+    // ── Extraction animation (multi-phase landing scene) ──
     if (this._extracted) {
       this._extractionTimer++;
-      if (this._entityScale < 1.0) {
-        this._entityScale = Math.min(1.0, this._entityScale + 0.02);
-        this._player.w = T * 0.8 * this._entityScale;
-        this._player.h = T * 1.0 * this._entityScale;
+      var phase = this._extractionPhase;
+      var cx = W / 2;
+
+      if (phase === 'clearing') {
+        // Terrain still scrolls but obstacles are cleared away
+        this._scrollTerrain(this._speed * 0.6, H);
+        this._speed *= 0.985; // gentle deceleration
+        if (this._speed < 1.0) this._speed = 1.0;
+        // Remove obstacles that scroll past; don't spawn new ones
+        // Auto-steer player toward center
+        this._player.x += (cx - this._player.x) * 0.03;
+        this._distance += this._speed * 0.3;
+        this._recordTrail();
+        if (this._extractionTimer > 80) {
+          this._extractionPhase = 'approach';
+          this._extractionTimer = 0;
+          // Place motorcycle ahead of player
+          this._motoX = cx;
+          this._motoY = H * 0.75;
+        }
       }
-      this._scrollTerrain(0.5, H);
+
+      else if (phase === 'approach') {
+        // Motorcycle visible in clearing, player auto-slides toward it
+        this._scrollTerrain(0.5, H);
+        this._player.x += (this._motoX - this._player.x) * 0.06;
+        this._player.y += (this._motoY - T * 2 - this._player.y) * 0.04;
+        this._recordTrail();
+
+        // Sweep remaining pursuers: motorcycle fires at them
+        if (this._pursuers.length > 0 && this._extractionTimer % 12 === 0) {
+          var pur = this._pursuers[0];
+          this._emitter.burst(pur.x, pur.y, { emoji: EMOJI.crash, count: 2, speed: 1.5, life: 20 });
+          this._emitter.burst(pur.x, pur.y, { emoji: EMOJI.poof, count: 1, speed: 0, life: 30 });
+          this.playSFX('kill');
+          this._pursuers.splice(0, 1);
+        }
+
+        if (this._extractionTimer > 60) {
+          this._extractionPhase = 'mount';
+          this._extractionTimer = 0;
+        }
+      }
+
+      else if (phase === 'mount') {
+        // Player meets motorcycle — poof, merge into two motorcycles
+        var mountProgress = Math.min(1, this._extractionTimer / 40);
+        this._player.y += (this._motoY - this._player.y) * 0.1;
+        this._player.x += (this._motoX - this._player.x) * 0.1;
+
+        if (this._extractionTimer === 20) {
+          this._emitter.burst(this._motoX, this._motoY, { emoji: EMOJI.poof, count: 3, speed: 2, life: 35 });
+        }
+
+        if (this._extractionTimer > 50) {
+          this._extractionPhase = 'rideoff';
+          this._extractionTimer = 0;
+        }
+      }
+
+      else if (phase === 'rideoff') {
+        // Two motorcycles ride off upward
+        if (this._extractionTimer > 90) {
+          this._extractionPhase = 'done';
+          this._extractionTimer = 0;
+        }
+      }
+
+      else if (phase === 'done') {
+        // Advance to next level
+        this.nextLevel();
+        this._extracted = false;
+        this._extractionPhase = 'none';
+        this._extractionTimer = 0;
+        this._resetState();
+        this._introComplete = true;
+        this._player.y = this._playerRestY;
+        this._emitter.update();
+        return;
+      }
+
       this._emitter.update();
       return;
     }
@@ -459,14 +550,20 @@ window.SkiFreeGame = (function () {
       }
     }
 
-    // ── Spawning (density ramps with distance, grace period at start) ──
+    // ── Spawning (density ramps with distance, generous grace period) ──
+    // Level 1: no obstacles for first 500m, then very slow ramp (full at 2000m)
+    // Later levels: grace period shrinks, ramp is steeper
+    var lvlMul = Math.min(1.0, (this.level - 1) * 0.25);  // 0 at lvl1, 0.25 at lvl2, 1.0 at lvl5+
+    var graceEnd = 500 - lvlMul * 300;       // 500m at lvl1, 200m at lvl5+
+    var rampLen  = 1500 - lvlMul * 1000;     // 1500m at lvl1, 500m at lvl5+
+
     var spawnChance = 0;
-    if (this._distance > 150) {
-      var ramp = Math.min(1.0, (this._distance - 150) / 450);
+    if (this._distance > graceEnd) {
+      var ramp = Math.min(1.0, (this._distance - graceEnd) / rampLen);
       var dm = this.difficultyMultiplier();
       var baseRate = difficultyRamp.get('obstRate', 0.015);
-      spawnChance = baseRate * dm * ramp * (0.9 + this._distance * 0.00003);
-      if (spawnChance > 0.30) spawnChance = 0.30;
+      spawnChance = baseRate * dm * ramp * (0.9 + this._distance * 0.00002);
+      if (spawnChance > 0.25) spawnChance = 0.25;
     }
     if (Math.random() < spawnChance) this._spawnObstacleAt(H + 30 + Math.random() * 40);
 
@@ -505,12 +602,17 @@ window.SkiFreeGame = (function () {
     }
 
     // ── Pursuer spawning ──
-    if (this._pursuers.length === 0 && this._distance > 300) {
+    // Level 1: first pursuer at ~2500m (player has time to learn), second at ~5000m
+    // Higher levels: pursuer thresholds shrink
+    var firstPursuerDist = Math.max(800, 2500 - (this.level - 1) * 400);
+    var secondPursuerDist = firstPursuerDist + Math.max(1500, 2500 - (this.level - 1) * 300);
+
+    if (this._pursuers.length === 0 && this._distance > firstPursuerDist) {
       this._spawnPursuer();
-    } else if (this._pursuers.length === 1 && this._distance > 3000) {
+    } else if (this._pursuers.length === 1 && this._distance > secondPursuerDist) {
       this._spawnPursuer();
-    } else if (this._pursuers.length >= 2 && this._distance > 3000) {
-      var nextSpawn = 3000 + (this._pursuers.length - 1) * 2500;
+    } else if (this._pursuers.length >= 2) {
+      var nextSpawn = secondPursuerDist + (this._pursuers.length - 1) * 2000;
       if (this._distance > nextSpawn && this._pursuers.length < 8) {
         this._spawnPursuer();
       }
@@ -551,10 +653,13 @@ window.SkiFreeGame = (function () {
     }
 
     // ── Extraction check ──
-    if (this._distance >= this._extractionDist) {
+    if (this._distance >= this._extractionDist && !this._extracted) {
       this._extracted = true;
+      this._extractionPhase = 'clearing';
+      this._extractionTimer = 0;
       this.playSFX('extraction');
       this.addScore(2000);
+      // Stop spawning new obstacles — clearing begins
     }
 
     this._emitter.update();
@@ -924,36 +1029,93 @@ window.SkiFreeGame = (function () {
       this.drawText(ctx, EMOJI.motorcycle, eBX + eBW + 6, eBY + 2, 10);
     }
 
-    // ── Extraction / Victory sequence ──
+    // ── Extraction / Victory sequence (multi-phase) ──
     if (this._extracted) {
       var et = this._extractionTimer;
+      var phase = this._extractionPhase;
+      var cx = W / 2;
+      var motoY = this._motoY || H * 0.7;
+
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.6, et * 0.01) + ')';
-      ctx.fillRect(0, 0, W, H);
 
-      if (et < 60) {
-        var motoY = H * 0.7;
-        this.drawEmoji(ctx, EMOJI.motorcycle, W / 2, motoY, T * 1.5, { glow: true });
-        var slideY = this._playerRestY + (motoY - this._playerRestY) * Math.min(1, et / 50);
-        this.drawEmoji(ctx, EMOJI.player, this._player.x, slideY, T * 1.1 * this._entityScale, { glow: true });
-      } else if (et < 80) {
-        var poofAlpha = 1 - (et - 60) / 20;
-        this.drawEmoji(ctx, EMOJI.poof, W / 2, H * 0.7, T * 2, { alpha: poofAlpha });
-        this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 - T, H * 0.7, T * 1.3, { glow: true });
-        if (et > 65) {
-          this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 + T, H * 0.7, T * 1.3, { glow: true });
+      if (phase === 'clearing') {
+        // Subtle "opening" feel — darken edges
+        var clearAlpha = Math.min(0.2, et * 0.003);
+        ctx.fillStyle = 'rgba(0,0,0,' + clearAlpha + ')';
+        ctx.fillRect(0, 0, W, H);
+        // "EXTRACTION ZONE" text fades in
+        if (et > 30) {
+          ctx.globalAlpha = Math.min(1, (et - 30) / 40);
+          this.drawText(ctx, '— EXTRACTION ZONE —', cx, H * 0.12, 14, this.colors.amber, 'center');
+          ctx.globalAlpha = 1;
         }
-      } else {
-        var rideOff = (et - 80) * 3;
-        var mY = H * 0.7 - rideOff;
-        this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 - T, mY, T * 1.3, { glow: true });
-        this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 + T, mY, T * 1.3, { glow: true });
-
-        this.drawText(ctx, 'EXTRACTED', W / 2, H * 0.35, 22, this.colors.phosphorBright, 'center');
-        this.drawText(ctx, Math.floor(this._distance) + 'm  |  ' + this._killCount + ' PURSUERS FELLED', W / 2, H * 0.45, 12, ph, 'center');
-        if (this._intelCount > 0) this.drawText(ctx, 'INTEL: ' + this._intelCount, W / 2, H * 0.52, 12, this.colors.amber, 'center');
-        if (!this._treeHit) this.drawText(ctx, '★ PERFECT DESCENT ★', W / 2, H * 0.59, 14, this.colors.amber, 'center');
       }
+
+      else if (phase === 'approach') {
+        // Motorcycle in clearing, player approaching
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(0, 0, W, H);
+        // Draw motorcycle waiting in clearing with glow pulse
+        var motoPulse = 1.0 + Math.sin(et * 0.1) * 0.1;
+        this.drawEmoji(ctx, EMOJI.motorcycle, this._motoX, motoY, T * 1.5 * motoPulse, { glow: true, glowColor: this.colors.amber });
+        // Draw approach text
+        this.drawText(ctx, 'EXTRACTION POINT', cx, H * 0.12, 14, this.colors.amber, 'center');
+        // Pursuer sweep flash
+        if (this._pursuers.length > 0) {
+          ctx.globalAlpha = 0.4 + Math.sin(et * 0.15) * 0.3;
+          this.drawText(ctx, 'CLEARING PURSUERS...', cx, H * 0.20, 10, this.colors.red, 'center');
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      else if (phase === 'mount') {
+        // Merge animation
+        ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.5, et * 0.01) + ')';
+        ctx.fillRect(0, 0, W, H);
+
+        if (et < 20) {
+          // Player and motorcycle converging
+          this.drawEmoji(ctx, EMOJI.motorcycle, this._motoX, motoY, T * 1.5, { glow: true });
+        } else if (et < 35) {
+          // Poof — transformation
+          var poofAlpha = 1 - (et - 20) / 15;
+          this.drawEmoji(ctx, EMOJI.poof, this._motoX, motoY, T * 2.5, { alpha: poofAlpha, glow: true });
+        } else {
+          // Two motorcycles appear
+          var spread = Math.min(T * 1.2, (et - 35) * 2);
+          this.drawEmoji(ctx, EMOJI.motorcycle, cx - spread, motoY, T * 1.3, { glow: true });
+          this.drawEmoji(ctx, EMOJI.motorcycle, cx + spread, motoY, T * 1.3, { glow: true });
+        }
+      }
+
+      else if (phase === 'rideoff') {
+        // Darkening backdrop + motorcycles riding upward + stats
+        var fadeIn = Math.min(0.7, et * 0.01);
+        ctx.fillStyle = 'rgba(0,0,0,' + fadeIn + ')';
+        ctx.fillRect(0, 0, W, H);
+
+        var rideOffset = et * 3.5;
+        var rY = motoY - rideOffset;
+        this.drawEmoji(ctx, EMOJI.motorcycle, cx - T * 1.2, rY, T * 1.3, { glow: true });
+        this.drawEmoji(ctx, EMOJI.motorcycle, cx + T * 1.2, rY, T * 1.3, { glow: true });
+
+        // Stats fade in after a beat
+        if (et > 25) {
+          ctx.globalAlpha = Math.min(1, (et - 25) / 30);
+          this.drawText(ctx, 'EXTRACTED', cx, H * 0.3, 22, this.colors.phosphorBright, 'center');
+          this.drawText(ctx, Math.floor(this._distance) + 'm  |  ' + this._killCount + ' PURSUERS FELLED',
+                        cx, H * 0.42, 12, ph, 'center');
+          if (this._intelCount > 0) {
+            this.drawText(ctx, 'INTEL: ' + this._intelCount, cx, H * 0.50, 12, this.colors.amber, 'center');
+          }
+          if (!this._treeHit) {
+            this.drawText(ctx, '★ PERFECT DESCENT ★', cx, H * 0.58, 14, this.colors.amber, 'center');
+          }
+          this.drawText(ctx, 'LEVEL ' + this.level + ' COMPLETE', cx, H * 0.70, 14, this.colors.phosphorDim, 'center');
+          ctx.globalAlpha = 1;
+        }
+      }
+
       ctx.restore();
     }
   };
