@@ -23,6 +23,12 @@
    Entities: ⛷️ player, 🌲 tree, 🎄 snow fir, 🗿 rock,
              🏔️ snow bank, ⛷️ pursuer (dark), 🏍️ motorcycle,
              💰 intel/currency
+
+   Uses genre helper modules:
+     WeightedTable  — obstacle spawn selection
+     DifficultyRamp — section-based difficulty curve
+     ProjectileSystem — omnidirectional projectiles
+     ParticleEmitter  — text/emoji particles
    ============================================================ */
 window.SkiFreeGame = (function () {
   'use strict';
@@ -40,56 +46,39 @@ window.SkiFreeGame = (function () {
     crash:     '💥',
     warning:   '⚠️',
     poof:      '💨',
-    projectile:'•'      // drawn as glowing dot
+    projectile:'•'
   };
 
-  // ── Weighted obstacle table ──
-  var OBSTACLE_TABLE = [
+  // ── Weighted obstacle table (via WeightedTable module) ──
+  var obstacleTable = new WeightedTable([
     { emoji: EMOJI.tree,    weight: 30, w: 0.8, h: 1.0, damage: 10, zBlock: true },
     { emoji: EMOJI.snowFir, weight: 12, w: 0.7, h: 0.9, damage: 10, zBlock: true },
     { emoji: EMOJI.rock,    weight: 20, w: 0.9, h: 0.7, damage: 15, zBlock: false },
     { emoji: EMOJI.snowBank, weight: 38, w: 1.0, h: 0.6, damage: 5, breakable: true, zBlock: false }
-  ];
-  var OBSTACLE_TOTAL_WEIGHT = 0;
-  for (var oi = 0; oi < OBSTACLE_TABLE.length; oi++) OBSTACLE_TOTAL_WEIGHT += OBSTACLE_TABLE[oi].weight;
+  ]);
 
-  function pickObstacle() {
-    var r = Math.random() * OBSTACLE_TOTAL_WEIGHT, acc = 0;
-    for (var i = 0; i < OBSTACLE_TABLE.length; i++) {
-      acc += OBSTACLE_TABLE[i].weight;
-      if (r < acc) return OBSTACLE_TABLE[i];
-    }
-    return OBSTACLE_TABLE[0];
-  }
-
-  // ── Difficulty sections ──
-  var SECTIONS = [
-    { name: 'Upper Slopes',  dist: 0,    obstRate: 0.06, iceRate: 0.10, speedMul: 1.0 },
-    { name: 'Treeline Run',  dist: 800,  obstRate: 0.12, iceRate: 0.15, speedMul: 1.15 },
-    { name: 'Mogul Field',   dist: 2000, obstRate: 0.20, iceRate: 0.20, speedMul: 1.3 },
-    { name: 'Chute',         dist: 3500, obstRate: 0.28, iceRate: 0.30, speedMul: 1.5 },
-    { name: 'Base Approach',  dist: 5500, obstRate: 0.22, iceRate: 0.25, speedMul: 1.7 }
-  ];
-
-  function getSection(dist) {
-    var s = SECTIONS[0];
-    for (var i = 1; i < SECTIONS.length; i++) { if (dist >= SECTIONS[i].dist) s = SECTIONS[i]; }
-    return s;
-  }
+  // ── Difficulty sections (via DifficultyRamp module) ──
+  var difficultyRamp = new DifficultyRamp({
+    metric: 'distance',
+    range: [0, 7000],
+    sections: [
+      { name: 'Upper Slopes',  at: 0,    obstRate: 0.015, iceRate: 0.06, speedMul: 1.0 },
+      { name: 'Treeline Run',  at: 800,  obstRate: 0.05,  iceRate: 0.12, speedMul: 1.10 },
+      { name: 'Mogul Field',   at: 2000, obstRate: 0.10,  iceRate: 0.18, speedMul: 1.25 },
+      { name: 'Chute',         at: 3500, obstRate: 0.18,  iceRate: 0.25, speedMul: 1.45 },
+      { name: 'Base Approach',  at: 5500, obstRate: 0.14,  iceRate: 0.20, speedMul: 1.65 }
+    ]
+  });
 
   // ── Trail system config ──
-  var PLAYER_TRAIL_LEN = 40;   // frames of trail history
-  var PURSUER_TRAIL_LEN = 12;  // shorter for perf
+  var PLAYER_TRAIL_LEN = 40;
+  var PURSUER_TRAIL_LEN = 12;
 
   // ── Intro ──
   var INTRO_DURATION = 90;
 
-  // ── Projectile config ──
-  var PROJECTILE_SPEED = 7;    // px/frame, omnidirectional
+  // ── Projectile config (passed to ProjectileSystem) ──
   var PROJECTILE_SIZE = 3;
-  var PROJECTILE_COOLDOWN = 12; // frames between shots
-  var PROJECTILE_RANGE = 500;  // px max travel before despawn
-  var PROJECTILE_TRAIL_LEN = 6; // frames of trail history
 
   // ════════════════════════════════════════════════════════════
 
@@ -117,13 +106,22 @@ window.SkiFreeGame = (function () {
       'extraction': 'toad'
     };
 
+    // ── Module instances ──
+    this._bullets = new ProjectileSystem({
+      speed: 7,
+      range: 500,
+      cooldown: 12,
+      trailLength: 6
+    });
+
+    this._emitter = new ParticleEmitter(200);
+
+    // ── Game state (pre-initialized for safe MENU-state rendering) ──
     this._player = null;
     this._obstacles = [];
     this._icePatches = [];
     this._intel = [];
-    this._pursuers = [];         // array of pursuer objects
-    this._projectiles = [];
-    this._shotCooldown = 0;
+    this._pursuers = [];
     this._distance = 0;
     this._speed = 0;
     this._baseSpeed = 2.0;
@@ -131,13 +129,11 @@ window.SkiFreeGame = (function () {
     this._tuck = false;
     this._steerX = 0;
     this._onIce = false;
-    this._lastSection = null;
     this._sectionFlash = 0;
     this._nearMissTimer = 0;
     this._nearMissCombo = 0;
     this._crashTimer = 0;
     this._crashEmoji = null;
-    this._particles = [];
     this._treeHit = false;
     this._intelCount = 0;
     this._killCount = 0;
@@ -151,16 +147,16 @@ window.SkiFreeGame = (function () {
 
     // Touch state
     this._dragActive = false;
+    this._dragStartX = 0;
     this._dragX = 0;
-    this._dragY = 0;            // Y position for speed control
+    this._dragY = 0;
 
     // Extraction
     this._extractionDist = 7000;
     this._extracted = false;
-    this._extractionTimer = 0;  // animation timer for motorcycle sequence
+    this._extractionTimer = 0;
 
-    // Entity scale: player + pursuers spawn at 50% size so they can
-    // thread between obstacles.  Grows to 1.0 during extraction exit.
+    // Entity scale: player + pursuers spawn at 50% size
     this._entityScale = 0.5;
   }
 
@@ -180,7 +176,7 @@ window.SkiFreeGame = (function () {
     if (this._tileSize < 12) this._tileSize = 12;
     var T = this._tileSize;
 
-    this._entityScale = 0.5;  // reset early so player/pursuer sizes are correct
+    this._entityScale = 0.5;
     this._playerRestY = H * 0.3;
     var S = this._entityScale;
     this._player = { x: W / 2, y: -T * 2, w: T * 0.8 * S, h: T * 1.0 * S, hp: 100 };
@@ -189,16 +185,14 @@ window.SkiFreeGame = (function () {
     this._icePatches = [];
     this._intel = [];
     this._pursuers = [];
-    this._projectiles = [];
-    this._shotCooldown = 0;
-    this._particles = [];
+    this._bullets.clear();
+    this._emitter.clear();
     this._playerTrail = [];
     this._distance = 0;
     this._speed = this._baseSpeed;
     this._tuck = false;
     this._steerX = 0;
     this._onIce = false;
-    this._lastSection = null;
     this._sectionFlash = 0;
     this._nearMissTimer = 0;
     this._nearMissCombo = 0;
@@ -208,14 +202,17 @@ window.SkiFreeGame = (function () {
     this._intelCount = 0;
     this._killCount = 0;
     this._dragActive = false;
+    this._dragStartX = 0;
     this._extracted = false;
     this._extractionTimer = 0;
     this._introTimer = 0;
     this._introComplete = false;
 
-    // Sparse initial obstacles below screen
-    for (var i = 0; i < 6; i++) {
-      this._spawnObstacleAt(H + (i * 100 + 150 + Math.random() * 80));
+    difficultyRamp.reset();
+
+    // Sparse initial obstacles well below screen
+    for (var i = 0; i < 3; i++) {
+      this._spawnObstacleAt(H + (i * 180 + 400 + Math.random() * 120));
     }
   };
 
@@ -224,6 +221,9 @@ window.SkiFreeGame = (function () {
     if (this._tileSize < 12) this._tileSize = 12;
     this._playerRestY = h * 0.3;
     if (this._player) {
+      var T = this._tileSize, S = this._entityScale;
+      this._player.w = T * 0.8 * S;
+      this._player.h = T * 1.0 * S;
       this._player.x = Math.min(this._player.x, w - this._player.w);
       if (this._introComplete) this._player.y = this._playerRestY;
     }
@@ -245,28 +245,28 @@ window.SkiFreeGame = (function () {
       else if (data.action === 'right') this._steerX = 1;
       else if (data.action === 'down') this._tuck = true;
       else if (data.action === 'up') this._tuck = false;
-      // Space = fire projectile downhill (default direction)
-      else if (data.action === 'action') this._fireProjectileAt(this._player.x, H);
+      else if (data.action === 'action') this._fireAt(this._player.x, H);
     }
 
-    // Swipe: left/right steer, up/down speed (legacy fallback)
+    // Swipe legacy
     if (type === 'swipe') {
       if (data.direction === 'left') this._steerX = -1;
       else if (data.direction === 'right') this._steerX = 1;
     }
 
-    // Drag: X = steer, Y = speed control (bottom = accel, top = decel)
+    // Drag: relative X delta for responsive steering, Y for speed control
+    var DRAG_STEER_SENS = 80;
     if (type === 'dragstart') {
       this._dragActive = true;
+      this._dragStartX = data.x;
       this._dragX = data.x;
       this._dragY = data.y;
     }
     if (type === 'drag' && this._dragActive) {
-      // Horizontal: steer
-      this._steerX = Math.max(-1, Math.min(1, (data.x / W) * 2 - 1));
-      // Vertical: bottom = accelerate, top = decelerate
-      // Normalize: 0 at top → 1 at bottom
+      this._dragX = data.x;
       this._dragY = data.y;
+      var dxRel = (data.x - this._dragStartX) / DRAG_STEER_SENS;
+      this._steerX = Math.max(-1, Math.min(1, dxRel));
     }
     if (type === 'dragend') {
       this._dragActive = false;
@@ -274,14 +274,17 @@ window.SkiFreeGame = (function () {
       this._tuck = false;
     }
 
-    // Tap / double-tap = fire projectile toward tap position (omnidirectional)
-    // Both must be handled: arcade-input emits 'doubletap' (not 'tap') on fast
-    // clicks, but still emits 'keyaction:action' — which would fire straight
-    // down instead of toward the click.  Handling doubletap here ensures the
-    // aimed shot always wins (cooldown blocks the subsequent keyaction).
+    // Tap / double-tap = fire toward tap position
     if (type === 'tap' || type === 'doubletap') {
-      this._fireProjectileAt(data.x, data.y);
+      this._fireAt(data.x, data.y);
     }
+  };
+
+  // ── Fire wrapper (delegates to ProjectileSystem) ──
+  SkiFree.prototype._fireAt = function (targetX, targetY) {
+    var px = this._player.x, py = this._player.y;
+    var proj = this._bullets.fireAt(px, py, targetX, targetY);
+    if (proj) this.playSFX('shoot');
   };
 
   // ════════════════════════════════════════════════════════════
@@ -294,16 +297,13 @@ window.SkiFreeGame = (function () {
     // ── Extraction animation ──
     if (this._extracted) {
       this._extractionTimer++;
-      // Grow entities back to full size for the victory sequence
       if (this._entityScale < 1.0) {
         this._entityScale = Math.min(1.0, this._entityScale + 0.02);
         this._player.w = T * 0.8 * this._entityScale;
         this._player.h = T * 1.0 * this._entityScale;
       }
-      // Scroll terrain continues slowly
       this._scrollTerrain(0.5, H);
-      // Update particles
-      this._updateParticles();
+      this._emitter.update();
       return;
     }
 
@@ -317,14 +317,17 @@ window.SkiFreeGame = (function () {
         this._introComplete = true;
         this._player.y = this._playerRestY;
       }
-      this._updateParticles();
+      this._emitter.update();
       return;
     }
 
-    var sec = getSection(this._distance);
+    // ── Difficulty ramp ──
+    difficultyRamp.update(this._distance);
 
-    // Section flash
-    if (sec !== this._lastSection) { this._lastSection = sec; this._sectionFlash = 120; }
+    // Section flash on transition
+    if (difficultyRamp.sectionChanged()) {
+      this._sectionFlash = 120;
+    }
     if (this._sectionFlash > 0) this._sectionFlash--;
 
     // ── Crash recovery ──
@@ -336,28 +339,26 @@ window.SkiFreeGame = (function () {
       this._distance += this._speed * 0.3;
       this._scrollTerrain(this._speed * 0.3, H);
       this._recordTrail();
-      this._updateParticles();
+      this._emitter.update();
       return;
     }
 
     // ── Speed: drag Y position controls tuck ──
     if (this._dragActive) {
-      var yNorm = this._dragY / H;  // 0=top, 1=bottom
-      this._tuck = yNorm > 0.6;     // bottom 40% = tuck/accelerate
-      // Top 30% = active brake
-      if (yNorm < 0.3) {
-        this._speed *= 0.97;
-      }
+      var yNorm = this._dragY / H;
+      this._tuck = yNorm > 0.6;
+      if (yNorm < 0.3) this._speed *= 0.97;
     }
 
-    var targetSpeed = this._baseSpeed * sec.speedMul;
+    var speedMul = difficultyRamp.get('speedMul', 1.0);
+    var targetSpeed = this._baseSpeed * speedMul;
     if (this._tuck) targetSpeed *= 1.4;
     if (this._onIce) targetSpeed *= 1.3;
     targetSpeed *= (1 - Math.abs(this._steerX) * 0.15);
 
     this._speed += (targetSpeed - this._speed) * 0.08;
     if (this._speed < 0.8) this._speed = 0.8;
-    if (this._speed > this._maxSpeed * sec.speedMul) this._speed = this._maxSpeed * sec.speedMul;
+    if (this._speed > this._maxSpeed * speedMul) this._speed = this._maxSpeed * speedMul;
 
     this._distance += this._speed;
     this.score = Math.floor(this._distance);
@@ -401,7 +402,9 @@ window.SkiFreeGame = (function () {
       this.addScore(25 * this._nearMissCombo);
       this.playSFX('near-miss');
       this._nearMissTimer = 45;
-      this._spawnParticle(this._player.x, this._player.y + T, '✨', 30);
+      this._emitter.burst(this._player.x, this._player.y + T, {
+        emoji: '✨', count: 1, speed: 0, life: 30, gravity: -0.3
+      });
     }
     if (this._nearMissTimer > 0) this._nearMissTimer--; else this._nearMissCombo = 0;
 
@@ -409,18 +412,24 @@ window.SkiFreeGame = (function () {
     for (var j = this._intel.length - 1; j >= 0; j--) {
       if (this._overlaps(this._player, this._intel[j])) {
         this._intelCount++; this.addScore(200); this.playSFX('intel');
-        this._spawnParticle(this._intel[j].x, this._intel[j].y, '+200', 40);
+        this._emitter.burst(this._intel[j].x, this._intel[j].y, {
+          emoji: '+200', count: 1, speed: 0, life: 40, gravity: -0.3
+        });
         this._intel.splice(j, 1);
       }
     }
 
-    // ── Spawning (density ramps with distance) ──
-    // obstRate starts very low (0.06) at Upper Slopes, ramps per section
-    var spawnChance = sec.obstRate * (0.8 + this._distance * 0.00005);
-    if (spawnChance > 0.45) spawnChance = 0.45;  // cap
+    // ── Spawning (density ramps with distance, grace period at start) ──
+    var spawnChance = 0;
+    if (this._distance > 150) {
+      var ramp = Math.min(1.0, (this._distance - 150) / 450);
+      spawnChance = difficultyRamp.get('obstRate', 0.015) * ramp * (0.9 + this._distance * 0.00003);
+      if (spawnChance > 0.30) spawnChance = 0.30;
+    }
     if (Math.random() < spawnChance) this._spawnObstacleAt(H + 30 + Math.random() * 40);
 
-    if (Math.random() < sec.iceRate * 0.05) {
+    var iceRate = difficultyRamp.get('iceRate', 0.06);
+    if (Math.random() < iceRate * 0.05) {
       this._icePatches.push({
         x: margin + Math.random() * (W - margin * 2), y: H + 40,
         w: T * (2 + Math.random() * 2), h: T * (1 + Math.random()), emoji: EMOJI.ice
@@ -434,13 +443,11 @@ window.SkiFreeGame = (function () {
     }
 
     // ── Pursuer spawning ──
-    // First pursuer at ~300m, second at ~3000m, then every ~2500m in arcade
     if (this._pursuers.length === 0 && this._distance > 300) {
       this._spawnPursuer();
     } else if (this._pursuers.length === 1 && this._distance > 3000) {
       this._spawnPursuer();
     } else if (this._pursuers.length >= 2 && this._distance > 3000) {
-      // In arcade mode, spawn additional pursuers
       var nextSpawn = 3000 + (this._pursuers.length - 1) * 2500;
       if (this._distance > nextSpawn && this._pursuers.length < 8) {
         this._spawnPursuer();
@@ -452,64 +459,31 @@ window.SkiFreeGame = (function () {
       this._updatePursuer(this._pursuers[pi], pi);
     }
 
-    // ── Update projectiles (omnidirectional) ──
-    if (this._shotCooldown > 0) this._shotCooldown--;
-    for (var pr = this._projectiles.length - 1; pr >= 0; pr--) {
-      var proj = this._projectiles[pr];
-      // Record trail position before moving
-      proj.trail.push({ x: proj.x, y: proj.y });
-      if (proj.trail.length > PROJECTILE_TRAIL_LEN) proj.trail.shift();
+    // ── Update projectiles (via ProjectileSystem — no scroll offset, screen-space) ──
+    this._bullets.update(W, H, 0);
 
-      // Move along velocity vector
-      proj.x += proj.vx * PROJECTILE_SPEED;
-      proj.y += proj.vy * PROJECTILE_SPEED;
-      // Offset Y by terrain scroll so projectiles stay world-relative
-      proj.y -= this._speed;
-      proj.traveled += PROJECTILE_SPEED;
-
-      // Cull: out of bounds or exceeded range
-      if (proj.x < -30 || proj.x > W + 30 || proj.y < -30 || proj.y > H + 30 ||
-          proj.traveled > PROJECTILE_RANGE) {
-        this._projectiles.splice(pr, 1); continue;
-      }
-
-      // Check hit on pursuers
-      var projHit = false;
+    // Projectile → pursuer hits
+    for (var pk = this._pursuers.length - 1; pk >= 0; pk--) {
+      var pur = this._pursuers[pk];
       var hitR = T * 0.8 * this._entityScale;
-      for (var pk = this._pursuers.length - 1; pk >= 0; pk--) {
-        var pur = this._pursuers[pk];
-        if (Math.abs(proj.x - pur.x) < hitR && Math.abs(proj.y - pur.y) < hitR) {
-          pur.hp--;
-          this._projectiles.splice(pr, 1);
-          this.playSFX('hit');
-          this._spawnParticle(pur.x, pur.y, EMOJI.crash, 15);
-          if (pur.hp <= 0) {
-            this._killPursuer(pk);
-          }
-          projHit = true;
-          break;
-        }
+      var hit = this._bullets.collideFirst(pur.x, pur.y, hitR);
+      if (hit) {
+        pur.hp--;
+        this.playSFX('hit');
+        this._emitter.burst(pur.x, pur.y, { emoji: EMOJI.crash, count: 1, speed: 0, life: 15 });
+        if (pur.hp <= 0) this._killPursuer(pk);
       }
-      if (projHit) continue;
+    }
 
-      // Check hit on breakable obstacles
-      for (var po = this._obstacles.length - 1; po >= 0; po--) {
-        var obs = this._obstacles[po];
-        if (obs.breakable && Math.abs(proj.x - obs.x) < T * 0.6 && Math.abs(proj.y - obs.y) < T * 0.6) {
-          this._projectiles.splice(pr, 1);
-          this.playSFX('hit');
-          // Drop collectible from breakable
-          if (obs.drop === 'currency') {
-            this.addScore(50);
-            this._spawnParticle(obs.x, obs.y, '+50', 40);
-          } else if (obs.drop === 'intel') {
-            this._intelCount++; this.addScore(200);
-            this._spawnParticle(obs.x, obs.y, '+200', 40);
-          }
-          this._spawnParticle(obs.x, obs.y, EMOJI.poof, 20);
-          this._obstacles.splice(po, 1);
-          break;
-        }
+    // Projectile → breakable obstacle hits
+    for (var po = this._obstacles.length - 1; po >= 0; po--) {
+      var bObs = this._obstacles[po];
+      if (!bObs.breakable) continue;
+      var bHit = this._bullets.collideFirst(bObs.x, bObs.y, T * 0.6);
+      if (bHit) {
+        this.playSFX('hit');
+        this._collectDrop(bObs);
+        this._obstacles.splice(po, 1);
       }
     }
 
@@ -520,7 +494,7 @@ window.SkiFreeGame = (function () {
       this.addScore(2000);
     }
 
-    this._updateParticles();
+    this._emitter.update();
   };
 
   // ── Trail recording ──
@@ -532,18 +506,17 @@ window.SkiFreeGame = (function () {
   // ── Pursuer spawning ──
   SkiFree.prototype._spawnPursuer = function () {
     var W = this.logicalW, T = this._tileSize;
-    // HP scales with distance: 1 at start, up to 4 at high distance
     var hp = 1 + Math.floor(this._distance / 2500);
     if (hp > 4) hp = 4;
     var S = this._entityScale;
     this._pursuers.push({
       x: W * 0.3 + Math.random() * W * 0.4,
-      y: -T * 4,       // enters from top (player's spawn)
+      y: -T * 4,
       w: T * 0.9 * S, h: T * 1.0 * S,
       hp: hp, maxHp: hp,
       speed: 0.8 + Math.random() * 0.3,
       accel: 0.015 + this._pursuers.length * 0.005,
-      dist: 10,         // tiles behind player
+      dist: 10,
       trail: [],
       alive: true
     });
@@ -555,30 +528,26 @@ window.SkiFreeGame = (function () {
     if (!pur.alive) return;
     var T = this._tileSize;
 
-    // Track player X with lag
     pur.x += (this._player.x - pur.x) * 0.025;
-
-    // Close distance
     pur.speed += pur.accel * 0.016;
     var approach = (pur.speed - this._speed * 0.8) * 0.5;
     if (this._tuck && this._speed > 3.0) approach *= 0.3;
     pur.dist -= approach * 0.016;
 
-    // Visual Y
     var targetY = this._playerRestY - pur.dist * T;
     pur.y += (targetY - pur.y) * 0.08;
 
-    // Trail
     pur.trail.push({ x: pur.x, y: pur.y });
     if (pur.trail.length > PURSUER_TRAIL_LEN) pur.trail.shift();
 
-    // Catch player
     if (pur.dist <= 0.3) {
       this._player.hp -= 20;
       this.playSFX('crash');
       this._crashTimer = 35;
       pur.dist = 3;
-      this._spawnParticle(this._player.x, this._player.y, EMOJI.crash, 30);
+      this._emitter.burst(this._player.x, this._player.y, {
+        emoji: EMOJI.crash, count: 1, speed: 0, life: 30
+      });
       if (this._player.hp <= 0) {
         this._player.hp = 0;
         this.setState(ArcadeEngine.STATE.GAME_OVER);
@@ -592,31 +561,9 @@ window.SkiFreeGame = (function () {
     this._killCount++;
     this.addScore(150);
     this.playSFX('kill');
-    // Poof + shadow particles
-    this._spawnParticle(pur.x, pur.y, EMOJI.poof, 35);
-    this._spawnParticle(pur.x, pur.y + 4, '⬛', 50);  // dark shadow lingers
+    this._emitter.burst(pur.x, pur.y, { emoji: EMOJI.poof, count: 1, speed: 0, life: 35 });
+    this._emitter.burst(pur.x, pur.y + 4, { emoji: '⬛', count: 1, speed: 0, life: 50 });
     this._pursuers.splice(idx, 1);
-  };
-
-  // ── Fire projectile toward target (omnidirectional) ──
-  SkiFree.prototype._fireProjectileAt = function (targetX, targetY) {
-    if (this._shotCooldown > 0) return;
-    var px = this._player.x, py = this._player.y;
-    var dx = targetX - px, dy = targetY - py;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 5) return;  // too close to player, ignore
-    var vx = dx / dist, vy = dy / dist;
-
-    this._shotCooldown = PROJECTILE_COOLDOWN;
-    this._projectiles.push({
-      x: px, y: py,
-      vx: vx, vy: vy,
-      rotation: Math.atan2(vy, vx),
-      traveled: 0,
-      trail: [],           // recent positions for animated tail
-      animTime: Date.now()
-    });
-    this.playSFX('shoot');
   };
 
   // ── Scroll terrain ──
@@ -633,11 +580,9 @@ window.SkiFreeGame = (function () {
       this._intel[j].y -= amt;
       if (this._intel[j].y < -50) this._intel.splice(j, 1);
     }
-    // Scroll player trail too
     for (var t = 0; t < this._playerTrail.length; t++) {
       this._playerTrail[t].y -= amt;
     }
-    // Scroll pursuer trails
     for (var p = 0; p < this._pursuers.length; p++) {
       for (var pt = 0; pt < this._pursuers[p].trail.length; pt++) {
         this._pursuers[p].trail[pt].y -= amt;
@@ -645,45 +590,48 @@ window.SkiFreeGame = (function () {
     }
   };
 
-  // ── Obstacle spawning ──
+  // ── Obstacle spawning (via WeightedTable) ──
   SkiFree.prototype._spawnObstacleAt = function (y) {
     var W = this.logicalW, T = this._tileSize, margin = T * 2;
-    var tpl = pickObstacle();
+    var tpl = obstacleTable.pick();
     var obs = {
       x: margin + Math.random() * (W - margin * 2), y: y,
       w: T * tpl.w, h: T * tpl.h,
       emoji: tpl.emoji, damage: tpl.damage,
       breakable: tpl.breakable || false,
-      zBlock: tpl.zBlock || false,   // can player hide behind this?
+      zBlock: tpl.zBlock || false,
       nearMissed: false, drop: null
     };
-    // Breakables may contain drops
     if (obs.breakable && Math.random() < 0.6) {
       obs.drop = Math.random() < 0.7 ? 'currency' : 'intel';
     }
     this._obstacles.push(obs);
   };
 
-  // ── Hit obstacle ──
+  // ── Collect drop from a breakable obstacle ──
+  SkiFree.prototype._collectDrop = function (obs) {
+    if (obs.drop === 'currency') {
+      this.addScore(50);
+      this._emitter.burst(obs.x, obs.y, { emoji: '+50', count: 1, speed: 0, life: 40, gravity: -0.3 });
+    } else if (obs.drop === 'intel') {
+      this._intelCount++; this.addScore(200);
+      this._emitter.burst(obs.x, obs.y, { emoji: '+200', count: 1, speed: 0, life: 40, gravity: -0.3 });
+    }
+    this._emitter.burst(obs.x, obs.y, { emoji: EMOJI.poof, count: 1, speed: 0, life: 20 });
+  };
+
+  // ── Hit obstacle (player body collision) ──
   SkiFree.prototype._hitObstacle = function (obs, idx) {
     if (obs.emoji === EMOJI.tree || obs.emoji === EMOJI.snowFir) this._treeHit = true;
     this._player.hp -= obs.damage;
     this._crashTimer = obs.breakable ? 15 : 30;
     this._crashEmoji = EMOJI.crash;
-    this._spawnParticle(obs.x, obs.y, EMOJI.crash, 25);
+    this._emitter.burst(obs.x, obs.y, { emoji: EMOJI.crash, count: 1, speed: 0, life: 25 });
     this.sfxMap['crash'] = 'kitty-' + (1 + Math.floor(Math.random() * 3));
     this.playSFX('crash');
 
     if (obs.breakable) {
-      // Drop collectible
-      if (obs.drop === 'currency') {
-        this.addScore(50);
-        this._spawnParticle(obs.x, obs.y, '+50', 40);
-      } else if (obs.drop === 'intel') {
-        this._intelCount++; this.addScore(200);
-        this._spawnParticle(obs.x, obs.y, '+200', 40);
-      }
-      this._spawnParticle(obs.x, obs.y, EMOJI.poof, 20);
+      this._collectDrop(obs);
       this._obstacles.splice(idx, 1);
     }
 
@@ -696,18 +644,6 @@ window.SkiFreeGame = (function () {
            (a.x + a.w * (1 - s)) > (b.x - b.w * s) &&
            (a.y - a.h * s) < (b.y + b.h * (1 - s)) &&
            (a.y + a.h * (1 - s)) > (b.y - b.h * s);
-  };
-
-  SkiFree.prototype._spawnParticle = function (x, y, text, life) {
-    this._particles.push({ x: x, y: y, text: text, life: life, maxLife: life });
-  };
-
-  SkiFree.prototype._updateParticles = function () {
-    for (var p = this._particles.length - 1; p >= 0; p--) {
-      this._particles[p].life--;
-      this._particles[p].y -= 0.3;
-      if (this._particles[p].life <= 0) this._particles.splice(p, 1);
-    }
   };
 
   // ════════════════════════════════════════════════════════════
@@ -760,21 +696,18 @@ window.SkiFreeGame = (function () {
       this._drawTrail(ctx, this._pursuers[pt].trail, 'rgba(40,40,40,', 1.5);
     }
 
-    // ── Z-ordered rendering: obstacles below player, then player, then obstacles above ──
-    // "Above" = already scrolled past (obs.y < playerY). If a tree-type obstacle
-    // is within the top 15-20% proximity zone, it draws ON TOP of the player.
+    // ── Z-ordered rendering ──
     var belowObs = [], aboveObs = [];
-    var hideZone = T * 1.5;  // how far above player an obstacle can be to "cover" them
+    var hideZone = T * 1.5;
     for (var oi = 0; oi < this._obstacles.length; oi++) {
       var ob = this._obstacles[oi];
       if (ob.zBlock && ob.y < playerY && ob.y > playerY - hideZone) {
-        aboveObs.push(ob);  // these draw ON TOP of the player
+        aboveObs.push(ob);
       } else {
-        belowObs.push(ob);  // normal draw order (below player layer)
+        belowObs.push(ob);
       }
     }
 
-    // Draw below-layer obstacles
     for (var bi = 0; bi < belowObs.length; bi++) {
       this.drawEmoji(ctx, belowObs[bi].emoji, belowObs[bi].x, belowObs[bi].y, T * 0.9, { glow: true });
     }
@@ -786,64 +719,21 @@ window.SkiFreeGame = (function () {
       this.drawEmoji(ctx, pk.emoji, pk.x, pk.y + bob, T * 0.7, { glow: true, glowColor: this.colors.amber });
     }
 
-    // ── Projectiles (animated, rotated toward target) ──
-    for (var pr = 0; pr < this._projectiles.length; pr++) {
-      var pj = this._projectiles[pr];
-
-      // Trail: gradient tail behind the projectile
-      if (pj.trail.length > 1) {
-        ctx.lineCap = 'round';
-        for (var tri = 1; tri < pj.trail.length; tri++) {
-          var tAlpha = (tri / pj.trail.length) * 0.45;
-          var tWidth = (tri / pj.trail.length) * (PROJECTILE_SIZE * 1.5);
-          ctx.strokeStyle = 'rgba(255,200,80,' + tAlpha + ')';
-          ctx.lineWidth = tWidth;
-          ctx.beginPath();
-          ctx.moveTo(pj.trail[tri - 1].x, pj.trail[tri - 1].y);
-          ctx.lineTo(pj.trail[tri].x, pj.trail[tri].y);
-          ctx.stroke();
-        }
-      }
-
-      // Head: rotated glowing sprite
-      ctx.save();
-      ctx.translate(pj.x, pj.y);
-      ctx.rotate(pj.rotation);
-
-      // Animated pulse: size oscillates
-      var pulsePhase = ((Date.now() - pj.animTime) * 0.02) % (Math.PI * 2);
-      var pulseR = PROJECTILE_SIZE * (1.0 + 0.3 * Math.sin(pulsePhase));
-
-      // Outer glow
-      ctx.shadowColor = '#FF8800';
-      ctx.shadowBlur = pulseR * 3;
-      ctx.fillStyle = '#FFCC44';
-      ctx.beginPath(); ctx.arc(0, 0, pulseR, 0, Math.PI * 2); ctx.fill();
-
-      // Inner bright core
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath(); ctx.arc(0, 0, pulseR * 0.45, 0, Math.PI * 2); ctx.fill();
-
-      ctx.restore();
-    }
+    // ── Projectiles (via ProjectileSystem) ──
+    this._bullets.draw(ctx, { size: PROJECTILE_SIZE });
 
     // ── Pursuers (⛷️ with dark overlay) ──
     for (var pui = 0; pui < this._pursuers.length; pui++) {
       var pur = this._pursuers[pui];
       if (pur.y < -T * 2) continue;
-      // Draw dark skier: use compositing to darken
       ctx.save();
-      // Base emoji
-      var purSize = T * 1.0 * this._entityScale;
+      var purSize = T * this._entityScale;
       this.drawEmoji(ctx, EMOJI.player, pur.x, pur.y, purSize);
-      // Dark overlay: draw a dark rect with multiply-like effect
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = 'rgba(15,15,15,0.75)';
       ctx.fillRect(pur.x - purSize * 0.6, pur.y - purSize * 0.6, purSize * 1.2, purSize * 1.2);
       ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
-      // HP pips if multi-hit
       if (pur.maxHp > 1) {
         for (var hp = 0; hp < pur.hp; hp++) {
           ctx.fillStyle = '#ff4757';
@@ -858,21 +748,13 @@ window.SkiFreeGame = (function () {
     } else {
       ctx.save();
       ctx.translate(this._player.x, this._player.y);
-
-      // Carving: scaleX flips based on direction, narrows during hard turns
       var dir = this._steerX;
-      // ⛷️ emoji faces left natively; flip when steering RIGHT so
-      // the emoji's back leads the forward direction (reverse stance)
       var flipX = dir > 0.1 ? -1 : 1;
-      // Narrow during carving: compress scaleX based on turn intensity via sine
       var turnIntensity = Math.abs(dir);
       var narrowFactor = 1.0 - turnIntensity * 0.35 * (0.5 + 0.5 * Math.sin(Date.now() * 0.008));
       ctx.scale(flipX * narrowFactor, 1);
-
-      // Slight rotation for lean
       ctx.rotate(dir * 0.15);
-
-      ctx.font = Math.floor(T * 1.1 * this._entityScale) + 'px serif';
+      ctx.font = Math.floor(T * this._entityScale) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       if (this.colors.phosphor) { ctx.shadowColor = this.colors.phosphor; ctx.shadowBlur = 8; }
       ctx.fillText(EMOJI.player, 0, 0);
@@ -890,18 +772,8 @@ window.SkiFreeGame = (function () {
         T * 0.8, { alpha: this._crashTimer / 30 });
     }
 
-    // ── Particles ──
-    for (var pa = 0; pa < this._particles.length; pa++) {
-      var pt2 = this._particles[pa];
-      var ptA = pt2.life / pt2.maxLife;
-      if (pt2.text.length <= 2) {
-        this.drawEmoji(ctx, pt2.text, pt2.x, pt2.y, T * 0.6, { alpha: ptA });
-      } else {
-        ctx.save(); ctx.globalAlpha = ptA;
-        this.drawText(ctx, pt2.text, pt2.x, pt2.y, 11, this.colors.amber, 'center');
-        ctx.restore();
-      }
-    }
+    // ── Particles (via ParticleEmitter) ──
+    this._drawParticles(ctx, T);
 
     // ── Snow spray ──
     if (this._speed > 2.5 && this._crashTimer <= 0 && this._introComplete) {
@@ -927,7 +799,6 @@ window.SkiFreeGame = (function () {
 
     // ════════════ HUD ════════════
 
-    // HP bar
     var bW = 80, bH = 6, bX = 8, bY = 6;
     ctx.fillStyle = '#333'; ctx.fillRect(bX, bY, bW, bH);
     var hpP = this._player.hp / 100;
@@ -948,10 +819,10 @@ window.SkiFreeGame = (function () {
       ctx.restore();
     }
 
-    // Section flash
-    if (this._sectionFlash > 0 && this._lastSection) {
+    // Section flash (via DifficultyRamp)
+    if (this._sectionFlash > 0 && difficultyRamp.sectionName()) {
       ctx.save(); ctx.globalAlpha = Math.min(1, this._sectionFlash / 40);
-      this.drawText(ctx, '— ' + this._lastSection.name.toUpperCase() + ' —', W / 2, H * 0.15, 16, ph, 'center');
+      this.drawText(ctx, '— ' + difficultyRamp.sectionName().toUpperCase() + ' —', W / 2, H * 0.15, 16, ph, 'center');
       ctx.restore();
     }
 
@@ -987,14 +858,11 @@ window.SkiFreeGame = (function () {
       ctx.fillRect(0, 0, W, H);
 
       if (et < 60) {
-        // Phase 1: motorcycle appears at bottom, player skis toward it
         var motoY = H * 0.7;
         this.drawEmoji(ctx, EMOJI.motorcycle, W / 2, motoY, T * 1.5, { glow: true });
-        // Player slides down toward motorcycle (grows to full size during extraction)
         var slideY = this._playerRestY + (motoY - this._playerRestY) * Math.min(1, et / 50);
         this.drawEmoji(ctx, EMOJI.player, this._player.x, slideY, T * 1.1 * this._entityScale, { glow: true });
       } else if (et < 80) {
-        // Phase 2: poof! player becomes second motorcycle
         var poofAlpha = 1 - (et - 60) / 20;
         this.drawEmoji(ctx, EMOJI.poof, W / 2, H * 0.7, T * 2, { alpha: poofAlpha });
         this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 - T, H * 0.7, T * 1.3, { glow: true });
@@ -1002,19 +870,36 @@ window.SkiFreeGame = (function () {
           this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 + T, H * 0.7, T * 1.3, { glow: true });
         }
       } else {
-        // Phase 3: two motorcycles ride off (scroll down off screen)
         var rideOff = (et - 80) * 3;
         var mY = H * 0.7 - rideOff;
         this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 - T, mY, T * 1.3, { glow: true });
         this.drawEmoji(ctx, EMOJI.motorcycle, W / 2 + T, mY, T * 1.3, { glow: true });
 
-        // Text
         this.drawText(ctx, 'EXTRACTED', W / 2, H * 0.35, 22, this.colors.phosphorBright, 'center');
         this.drawText(ctx, Math.floor(this._distance) + 'm  |  ' + this._killCount + ' PURSUERS FELLED', W / 2, H * 0.45, 12, ph, 'center');
         if (this._intelCount > 0) this.drawText(ctx, 'INTEL: ' + this._intelCount, W / 2, H * 0.52, 12, this.colors.amber, 'center');
         if (!this._treeHit) this.drawText(ctx, '★ PERFECT DESCENT ★', W / 2, H * 0.59, 14, this.colors.amber, 'center');
       }
       ctx.restore();
+    }
+  };
+
+  // ── Draw particles with text/emoji rendering via ArcadeEngine ──
+  // ParticleEmitter stores emoji strings; we render them using drawEmoji/drawText
+  // instead of the emitter's generic draw() which doesn't know about ArcadeEngine's API.
+  SkiFree.prototype._drawParticles = function (ctx, T) {
+    var particles = this._emitter.getParticles();
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (!p.alive) continue;
+      var alpha = p.life / p.maxLife;
+      if (p.emoji && p.emoji.length <= 2) {
+        this.drawEmoji(ctx, p.emoji, p.x, p.y, T * 0.6, { alpha: alpha });
+      } else if (p.emoji) {
+        ctx.save(); ctx.globalAlpha = alpha;
+        this.drawText(ctx, p.emoji, p.x, p.y, 11, this.colors.amber, 'center');
+        ctx.restore();
+      }
     }
   };
 
@@ -1042,7 +927,7 @@ window.SkiFreeGame = (function () {
     this._extractionDist = 5000;
     this._introComplete = true;
     this._player.y = this._playerRestY;
-    this._spawnPursuer();  // immediate pursuer in boss mode
+    this._spawnPursuer();
   };
 
   SkiFree.prototype.onBossUnmount = function () {
