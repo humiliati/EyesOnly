@@ -92,16 +92,17 @@ window.SkiFreeGame = (function () {
 
     this.sfxMap = {
       'hop':        'drop-1',
-      'crash':      'kitty-1',
-      'death':      'kitty-1',
+      'crash':      'crunch-1',
+      'death':      'crunch-1',
       'game-over':  'game-over-1',
       'near-miss':  'coin-2',
       'level-up':   'toad',
       'game-start': 'power-up-1',
       'intel':      'coin-2',
+      'pickup-health': 'sq-sq-pickup-success2',
       'ice-slide':  'water-1',
       'shoot':      'drop-1',
-      'hit':        'hit-1',
+      'hit':        'kitty-1',
       'kill':       'metal-hit-1',
       'extraction': 'toad'
     };
@@ -121,6 +122,7 @@ window.SkiFreeGame = (function () {
     this._obstacles = [];
     this._icePatches = [];
     this._intel = [];
+    this._foodPickups = [];
     this._pursuers = [];
     this._distance = 0;
     this._speed = 0;
@@ -184,6 +186,7 @@ window.SkiFreeGame = (function () {
     this._obstacles = [];
     this._icePatches = [];
     this._intel = [];
+    this._foodPickups = [];
     this._pursuers = [];
     this._bullets.clear();
     this._emitter.clear();
@@ -333,8 +336,8 @@ window.SkiFreeGame = (function () {
     // ── Crash recovery ──
     if (this._crashTimer > 0) {
       this._crashTimer--;
-      this._speed *= 0.96;
-      if (this._speed < 1.0) this._speed = 1.0;
+      this._speed *= 0.975;
+      if (this._speed < 1.2) this._speed = 1.2;
       if (this._crashTimer <= 0) this._crashEmoji = null;
       this._distance += this._speed * 0.3;
       this._scrollTerrain(this._speed * 0.3, H);
@@ -419,6 +422,29 @@ window.SkiFreeGame = (function () {
       }
     }
 
+    // ── Food / HP recovery pickups ──
+    for (var fi = this._foodPickups.length - 1; fi >= 0; fi--) {
+      var food = this._foodPickups[fi];
+      if (this._overlaps(this._player, food)) {
+        var hpBefore = this._player.hp;
+        this._player.hp = Math.min(100, this._player.hp + food.heal);
+        var hpGain = this._player.hp - hpBefore;
+        if (hpGain > 0) {
+          this.playSFX('pickup-health');
+          this._emitter.burst(food.x, food.y, {
+            emoji: '+' + hpGain + 'HP', count: 1, speed: 0, life: 50, gravity: -0.3
+          });
+        } else {
+          this.playSFX('near-miss');
+          this._emitter.burst(food.x, food.y, {
+            emoji: food.emoji, count: 1, speed: 0, life: 30, gravity: -0.3
+          });
+        }
+        this.addScore(25);
+        this._foodPickups.splice(fi, 1);
+      }
+    }
+
     // ── Spawning (density ramps with distance, grace period at start) ──
     var spawnChance = 0;
     if (this._distance > 150) {
@@ -439,6 +465,26 @@ window.SkiFreeGame = (function () {
       this._intel.push({
         x: margin + Math.random() * (W - margin * 2), y: H + 30,
         w: T * 0.7, h: T * 0.7, emoji: EMOJI.intel
+      });
+    }
+
+    // ── Food / HP recovery spawning (rarer than intel, more frequent when hurt) ──
+    var foodChance = 0.002;
+    if (this._player.hp < 50) foodChance = 0.005;
+    if (this._player.hp < 25) foodChance = 0.009;
+    if (this._distance > 200 && Math.random() < foodChance) {
+      var foodTypes = [
+        { emoji: '🍎', heal: 10, name: 'Apple' },
+        { emoji: '🍕', heal: 20, name: 'Pizza' },
+        { emoji: '☕', heal: 15, name: 'Coffee' },
+        { emoji: '🍩', heal: 12, name: 'Donut' },
+        { emoji: '🥤', heal: 10, name: 'Juice' }
+      ];
+      var ft = foodTypes[Math.floor(Math.random() * foodTypes.length)];
+      this._foodPickups.push({
+        x: margin + Math.random() * (W - margin * 2), y: H + 30,
+        w: T * 0.7, h: T * 0.7,
+        emoji: ft.emoji, heal: ft.heal, name: ft.name
       });
     }
 
@@ -469,6 +515,7 @@ window.SkiFreeGame = (function () {
       var hit = this._bullets.collideFirst(pur.x, pur.y, hitR);
       if (hit) {
         pur.hp--;
+        this.sfxMap['hit'] = 'kitty-' + (1 + Math.floor(Math.random() * 3));
         this.playSFX('hit');
         this._emitter.burst(pur.x, pur.y, { emoji: EMOJI.crash, count: 1, speed: 0, life: 15 });
         if (pur.hp <= 0) this._killPursuer(pk);
@@ -543,7 +590,7 @@ window.SkiFreeGame = (function () {
     if (pur.dist <= 0.3) {
       this._player.hp -= 20;
       this.playSFX('crash');
-      this._crashTimer = 35;
+      this._crashTimer = 44;
       pur.dist = 3;
       this._emitter.burst(this._player.x, this._player.y, {
         emoji: EMOJI.crash, count: 1, speed: 0, life: 30
@@ -579,6 +626,10 @@ window.SkiFreeGame = (function () {
     for (var j = this._intel.length - 1; j >= 0; j--) {
       this._intel[j].y -= amt;
       if (this._intel[j].y < -50) this._intel.splice(j, 1);
+    }
+    for (var fi = this._foodPickups.length - 1; fi >= 0; fi--) {
+      this._foodPickups[fi].y -= amt;
+      if (this._foodPickups[fi].y < -50) this._foodPickups.splice(fi, 1);
     }
     for (var t = 0; t < this._playerTrail.length; t++) {
       this._playerTrail[t].y -= amt;
@@ -624,10 +675,10 @@ window.SkiFreeGame = (function () {
   SkiFree.prototype._hitObstacle = function (obs, idx) {
     if (obs.emoji === EMOJI.tree || obs.emoji === EMOJI.snowFir) this._treeHit = true;
     this._player.hp -= obs.damage;
-    this._crashTimer = obs.breakable ? 15 : 30;
+    this._crashTimer = obs.breakable ? 19 : 38;
     this._crashEmoji = EMOJI.crash;
     this._emitter.burst(obs.x, obs.y, { emoji: EMOJI.crash, count: 1, speed: 0, life: 25 });
-    this.sfxMap['crash'] = 'kitty-' + (1 + Math.floor(Math.random() * 3));
+    this.sfxMap['crash'] = 'crunch-' + (1 + Math.floor(Math.random() * 3));
     this.playSFX('crash');
 
     if (obs.breakable) {
@@ -717,6 +768,13 @@ window.SkiFreeGame = (function () {
       var pk = this._intel[ji];
       var bob = Math.sin(Date.now() * 0.005 + ji) * 3;
       this.drawEmoji(ctx, pk.emoji, pk.x, pk.y + bob, T * 0.7, { glow: true, glowColor: this.colors.amber });
+    }
+
+    // ── Food / HP recovery pickups ──
+    for (var fdi = 0; fdi < this._foodPickups.length; fdi++) {
+      var fd = this._foodPickups[fdi];
+      var fbob = Math.sin(Date.now() * 0.004 + fdi * 2) * 4;
+      this.drawEmoji(ctx, fd.emoji, fd.x, fd.y + fbob, T * 0.7, { glow: true, glowColor: '#FF6B9D' });
     }
 
     // ── Projectiles (via ProjectileSystem) ──
