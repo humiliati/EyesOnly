@@ -26,8 +26,14 @@ window.JezzBallGame = (function () {
   var direction = 'h';             // next wall direction
   var won = false, lost = false;
   var MAX_BUILDERS = 4;            // max simultaneous builders
-  var BUILD_SPEED = 1.36;          // cells per frame (~15% slower than 1.6)
+  var BUILD_SPEED = 0.95;          // cells per frame (deliberate, readable pace)
   var buildAccum = 0;              // fractional accumulator for builder steps
+
+  // ── Seal sound pool + cooldown (prevents audio spam) ──
+  var SEAL_SOUNDS = ['metal-hit-1', 'metal-hit-2', 'clang1', 'clang2', 'clang3',
+                     'clang4', 'clang5', 'clang6', 'impact-1', 'impact-2'];
+  var _lastSealSFXTime = 0;
+  var SEAL_SFX_COOLDOWN = 200;     // ms between seal sounds
 
   // ── Level transition animation ──
   var levelTransition = null;      // { timer, nextLevel }
@@ -329,7 +335,7 @@ window.JezzBallGame = (function () {
         sealBuilder(currentIdx);
         sealBuilder(otherIdx);
       }
-      playSFX('metal-hit-1', 0.4);
+      playSealSFX(0.4);
       return true;
     }
 
@@ -444,7 +450,7 @@ window.JezzBallGame = (function () {
       floodFillOpen();
       calcPct();
       score += sealed * 3;  // partial wall gets reduced score
-      playSFX('metal-hit-1', 0.2);
+      playSealSFX(0.2);
 
       if (pct >= 75 && !won) {
         won = true;
@@ -490,7 +496,7 @@ window.JezzBallGame = (function () {
     calcPct();
 
     score += wallCells * 5;
-    playSFX('metal-hit-1', 0.3);
+    playSealSFX(0.3);
 
     if (pct >= 75 && !won) {
       won = true;
@@ -533,7 +539,7 @@ window.JezzBallGame = (function () {
       floodFillOpen();
       calcPct();
       score += sealed * 4;  // partial wall score (slightly less than full seal)
-      playSFX('metal-hit-1', 0.2);
+      playSealSFX(0.2);
 
       if (pct >= 75 && !won) {
         won = true;
@@ -616,6 +622,16 @@ window.JezzBallGame = (function () {
     }
   }
 
+  // Cooldown-aware seal sound — picks a random sound from the pool,
+  // suppresses rapid-fire calls (sealHalf + sealBuilder in same frame)
+  function playSealSFX(vol) {
+    var now = Date.now();
+    if (now - _lastSealSFXTime < SEAL_SFX_COOLDOWN) return;
+    _lastSealSFXTime = now;
+    var sound = SEAL_SOUNDS[Math.floor(Math.random() * SEAL_SOUNDS.length)];
+    playSFX(sound, vol);
+  }
+
   function update() {
     if (lost) return;
 
@@ -632,7 +648,7 @@ window.JezzBallGame = (function () {
     if (won) return;
 
     updateBalls();
-    // Fractional builder advancement (~1.6 cells/frame instead of 2)
+    // Fractional builder advancement (~0.95 cells/frame)
     if (builders.length > 0) {
       buildAccum += BUILD_SPEED;
       while (buildAccum >= 1) {
@@ -652,6 +668,11 @@ window.JezzBallGame = (function () {
     var ph = getComputedStyle(document.documentElement).getPropertyValue('--phosphor').trim() || '#1cff9b';
     var dim = getComputedStyle(document.documentElement).getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
 
+    // Parse phosphor hex → RGB for gradient construction
+    var phR = parseInt(ph.substr(1, 2), 16) || 28;
+    var phG = parseInt(ph.substr(3, 2), 16) || 255;
+    var phB = parseInt(ph.substr(5, 2), 16) || 155;
+
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
 
@@ -669,15 +690,50 @@ window.JezzBallGame = (function () {
       ['#1cffff', '#ff1c1c']     // cyan / red
     ];
 
-    // Grid
+    // ── Grid: perimeter walls = 3D blocks, interior = hollowed, builders = two-color ──
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
         var v = grid[r * cols + c];
         if (v === 1) {
-          ctx.fillStyle = dim;
-          ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+          // Determine perimeter vs interior:
+          // Perimeter = adjacent to any non-wall cell (open, builder, or OOB border)
+          var bx = c * CELL, by = r * CELL;
+          var isBorder = (c === 0 || c === cols - 1 || r === 0 || r === rows - 1);
+          var isPerimeter = isBorder;
+          if (!isBorder) {
+            // Check cardinal neighbors for non-wall
+            if (grid[r * cols + c - 1] !== 1 ||
+                grid[r * cols + c + 1] !== 1 ||
+                grid[(r - 1) * cols + c] !== 1 ||
+                grid[(r + 1) * cols + c] !== 1) {
+              isPerimeter = true;
+            }
+          }
+
+          if (isPerimeter) {
+            // ─ Solid block with 3D bevel (perimeter / active boundary) ─
+            ctx.fillStyle = dim;
+            ctx.fillRect(bx, by, CELL, CELL);
+            // Top + left highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.14)';
+            ctx.fillRect(bx, by, CELL, 1);
+            ctx.fillRect(bx, by + 1, 1, CELL - 1);
+            // Bottom + right shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.fillRect(bx, by + CELL - 1, CELL, 1);
+            ctx.fillRect(bx + CELL - 1, by, 1, CELL - 1);
+          } else {
+            // ─ Hollowed interior (dead space) ─
+            ctx.fillStyle = 'rgba(8,16,12,0.9)';
+            ctx.fillRect(bx, by, CELL, CELL);
+            // Subtle grid outline
+            ctx.strokeStyle = 'rgba(' + phR + ',' + phG + ',' + phB + ',0.04)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(bx + 0.5, by + 0.5, CELL - 1, CELL - 1);
+          }
+
         } else if (v >= 2) {
-          // Two-color builder rendering — A-side vs B-side from spawn point
+          // ─ Builder cells: two-color A/B rendering from spawn point ─
           var builderId = v - 2;
           var bld = _builderMap[builderId];
           var pair = sideColors[builderId % sideColors.length];
@@ -703,15 +759,37 @@ window.JezzBallGame = (function () {
       }
     }
 
-    // Balls with glow
+    // ── Ball light emission (additive radial glow — Gone Rogue style) ──
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (var li = 0; li < balls.length; li++) {
+      var lb = balls[li];
+      var glowR = CELL * 6;   // 6-cell glow radius
+      var grad = ctx.createRadialGradient(lb.x, lb.y, lb.r * 0.5, lb.x, lb.y, glowR);
+      grad.addColorStop(0,   'rgba(' + phR + ',' + phG + ',' + phB + ',0.22)');
+      grad.addColorStop(0.2, 'rgba(' + phR + ',' + phG + ',' + phB + ',0.12)');
+      grad.addColorStop(0.5, 'rgba(' + phR + ',' + phG + ',' + phB + ',0.04)');
+      grad.addColorStop(1,   'rgba(' + phR + ',' + phG + ',' + phB + ',0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(lb.x - glowR, lb.y - glowR, glowR * 2, glowR * 2);
+    }
+    ctx.restore();
+
+    // ── Balls (core) ──
     for (var i = 0; i < balls.length; i++) {
       var ball = balls[i];
       ctx.save();
       ctx.shadowColor = ph;
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 8;
       ctx.fillStyle = ph;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner bright core
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.beginPath();
+      ctx.arc(ball.x - 1, ball.y - 1, ball.r * 0.35, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
