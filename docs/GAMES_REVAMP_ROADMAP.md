@@ -233,7 +233,7 @@ These three don't map to boss encounters. They get the shared infrastructure tre
 
 #### JezzBall Sub-Phases
 
-**JB-0: Hotfix (immediate)**
+**JB-0: Hotfix (immediate)** ✅ COMPLETE (2026-03-20)
 Fix mobile input and ball spawning on the existing 274-line implementation so it's playable while the full rewrite is planned.
 
 | Fix | Detail |
@@ -242,7 +242,7 @@ Fix mobile input and ball spawning on the existing 274-line implementation so it
 | Ball spawn safety | Validate spawn position is in open cell (grid value 0), retry up to 20 times. Minimum 2-cell margin from any wall. |
 | Touch direction toggle | Swipe gesture or quick drag angle > 45° from horizontal = vertical; < 45° = horizontal. Visual indicator shows current orientation at touch point. |
 
-**JB-1: ArcadeEngine rewrite**
+**JB-1: ArcadeEngine rewrite** ✅ COMPLETE (2026-03-21)
 Rewrite as `ArcadeEngine` subclass (like Frogger). Port to fixed-timestep loop, emoji renderer, HUD, SFX map, currency.
 
 | Feature | Detail |
@@ -254,7 +254,7 @@ Rewrite as `ArcadeEngine` subclass (like Frogger). Port to fixed-timestep loop, 
 | Currency | `¢ = floor(score × 0.015)` |
 | HUD | Level, fill %, lives, direction indicator, currency earned |
 
-**JB-2: Gone-rogue ricochet physics**
+**JB-2: Gone-rogue ricochet physics** ✅ COMPLETE (2026-03-21)
 Port the ricochet system from `projectile-system.js` for ball movement.
 
 | Feature | Detail |
@@ -266,7 +266,7 @@ Port the ricochet system from `projectile-system.js` for ball movement.
 | Ball-ball collision | Circle-circle detection (from `ArcadeEngine.collideCircle`), elastic response — balls deflect off each other |
 | Sub-step collision | At high speeds, step collision in sub-increments to prevent tunneling through thin walls |
 
-**JB-3: Fireball sprites & particle FX**
+**JB-3: Fireball sprites & particle FX** ✅ COMPLETE (2026-03-21)
 Replace plain circles with gone-rogue's fireball sprite assets and add particle effects.
 
 | Asset | Source | Usage |
