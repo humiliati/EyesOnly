@@ -136,13 +136,18 @@ var ArcadeInput = (function () {
   // ── Canvas-relative coordinates ──
 
   ArcadeInput.prototype._canvasXY = function (clientX, clientY) {
-    var rect = this._canvas.getBoundingClientRect();
-    // Return logical (CSS) coordinates, NOT pixel-buffer coordinates.
-    // ArcadeEngine draws in logical space (ctx is pre-scaled by DPR),
-    // and anchors are set in logical space, so input must match.
+    var c = this._canvas;
+    var rect = c.getBoundingClientRect();
+    // Map CSS display position → logical drawing coordinates.
+    // ArcadeEngine caps logicalW via MAX_CANVAS_WIDTH and scales ctx by DPR,
+    // so the drawing space may be smaller than the CSS display size.
+    // canvas.width = logicalW * DPR; dividing out DPR gives logicalW.
+    var dpr = window.devicePixelRatio || 1;
+    var logicalW = c.width / dpr;
+    var logicalH = c.height / dpr;
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) * logicalW / rect.width,
+      y: (clientY - rect.top) * logicalH / rect.height
     };
   };
 
