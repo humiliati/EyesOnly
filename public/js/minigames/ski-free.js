@@ -170,7 +170,21 @@ window.SkiFreeGame = (function () {
   // ════════════════════════════════════════════════════════════
 
   SkiFree.prototype.onInit = function () { this._resetState(); };
-  SkiFree.prototype.onStart = function () { this._resetState(); };
+  SkiFree.prototype.onStart = function () {
+    this._resetState();
+
+    // ── Difficulty scaling ──
+    var dm = this.difficultyMultiplier();
+    // Scale base speed: T1 slower, T3 faster
+    this._baseSpeed = 2.0 * dm;
+    this._maxSpeed = 4.5 * dm;
+    // Adjust lives
+    if (this.difficulty === 1) {
+      this.lives = 1;  // already set to 1, but could add extra recovery
+    } else if (this.difficulty === 3) {
+      this.lives = 1;
+    }
+  };
 
   SkiFree.prototype._resetState = function () {
     var W = this.logicalW, H = this.logicalH;
@@ -449,7 +463,9 @@ window.SkiFreeGame = (function () {
     var spawnChance = 0;
     if (this._distance > 150) {
       var ramp = Math.min(1.0, (this._distance - 150) / 450);
-      spawnChance = difficultyRamp.get('obstRate', 0.015) * ramp * (0.9 + this._distance * 0.00003);
+      var dm = this.difficultyMultiplier();
+      var baseRate = difficultyRamp.get('obstRate', 0.015);
+      spawnChance = baseRate * dm * ramp * (0.9 + this._distance * 0.00003);
       if (spawnChance > 0.30) spawnChance = 0.30;
     }
     if (Math.random() < spawnChance) this._spawnObstacleAt(H + 30 + Math.random() * 40);

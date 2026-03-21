@@ -76,6 +76,19 @@ window.BreakoutGame = (function () {
 
   Breakout.prototype.onStart = function () {
     this._resetState();
+
+    // ── Difficulty scaling ──
+    var dm = this.difficultyMultiplier();
+    // T1 (0.7): +1 life, slower ball
+    // T2 (1.0): default
+    // T3 (1.4): -1 life, faster ball
+    if (this.difficulty === 1) {
+      this.lives = 4;  // +1 extra life
+    } else if (this.difficulty === 2) {
+      this.lives = 3;
+    } else if (this.difficulty === 3) {
+      this.lives = 2;  // -1 life
+    }
   };
 
   Breakout.prototype.onResize = function () {
@@ -147,12 +160,14 @@ window.BreakoutGame = (function () {
     var playW = this.logicalW;
     var playH = this.logicalH;
 
+    var dm = this.difficultyMultiplier();
     var baseSpeed = 3 + this.level * 0.3;
+    var scaledSpeed = baseSpeed * dm;
     this._ball = {
       x: this._paddle.x,
       y: playH - PADDLE_OFFSET_Y - this._paddle.h - 10,
-      vx: (Math.random() < 0.5 ? 1 : -1) * baseSpeed,
-      vy: -baseSpeed * 1.2,
+      vx: (Math.random() < 0.5 ? 1 : -1) * scaledSpeed,
+      vy: -scaledSpeed * 1.2,
       r: BALL_RADIUS
     };
 

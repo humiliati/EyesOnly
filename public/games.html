@@ -854,7 +854,7 @@
       tiles.forEach(function (tile) {
         var gameId = tile.getAttribute('data-minigame');
 
-        // Inject high score badge if the player has one
+        // Inject high score badge + achievement medal if the player has one
         try {
           var allScores = JSON.parse(localStorage.getItem('eyesonly_arcade_highscores') || '{}');
           var hs = allScores[gameId] || 0;
@@ -863,6 +863,24 @@
             badge.className = 'games-arcade-hiscore';
             badge.innerHTML = 'HI <span class="games-arcade-hiscore-value">' + hs.toLocaleString() + '</span>';
             tile.appendChild(badge);
+          }
+
+          // Achievement medal badge
+          if (hs > 0 && typeof ArcadeEngine !== 'undefined' && ArcadeEngine.ACHIEVEMENT_THRESHOLDS) {
+            var thresh = ArcadeEngine.ACHIEVEMENT_THRESHOLDS[gameId];
+            if (thresh) {
+              var medal = null;
+              if (hs >= thresh.gold) medal = { emoji: '🥇', cls: 'gold' };
+              else if (hs >= thresh.silver) medal = { emoji: '🥈', cls: 'silver' };
+              else if (hs >= thresh.bronze) medal = { emoji: '🥉', cls: 'bronze' };
+
+              if (medal) {
+                var medalEl = document.createElement('div');
+                medalEl.className = 'games-arcade-medal games-arcade-medal-' + medal.cls;
+                medalEl.textContent = medal.emoji;
+                tile.appendChild(medalEl);
+              }
+            }
           }
         } catch (_) {}
 

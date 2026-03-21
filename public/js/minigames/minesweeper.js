@@ -68,6 +68,23 @@ window.MinesweeperGame = (function () {
 
   Minesweeper.prototype.onStart = function () {
     this._resetState();
+
+    // ── Difficulty scaling ──
+    var dm = this.difficultyMultiplier();
+    // Adjust mine density and lives
+    if (this.difficulty === 1) {
+      // T1: fewer mines (0.7 multiplier), easier cells
+      this._mineCount = Math.max(3, Math.floor(this._cols * this._rows * 0.15 * 0.6));
+      this.lives = 2;
+    } else if (this.difficulty === 2) {
+      // T2: default mine count
+      this._mineCount = Math.max(5, Math.floor(this._cols * this._rows * 0.15));
+      this.lives = 1;
+    } else if (this.difficulty === 3) {
+      // T3: more mines (1.4 multiplier), harder
+      this._mineCount = Math.max(8, Math.floor(this._cols * this._rows * 0.15 * 1.3));
+      this.lives = 1;
+    }
   };
 
   Minesweeper.prototype._resetState = function () {

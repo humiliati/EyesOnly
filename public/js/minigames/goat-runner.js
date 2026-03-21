@@ -224,6 +224,15 @@
     this._helicopter = null;
     this._victoryPhase = 0;
     this._victoryTimer = 0;
+
+    // ── Difficulty scaling ──
+    if (this.difficulty === 1) {
+      this.lives = 4;  // T1: +1 life
+    } else if (this.difficulty === 2) {
+      this.lives = 3;
+    } else if (this.difficulty === 3) {
+      this.lives = 2;  // T3: -1 life
+    }
   };
 
   // ──────────────────────────────────────────────────────────
@@ -245,9 +254,10 @@
 
   GoatRunner.prototype._generatePlatforms = function (W, H) {
     var cameraRight = this._cam.x + W + SPAWN_AHEAD;
-    var gapMul = difficultyRamp.get('gapMul', 0.5);
-    var platShrink = difficultyRamp.get('platShrink', 0);
-    var obstChance = difficultyRamp.get('obstChance', 0.2);
+    var dm = this.difficultyMultiplier ? this.difficultyMultiplier() : 1.0;
+    var gapMul = difficultyRamp.get('gapMul', 0.5) * dm;
+    var platShrink = difficultyRamp.get('platShrink', 0) * dm;
+    var obstChance = difficultyRamp.get('obstChance', 0.2) * dm;
     var t = difficultyRamp.t();
 
     while (this._nextPlatX < cameraRight) {

@@ -100,7 +100,20 @@ window.SnakeGame = (function () {
   // ════════════════════════════════════════════════════════════
 
   Snake.prototype.onInit = function () { this._resetState(); };
-  Snake.prototype.onStart = function () { this._resetState(); };
+  Snake.prototype.onStart = function () {
+    this._resetState();
+
+    // ── Difficulty scaling ──
+    var dm = this.difficultyMultiplier();
+    // Adjust initial lives
+    if (this.difficulty === 1) {
+      this.lives = 2;  // T1: one extra life
+    } else if (this.difficulty === 2) {
+      this.lives = 1;
+    } else if (this.difficulty === 3) {
+      this.lives = 1;  // T3 can restart faster anyway
+    }
+  };
 
   Snake.prototype._resetState = function () {
     var W = this.logicalW, H = this.logicalH;
@@ -267,7 +280,9 @@ window.SnakeGame = (function () {
     if (this._sectionFlash > 0) this._sectionFlash--;
 
     // ── Get current tick rate from difficulty ──
-    this._tickRate = difficultyRamp.get('tickRate', 8);
+    var dm = this.difficultyMultiplier();
+    var baseTick = difficultyRamp.get('tickRate', 8);
+    this._tickRate = Math.max(2, Math.round(baseTick / dm));
 
     // ── Encrypted packet timer ──
     if (this._encrypted) {

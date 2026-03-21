@@ -38,6 +38,25 @@ var ArcadeEngine = (function () {
   var MAX_CANVAS_WIDTH = 600;       // px, CSS pixels
   var ACCOUNT_KEY = 'eyesonly_account';
   var HIGHSCORE_KEY = 'eyesonly_arcade_highscores';
+  var DIFFICULTY_KEY = 'eyesonly_arcade_difficulty';
+
+  // ── Difficulty tiers ──
+  var TIERS = [
+    { id: 1, label: 'CASUAL',   tag: 'T1', color: '#7dffca' },
+    { id: 2, label: 'STANDARD', tag: 'T2', color: '#ffb347' },
+    { id: 3, label: 'HARD',     tag: 'T3', color: '#ff4757' }
+  ];
+
+  // ── Achievement thresholds per game (bronze / silver / gold) ──
+  var ACHIEVEMENT_THRESHOLDS = {
+    'ski-free':    { bronze: 500,  silver: 2000, gold: 5000 },
+    'frogger':     { bronze: 300,  silver: 1000, gold: 3000 },
+    'snake':       { bronze: 200,  silver: 800,  gold: 2000 },
+    'breakout':    { bronze: 500,  silver: 1500, gold: 4000 },
+    'jezzball':    { bronze: 1000, silver: 3000, gold: 8000 },
+    'minesweeper': { bronze: 200,  silver: 500,  gold: 1000 },
+    'goat-runner': { bronze: 500,  silver: 2000, gold: 5000 }
+  };
 
   // ── Game states ──
   var STATE = {
@@ -118,6 +137,12 @@ var ArcadeEngine = (function () {
 
     // ── Boss adapter state ──
     this._bossState = null;
+
+    // ── Difficulty tier (1 = casual, 2 = standard, 3 = hard) ──
+    this.difficulty = this._loadDifficulty();
+
+    // ── Currency cascade particles ──
+    this._cascadeCoins = [];
 
     // ── CRT colors (resolved on start) ──
     this.colors = {};
@@ -360,6 +385,9 @@ var ArcadeEngine = (function () {
       } catch (_) {}
     }
 
+    // Spawn currency cascade
+    this._spawnCascade(this.currencyEarned);
+
     // SFX
     this.playSFX('game-over');
   };
@@ -376,6 +404,19 @@ var ArcadeEngine = (function () {
     events.forEach(function (evt) {
       self._input.on(evt, function (data) {
         // Global handlers (state transitions)
+
+        // Difficulty cycling in MENU (swipe up/down or arrow keys)
+        if (self.state === STATE.MENU) {
+          if (evt === 'swipe') {
+            if (data.direction === 'up') { self.cycleDifficulty(1); return; }
+            if (data.direction === 'down') { self.cycleDifficulty(-1); return; }
+          }
+          if (evt === 'keyaction') {
+            if (data.action === 'up') { self.cycleDifficulty(1); return; }
+            if (data.action === 'down') { self.cycleDifficulty(-1); return; }
+          }
+        }
+
         if (evt === 'tap' || evt === 'keyaction') {
           if (self.state === STATE.MENU) {
             self._startGame();
@@ -431,6 +472,7 @@ var ArcadeEngine = (function () {
     this.lives = this.maxLives;
     this.level = 1;
     this.currencyEarned = 0;
+    this._cascadeCoins = [];
     if (this.onStart) this.onStart();
     this.setState(STATE.PLAYING);
     this.playSFX('game-start');
@@ -670,6 +712,155 @@ var ArcadeEngine = (function () {
   };
 
   // ════════════════════════════════════════════════════════════
+  // DIFFICULTY TIERS
+  // ════════════════════════════════════════════════════════════
+
+  ArcadeEngine.prototype._loadDifficulty = function () {
+    try {
+      var saved = JSON.parse(localStorage.getItem(DIFFICULTY_KEY) || '{}');
+      var d = saved[this.gameId] || saved._global || 2;
+      return Math.max(1, Math.min(3, d));
+    } catch (_) {
+      return 2;
+    }
+  };
+
+  ArcadeEngine.prototype._saveDifficulty = function () {
+    try {
+      var saved = JSON.parse(localStorage.getItem(DIFFICULTY_KEY) || '{}');
+      saved[this.gameId] = this.difficulty;
+      saved._global = this.difficulty; // remember last choice
+      localStorage.setItem(DIFFICULTY_KEY, JSON.stringify(saved));
+    } catch (_) {}
+  };
+
+  ArcadeEngine.prototype.cycleDifficulty = function (dir) {
+    this.difficulty += (dir || 1);
+    if (this.difficulty > 3) this.difficulty = 1;
+    if (this.difficulty < 1) this.difficulty = 3;
+    this._saveDifficulty();
+    this.playSFX('game-start');
+  };
+
+  /**
+   * Get the current tier object { id, label, tag, color }.
+   */
+  ArcadeEngine.prototype.getTier = function () {
+    return TIERS[this.difficulty - 1] || TIERS[1];
+  };
+
+  /**
+   * Difficulty multiplier: T1=0.7, T2=1.0, T3=1.4
+   * Subclasses use this to scale speed, density, etc.
+   */
+  ArcadeEngine.prototype.difficultyMultiplier = function () {
+    if (this.difficulty === 1) return 0.7;
+    if (this.difficulty === 3) return 1.4;
+    return 1.0;
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // LEADERBOARD HELPERS
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Get top N scores for this game from HighscoreState.
+   * Returns array of { score, display_name, created_at }.
+   */
+  ArcadeEngine.prototype._getTopScores = function (limit) {
+    limit = limit || 5;
+    if (typeof HighscoreState === 'undefined' || !HighscoreState.getHighscores) return [];
+    try {
+      return HighscoreState.getHighscores('arcade_games', {
+        arcadeGameId: this.gameId,
+        mode: 'human',
+        limit: limit
+      });
+    } catch (_) {
+      return [];
+    }
+  };
+
+  /**
+   * Get the player's rank for a given score.
+   */
+  ArcadeEngine.prototype._getPlayerRank = function (score) {
+    var all = this._getTopScores(100);
+    for (var i = 0; i < all.length; i++) {
+      if (score >= all[i].score) return i + 1;
+    }
+    return all.length + 1;
+  };
+
+  /**
+   * Get achievement level for a score: null, 'bronze', 'silver', 'gold'
+   */
+  ArcadeEngine.prototype.getAchievement = function (score) {
+    var thresh = ACHIEVEMENT_THRESHOLDS[this.gameId];
+    if (!thresh) return null;
+    if (score >= thresh.gold) return 'gold';
+    if (score >= thresh.silver) return 'silver';
+    if (score >= thresh.bronze) return 'bronze';
+    return null;
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // CURRENCY CASCADE ANIMATION
+  // ════════════════════════════════════════════════════════════
+
+  ArcadeEngine.prototype._spawnCascade = function (amount) {
+    if (amount <= 0) return;
+    var count = Math.min(amount, 20); // cap particles
+    var cx = this.logicalW / 2;
+    var startY = this.logicalH * 0.6;
+    for (var i = 0; i < count; i++) {
+      this._cascadeCoins.push({
+        x: cx + (Math.random() - 0.5) * 80,
+        y: startY,
+        vx: (Math.random() - 0.5) * 3,
+        vy: -(2 + Math.random() * 4),
+        life: 60 + Math.floor(Math.random() * 30), // frames
+        age: -i * 3, // stagger spawn
+        size: 14 + Math.random() * 6
+      });
+    }
+  };
+
+  ArcadeEngine.prototype._updateCascade = function () {
+    var alive = [];
+    for (var i = 0; i < this._cascadeCoins.length; i++) {
+      var c = this._cascadeCoins[i];
+      c.age++;
+      if (c.age < 0) { alive.push(c); continue; } // not yet spawned
+      c.x += c.vx;
+      c.vy += 0.15; // gravity
+      c.y += c.vy;
+      c.life--;
+      if (c.life > 0) alive.push(c);
+    }
+    this._cascadeCoins = alive;
+  };
+
+  ArcadeEngine.prototype._drawCascade = function (ctx) {
+    for (var i = 0; i < this._cascadeCoins.length; i++) {
+      var c = this._cascadeCoins[i];
+      if (c.age < 0) continue;
+      var alpha = Math.min(1, c.life / 20);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = Math.floor(c.size) + 'px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🪙', c.x, c.y);
+      ctx.restore();
+    }
+  };
+
+  // Expose constants for external use (e.g. games.html badge injection)
+  ArcadeEngine.ACHIEVEMENT_THRESHOLDS = ACHIEVEMENT_THRESHOLDS;
+  ArcadeEngine.TIERS = TIERS;
+
+  // ════════════════════════════════════════════════════════════
   // STATE OVERLAYS
   // ════════════════════════════════════════════════════════════
 
@@ -683,18 +874,49 @@ var ArcadeEngine = (function () {
     ctx.fillRect(0, 0, w, h);
 
     // Title
-    this.drawText(ctx, this.title.toUpperCase(), cx, h * 0.35, 28,
+    this.drawText(ctx, this.title.toUpperCase(), cx, h * 0.2, 28,
                   this.colors.phosphorBright, 'center');
 
-    // Instruction
-    this.drawText(ctx, 'TAP or SPACE to start', cx, h * 0.55, 14,
+    // Difficulty tier selector
+    var tier = this.getTier();
+    this.drawText(ctx, '[ ' + tier.tag + ' ' + tier.label + ' ]',
+                  cx, h * 0.32, 14, tier.color, 'center');
+    this.drawText(ctx, '\u25B2 \u25BC to change tier', cx, h * 0.38, 10,
                   this.colors.phosphorDim, 'center');
+
+    // Achievement badge for current high score
+    var ach = this.getAchievement(this.highScore);
+    if (ach) {
+      var achEmoji = ach === 'gold' ? '🥇' : ach === 'silver' ? '🥈' : '🥉';
+      this.drawEmoji(ctx, achEmoji, cx, h * 0.46, 20);
+    }
 
     // High score
     if (this.highScore > 0) {
-      this.drawText(ctx, 'HIGH SCORE: ' + this.highScore, cx, h * 0.68, 12,
-                    this.colors.amber, 'center');
+      this.drawText(ctx, 'HIGH SCORE: ' + this.highScore.toLocaleString(),
+                    cx, h * 0.54, 13, this.colors.amber, 'center');
     }
+
+    // Top 3 leaderboard
+    var top = this._getTopScores(3);
+    if (top.length > 0) {
+      var lbY = h * 0.63;
+      this.drawText(ctx, '── LEADERBOARD ──', cx, lbY, 10,
+                    this.colors.phosphorDim, 'center');
+      for (var i = 0; i < top.length; i++) {
+        var rank = (i + 1) + '.';
+        var entry = top[i];
+        var scoreStr = entry.score.toLocaleString();
+        this.drawText(ctx, rank, cx - 50, lbY + 16 + i * 14, 10,
+                      this.colors.phosphorDim, 'left');
+        this.drawText(ctx, scoreStr, cx + 50, lbY + 16 + i * 14, 10,
+                      this.colors.phosphor, 'right');
+      }
+    }
+
+    // Instruction
+    this.drawText(ctx, 'TAP or SPACE to start', cx, h * 0.88, 14,
+                  this.colors.phosphorDim, 'center');
   };
 
   ArcadeEngine.prototype._drawPauseOverlay = function (ctx) {
@@ -715,27 +937,75 @@ var ArcadeEngine = (function () {
     var h = this.logicalH;
     var cx = w / 2;
 
+    // Update cascade particles
+    this._updateCascade();
+
     ctx.fillStyle = 'rgba(0,0,0,0.75)';
     ctx.fillRect(0, 0, w, h);
 
-    this.drawText(ctx, 'GAME OVER', cx, h * 0.3, 24,
+    this.drawText(ctx, 'GAME OVER', cx, h * 0.12, 24,
                   this.colors.red, 'center');
 
-    this.drawText(ctx, 'SCORE: ' + this.score, cx, h * 0.44, 18,
+    this.drawText(ctx, 'SCORE: ' + this.score.toLocaleString(), cx, h * 0.22, 18,
                   this.colors.phosphor, 'center');
 
+    // Achievement badge
+    var ach = this.getAchievement(this.score);
+    if (ach) {
+      var achEmoji = ach === 'gold' ? '🥇' : ach === 'silver' ? '🥈' : '🥉';
+      var achLabel = ach.toUpperCase() + '!';
+      this.drawEmoji(ctx, achEmoji, cx - 30, h * 0.29, 16);
+      this.drawText(ctx, achLabel, cx + 5, h * 0.29, 12,
+                    this.colors.amber, 'left');
+    }
+
     if (this.score >= this.highScore && this.score > 0) {
-      this.drawText(ctx, 'NEW HIGH SCORE!', cx, h * 0.53, 14,
+      this.drawText(ctx, '★ NEW HIGH SCORE! ★', cx, h * 0.35, 14,
                     this.colors.amber, 'center');
     }
 
+    // Rank
+    var rank = this._getPlayerRank(this.score);
+    if (rank <= 10) {
+      this.drawText(ctx, 'RANK #' + rank, cx, h * 0.40, 12,
+                    this.colors.phosphorBright, 'center');
+    }
+
+    // Currency earned
     if (this.currencyEarned > 0) {
-      this.drawEmoji(ctx, '🪙', cx - 30, h * 0.64, 16);
-      this.drawText(ctx, '+' + this.currencyEarned + ' \u00A2', cx, h * 0.64, 14,
+      this.drawEmoji(ctx, '🪙', cx - 35, h * 0.46, 16);
+      this.drawText(ctx, '+' + this.currencyEarned + ' \u00A2', cx, h * 0.46, 14,
                     this.colors.amber, 'center');
     }
 
-    this.drawText(ctx, 'TAP or SPACE to retry', cx, h * 0.78, 12,
+    // Top 5 leaderboard
+    var top = this._getTopScores(5);
+    if (top.length > 0) {
+      var lbY = h * 0.54;
+      this.drawText(ctx, '── TOP SCORES ──', cx, lbY, 10,
+                    this.colors.phosphorDim, 'center');
+      for (var i = 0; i < top.length; i++) {
+        var entry = top[i];
+        var isCurrentRun = (entry.score === this.score && i === rank - 1);
+        var entryColor = isCurrentRun ? this.colors.amber : this.colors.phosphor;
+        var prefix = (i + 1) + '.';
+        var scoreStr = entry.score.toLocaleString();
+        this.drawText(ctx, prefix, cx - 55, lbY + 16 + i * 14, 10,
+                      this.colors.phosphorDim, 'left');
+        this.drawText(ctx, scoreStr, cx + 55, lbY + 16 + i * 14, 10,
+                      entryColor, 'right');
+      }
+    }
+
+    // Cascade coins
+    this._drawCascade(ctx);
+
+    // Difficulty tier shown
+    var tier = this.getTier();
+    this.drawText(ctx, tier.tag + ' ' + tier.label, cx, h * 0.88, 10,
+                  tier.color, 'center');
+
+    this.drawText(ctx, 'TAP or SPACE to retry', cx, h * 0.93, 12,
                   this.colors.phosphorDim, 'center');
   };
 
