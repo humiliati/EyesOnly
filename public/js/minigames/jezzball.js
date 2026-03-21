@@ -50,6 +50,9 @@ window.JezzBallGame = (function () {
   // ── Direction indicator ──
   var dirIndicator = null;
 
+  // ── Pre-rendered honeycomb lattice (overlapping sphere reflections) ──
+  var latticeCanvas = null;
+
   function reset() {
     cols = Math.floor(W / CELL);
     rows = Math.floor(H / CELL);
@@ -72,6 +75,54 @@ window.JezzBallGame = (function () {
     levelTransition = null;
     spawnBalls(level + 1);
     calcPct();
+    buildLattice();
+  }
+
+  // ── Pre-render honeycomb lattice of overlapping spheres ──
+  // Staggered hex-packed rows of radial-gradient "bubbles" that catch
+  // and scatter the additive ball glow. Rendered once to an offscreen
+  // canvas, composited every frame between background and grid.
+  function buildLattice() {
+    latticeCanvas = document.createElement('canvas');
+    latticeCanvas.width = W;
+    latticeCanvas.height = H;
+    var lc = latticeCanvas.getContext('2d');
+
+    // Hex packing geometry
+    var spacing = CELL * 3;              // center-to-center distance
+    var radius = spacing * 0.72;          // overlapping (radius > spacing/2)
+    var rowH = spacing * 0.866;           // sin(60°) vertical offset
+
+    for (var row = -1; row * rowH < H + radius; row++) {
+      var xOff = (row % 2 !== 0) ? spacing * 0.5 : 0;   // stagger odd rows
+      for (var sx = -radius + xOff; sx < W + radius; sx += spacing) {
+        var cx = sx;
+        var cy = row * rowH;
+
+        // ── Sphere body: convex highlight offset toward top-left ──
+        var grad = lc.createRadialGradient(
+          cx - radius * 0.25, cy - radius * 0.25, radius * 0.05,  // highlight core
+          cx, cy, radius                                            // sphere edge
+        );
+        grad.addColorStop(0,    'rgba(28,255,155,0.055)');   // bright specular dot
+        grad.addColorStop(0.25, 'rgba(22,200,120,0.035)');   // falloff
+        grad.addColorStop(0.55, 'rgba(14,120,75,0.015)');    // mid
+        grad.addColorStop(0.85, 'rgba(6,50,30,0.006)');      // edge fade
+        grad.addColorStop(1,    'rgba(0,0,0,0)');
+
+        lc.fillStyle = grad;
+        lc.beginPath();
+        lc.arc(cx, cy, radius, 0, Math.PI * 2);
+        lc.fill();
+
+        // ── Rim highlight (thin crescent at sphere edge) ──
+        lc.strokeStyle = 'rgba(28,255,155,0.025)';
+        lc.lineWidth = 0.6;
+        lc.beginPath();
+        lc.arc(cx, cy, radius * 0.92, -0.8, 1.2);  // partial arc (upper-left crescent)
+        lc.stroke();
+      }
+    }
   }
 
   // ── Ball spawning with safety checks ──
@@ -673,8 +724,15 @@ window.JezzBallGame = (function () {
     var phG = parseInt(ph.substr(3, 2), 16) || 255;
     var phB = parseInt(ph.substr(5, 2), 16) || 155;
 
-    ctx.fillStyle = '#0a0a0a';
+    ctx.fillStyle = '#050808';
     ctx.fillRect(0, 0, W, H);
+
+    // ── Honeycomb lattice overlay (reflective sphere surface) ──
+    // Sits between background and everything else; the additive ball
+    // glow pass later will light up nearby spheres, creating scatter.
+    if (latticeCanvas) {
+      ctx.drawImage(latticeCanvas, 0, 0);
+    }
 
     // Build a lookup map for two-color rendering
     var _builderMap = {};
@@ -724,10 +782,12 @@ window.JezzBallGame = (function () {
             ctx.fillRect(bx + CELL - 1, by, 1, CELL - 1);
           } else {
             // ─ Hollowed interior (dead space) ─
-            ctx.fillStyle = 'rgba(8,16,12,0.9)';
+            // Semi-transparent so the lattice spheres show through,
+            // creating visible "contained" zones distinct from open field
+            ctx.fillStyle = 'rgba(4,10,8,0.45)';
             ctx.fillRect(bx, by, CELL, CELL);
-            // Subtle grid outline
-            ctx.strokeStyle = 'rgba(' + phR + ',' + phG + ',' + phB + ',0.04)';
+            // Thin phosphor grid line at cell edges
+            ctx.strokeStyle = 'rgba(' + phR + ',' + phG + ',' + phB + ',0.07)';
             ctx.lineWidth = 0.5;
             ctx.strokeRect(bx + 0.5, by + 0.5, CELL - 1, CELL - 1);
           }
