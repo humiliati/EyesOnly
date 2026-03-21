@@ -270,6 +270,27 @@
         </div>
       </div>
 
+      <!-- Game-specific: splash screen ASCII art -->
+      <div class="game-fields">
+        <label>SPLASH SCREEN (ASCII art shown on game load, ~2s)</label>
+        <textarea id="f-splash-art" style="min-height:180px;font-size:10px;line-height:1.2;white-space:pre;font-family:'Courier New',Courier,monospace;color:var(--phosphor);background:#050808;" placeholder="╔══════════════════════════════╗
+║                              ║
+║   YOUR GAME TITLE HERE       ║
+║                              ║
+║   ── SUBTITLE / TAGLINE ──   ║
+║                              ║
+╚══════════════════════════════╝
+
+Use box-drawing chars: ╔╗╚╝═║─│┌┐└┘
+Use shading: ░▒▓█
+Renders in CRT phosphor green on black.
+Tip: keep lines under 44 chars for mobile."></textarea>
+        <div style="font-size:9px;color:#555;margin-top:3px;">
+          ASCII art displayed during game initialization (~120 frames). First 40 frames swallow clicks to prevent accidental input.
+          Set via <span style="color:var(--phosphor-dim);">this.splashArt</span> in your game constructor.
+        </div>
+      </div>
+
       <!-- Code editor (label updates based on type) -->
       <label id="code-label">PUZZLE CODE (JavaScript — must call PuzzlePopup.register())</label>
       <textarea class="code-editor" id="f-code" placeholder="// Your puzzle JS here...
@@ -371,6 +392,7 @@
         ✓ Set prototype to <span style="color:var(--phosphor);">Object.create(ArcadeEngine.prototype)</span><br>
         ✓ Define <span style="color:var(--phosphor);">onUpdate(dt)</span> and <span style="color:var(--phosphor);">onDraw(ctx, W, H)</span><br>
         ✓ Call <span style="color:var(--phosphor);">MinigameModal.register(gameId, getter)</span><br>
+        ✓ Set <span style="color:var(--phosphor);">this.splashArt</span> for a boot screen (ASCII art, ~2s)<br>
         ✗ Must NOT access DOM outside the canvas
       </div>
 
@@ -565,7 +587,8 @@
       var gameMeta = {
         type: 'game',
         gameId: document.getElementById('f-game-id').value || '',
-        difficulty: document.getElementById('f-difficulty').value || 'medium'
+        difficulty: document.getElementById('f-difficulty').value || 'medium',
+        splashArt: document.getElementById('f-splash-art').value || ''
       };
       body.tag_class = JSON.stringify(gameMeta);
     } else {
@@ -738,6 +761,7 @@
           document.getElementById('f-game-id').value = gameMeta.gameId || '';
           document.getElementById('f-difficulty').value = gameMeta.difficulty || 'medium';
           document.getElementById('f-game-category').value = p.category_slug || '';
+          document.getElementById('f-splash-art').value = gameMeta.splashArt || '';
         }
 
         // Show/hide lifecycle buttons based on status
@@ -1212,6 +1236,17 @@
     '      lives:  3,',
     '      currencyRate: 0.01',
     '    });',
+    '',
+    '    // ASCII splash screen (shown ~2s on game load)',
+    '    this.splashArt = [',
+    '      "╔══════════════════════════════╗",',
+    '      "║                              ║",',
+    '      "║       MY GAME TITLE          ║",',
+    '      "║                              ║",',
+    '      "║   ░░▒▒▓▓  LOADING  ▓▓▒▒░░  ║",',
+    '      "║                              ║",',
+    '      "╚══════════════════════════════╝"',
+    '    ].join("\\n");',
     '  }',
     '  MyGame.prototype = Object.create(ArcadeEngine.prototype);',
     '  MyGame.prototype.constructor = MyGame;',
@@ -1402,6 +1437,7 @@
     if (type === 'game') {
       document.getElementById('f-game-id').value = '';
       document.getElementById('f-difficulty').value = 'medium';
+      document.getElementById('f-splash-art').value = '';
     }
     document.getElementById('qr-section').style.display = type === 'game' ? 'none' : '';
     document.getElementById('btn-archive').style.display = '';

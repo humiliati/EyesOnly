@@ -1201,8 +1201,7 @@ window.JezzBallGame = (function () {
       canvas.addEventListener('mousedown', splashSkip);
       canvas.addEventListener('keydown', splashSkip);
 
-      // Override splashLoop's exit to bind real input
-      var origSplashLoop = splashLoop;
+      // Bind real input once splash finishes
       var _splashDone = false;
       var realInit = function () {
         if (_splashDone) return;
@@ -1222,8 +1221,7 @@ window.JezzBallGame = (function () {
         document.addEventListener('keydown', onKeyDown);
       };
 
-      // Patch splashLoop to call realInit when done
-      var _origReset = reset;
+      // Patched splash loop: calls realInit + reset when done
       var patchedSplashLoop;
       patchedSplashLoop = function () {
         _splashTimer++;
