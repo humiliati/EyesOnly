@@ -1,219 +1,481 @@
 /* ============================================================
-   MINESWEEPER — Classic grid mine puzzle
-   Canvas-based, CRT-themed.
-   Left-click to reveal, right-click to flag.
+   MINESWEEPER — Minefield ArcadeEngine Implementation
+   Touch/mobile-first with tap-to-reveal, long-press-to-flag,
+   double-tap chord reveals. Full scoring with time-based currency.
+
+   INPUT:
+   - Tap on hidden cell → reveal it
+   - Long-press on hidden cell → toggle flag (🚩)
+   - Double-tap on revealed number → chord reveal
+   - Space/action key when game over → restart
+
+   ENTITIES: ⬛ hidden, ⬜ empty, 💣 mines, 🚩 flags, 1-8 numbers
    ============================================================ */
 window.MinesweeperGame = (function () {
   'use strict';
 
-  var ctx, W, H, raf;
-  var CELL, cols, rows, mines;
-  var grid;    // { mine, revealed, flagged, adjacent }
-  var gameOver, won, firstClick, mineCount;
+  // ════════════════════════════════════════════════════════════
+  // MINESWEEPER GAME CLASS
+  // ════════════════════════════════════════════════════════════
 
-  function reset() {
-    CELL = 20;
-    cols = Math.floor(W / CELL);
-    rows = Math.floor((H - 20) / CELL);  // reserve HUD space
-    if (cols < 5) cols = 5;
-    if (rows < 5) rows = 5;
-    mineCount = Math.max(5, Math.floor(cols * rows * 0.15));
-    grid = [];
-    for (var i = 0; i < cols * rows; i++) {
-      grid.push({ mine: false, revealed: false, flagged: false, adjacent: 0 });
-    }
-    gameOver = false;
-    won = false;
-    firstClick = true;
+  function Minesweeper() {
+    ArcadeEngine.call(this, {
+      gameId: 'minesweeper',
+      title: 'MINEFIELD',
+      lives: 1,
+      currencyRate: 0.01
+    });
+
+    this.sfxMap = {
+      'reveal':      'drop-1',
+      'flag':        'coin-2',
+      'unflag':      'water-1',
+      'boom':        'kitty-1',
+      'win':         'toad',
+      'game-over':   'game-over-1',
+      'game-start':  'power-up-1',
+      'chord':       'hit-1',
+      'death':       'kitty-1',
+      'level-up':    'toad'
+    };
+
+    // ── Grid state ──
+    this._grid = [];
+    this._cols = 0;
+    this._rows = 0;
+    this._cellSize = 20;
+    this._gridOffsetX = 0;
+    this._gridOffsetY = 0;
+    this._hudHeight = 28;
+
+    // ── Game state ──
+    this._firstClick = true;
+    this._mineCount = 0;
+    this._won = false;
+    this._elapsedTime = 0;    // milliseconds
   }
 
-  function placeMines(safeC, safeR) {
+  Minesweeper.prototype = Object.create(ArcadeEngine.prototype);
+  Minesweeper.prototype.constructor = Minesweeper;
+
+  // ════════════════════════════════════════════════════════════
+  // LIFECYCLE
+  // ════════════════════════════════════════════════════════════
+
+  Minesweeper.prototype.onInit = function () {
+    this._resetState();
+  };
+
+  Minesweeper.prototype.onStart = function () {
+    this._resetState();
+  };
+
+  Minesweeper.prototype._resetState = function () {
+    var W = this.logicalW, H = this.logicalH;
+
+    // Calculate cell size from canvas (aim for ~20px cells)
+    this._cellSize = 20;
+    var playH = H - this._hudHeight;
+    this._cols = Math.floor(W / this._cellSize);
+    this._rows = Math.floor(playH / this._cellSize);
+    if (this._cols < 5) this._cols = 5;
+    if (this._rows < 5) this._rows = 5;
+
+    // Center the grid
+    var gridW = this._cols * this._cellSize;
+    var gridH = this._rows * this._cellSize;
+    this._gridOffsetX = Math.floor((W - gridW) / 2);
+    this._gridOffsetY = this._hudHeight + Math.floor((playH - gridH) / 2);
+
+    // Initialize grid
+    this._mineCount = Math.max(5, Math.floor(this._cols * this._rows * 0.15));
+    this._grid = [];
+    for (var i = 0; i < this._cols * this._rows; i++) {
+      this._grid.push({
+        mine: false,
+        revealed: false,
+        flagged: false,
+        adjacent: 0
+      });
+    }
+
+    this._firstClick = true;
+    this._won = false;
+    this._elapsedTime = 0;
+  };
+
+  Minesweeper.prototype.onResize = function (w, h) {
+    this._resetState();
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // INPUT HANDLING
+  // ════════════════════════════════════════════════════════════
+
+  Minesweeper.prototype.onInput = function (type, data) {
+    if (this.state !== ArcadeEngine.STATE.PLAYING) return;
+
+    // Tap → reveal cell
+    if (type === 'tap') {
+      var c = this._screenToGridCol(data.x);
+      var r = this._screenToGridRow(data.y);
+      if (c >= 0 && c < this._cols && r >= 0 && r < this._rows) {
+        this._revealCell(c, r);
+      }
+      return;
+    }
+
+    // Long-press → toggle flag
+    if (type === 'longpress') {
+      var c = this._screenToGridCol(data.x);
+      var r = this._screenToGridRow(data.y);
+      if (c >= 0 && c < this._cols && r >= 0 && r < this._rows) {
+        this._toggleFlag(c, r);
+      }
+      return;
+    }
+
+    // Double-tap → chord reveal
+    if (type === 'doubletap') {
+      var c = this._screenToGridCol(data.x);
+      var r = this._screenToGridRow(data.y);
+      if (c >= 0 && c < this._cols && r >= 0 && r < this._rows) {
+        this._chordReveal(c, r);
+      }
+      return;
+    }
+
+    // Space/action key when game over → restart
+    if (type === 'keyaction') {
+      if (data.action === 'action' && this.state === ArcadeEngine.STATE.GAME_OVER) {
+        this._restartGame();
+        return;
+      }
+    }
+  };
+
+  /**
+   * Convert screen x to grid column.
+   */
+  Minesweeper.prototype._screenToGridCol = function (screenX) {
+    return Math.floor((screenX - this._gridOffsetX) / this._cellSize);
+  };
+
+  /**
+   * Convert screen y to grid row.
+   */
+  Minesweeper.prototype._screenToGridRow = function (screenY) {
+    return Math.floor((screenY - this._gridOffsetY) / this._cellSize);
+  };
+
+  /**
+   * Reveal a cell. If first click, place mines first.
+   */
+  Minesweeper.prototype._revealCell = function (c, r) {
+    if (this._firstClick) {
+      this._placeMines(c, r);
+      this._firstClick = false;
+    }
+
+    var cell = this._grid[r * this._cols + c];
+    if (!cell || cell.revealed || cell.flagged) return;
+
+    // Play reveal SFX only on user-initiated reveal (not recursive flood fill)
+    this.playSFX('reveal');
+    this._reveal(c, r);
+    this._checkWinCondition();
+  };
+
+  /**
+   * Toggle flag on a cell.
+   */
+  Minesweeper.prototype._toggleFlag = function (c, r) {
+    if (c < 0 || c >= this._cols || r < 0 || r >= this._rows) return;
+    var cell = this._grid[r * this._cols + c];
+    if (cell.revealed) return;
+
+    cell.flagged = !cell.flagged;
+    if (cell.flagged) {
+      this.playSFX('flag');
+    } else {
+      this.playSFX('unflag');
+    }
+  };
+
+  /**
+   * Chord reveal: if tapping a number cell with all adjacent mines flagged,
+   * reveal all unflagged neighbors.
+   */
+  Minesweeper.prototype._chordReveal = function (c, r) {
+    if (c < 0 || c >= this._cols || r < 0 || r >= this._rows) return;
+    var cell = this._grid[r * this._cols + c];
+    if (!cell.revealed || cell.adjacent === 0 || cell.mine) return;
+
+    // Count flagged neighbors
+    var flaggedCount = 0;
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        var nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < this._rows && nc >= 0 && nc < this._cols) {
+          var neighbor = this._grid[nr * this._cols + nc];
+          if (neighbor.flagged) flaggedCount++;
+        }
+      }
+    }
+
+    // Only chord if flag count matches adjacent count
+    if (flaggedCount !== cell.adjacent) return;
+
+    this.playSFX('chord');
+
+    // Reveal all unflagged neighbors
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        var nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < this._rows && nc >= 0 && nc < this._cols) {
+          var neighbor = this._grid[nr * this._cols + nc];
+          if (!neighbor.flagged && !neighbor.revealed) {
+            this._reveal(nc, nr);
+          }
+        }
+      }
+    }
+
+    this._checkWinCondition();
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // GRID LOGIC
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Place mines on the grid, avoiding a 3x3 safe zone around first click.
+   */
+  Minesweeper.prototype._placeMines = function (safeC, safeR) {
     var placed = 0;
-    while (placed < mineCount) {
-      var c = Math.floor(Math.random() * cols);
-      var r = Math.floor(Math.random() * rows);
+    while (placed < this._mineCount) {
+      var c = Math.floor(Math.random() * this._cols);
+      var r = Math.floor(Math.random() * this._rows);
+
+      // Avoid safe zone (3x3 around first click)
       if (Math.abs(c - safeC) <= 1 && Math.abs(r - safeR) <= 1) continue;
-      var idx = r * cols + c;
-      if (grid[idx].mine) continue;
-      grid[idx].mine = true;
+
+      var idx = r * this._cols + c;
+      if (this._grid[idx].mine) continue;
+
+      this._grid[idx].mine = true;
       placed++;
     }
-    // Calculate adjacents
-    for (var r2 = 0; r2 < rows; r2++) {
-      for (var c2 = 0; c2 < cols; c2++) {
-        if (grid[r2 * cols + c2].mine) continue;
+
+    // Calculate adjacent counts
+    for (var r2 = 0; r2 < this._rows; r2++) {
+      for (var c2 = 0; c2 < this._cols; c2++) {
+        if (this._grid[r2 * this._cols + c2].mine) continue;
+
         var count = 0;
         for (var dr = -1; dr <= 1; dr++) {
           for (var dc = -1; dc <= 1; dc++) {
             var nr = r2 + dr, nc = c2 + dc;
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr * cols + nc].mine) count++;
+            if (nr >= 0 && nr < this._rows && nc >= 0 && nc < this._cols) {
+              if (this._grid[nr * this._cols + nc].mine) count++;
+            }
           }
         }
-        grid[r2 * cols + c2].adjacent = count;
+        this._grid[r2 * this._cols + c2].adjacent = count;
       }
     }
-  }
+  };
 
-  function reveal(c, r) {
-    if (c < 0 || c >= cols || r < 0 || r >= rows) return;
-    var cell = grid[r * cols + c];
+  /**
+   * Reveal a cell. If it's a mine, game over. If 0 adjacent, flood fill.
+   */
+  Minesweeper.prototype._reveal = function (c, r) {
+    if (c < 0 || c >= this._cols || r < 0 || r >= this._rows) return;
+    var cell = this._grid[r * this._cols + c];
     if (cell.revealed || cell.flagged) return;
+
     cell.revealed = true;
+
     if (cell.mine) {
-      gameOver = true;
-      // Reveal all mines
-      for (var i = 0; i < grid.length; i++) { if (grid[i].mine) grid[i].revealed = true; }
+      // Hit a mine — boom then game over
+      this.playSFX('boom');
+      this._revealAllMines();
+      this.setState(ArcadeEngine.STATE.GAME_OVER);
       return;
     }
+
+    // Add score for safe cell reveal
+    this.addScore(5);
+
+    // Flood fill if no adjacent mines
     if (cell.adjacent === 0) {
       for (var dr = -1; dr <= 1; dr++) {
         for (var dc = -1; dc <= 1; dc++) {
-          reveal(c + dc, r + dr);
+          this._reveal(c + dc, r + dr);
         }
       }
     }
-    checkWin();
-  }
+  };
 
-  function checkWin() {
-    for (var i = 0; i < grid.length; i++) {
-      if (!grid[i].mine && !grid[i].revealed) return;
+  /**
+   * Reveal all mines when player hits one.
+   */
+  Minesweeper.prototype._revealAllMines = function () {
+    for (var i = 0; i < this._grid.length; i++) {
+      if (this._grid[i].mine) {
+        this._grid[i].revealed = true;
+      }
     }
-    won = true;
-    gameOver = true;
-  }
+  };
 
-  function draw() {
-    var ph = getComputedStyle(document.documentElement).getPropertyValue('--phosphor').trim() || '#1cff9b';
-    var dim = getComputedStyle(document.documentElement).getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
+  /**
+   * Check if all non-mine cells are revealed.
+   */
+  Minesweeper.prototype._checkWinCondition = function () {
+    for (var i = 0; i < this._grid.length; i++) {
+      var cell = this._grid[i];
+      if (!cell.mine && !cell.revealed) return;
+    }
+    // Won!
+    this._won = true;
+    var winBonus = Math.max(0, 1000 - Math.floor(this._elapsedTime / 1000) * 5);
+    this.addScore(winBonus);
+    this.playSFX('win');
+    // Suppress the sad game-over SFX — win fanfare is sufficient
+    var savedGO = this.sfxMap['game-over'];
+    this.sfxMap['game-over'] = null;
+    this.setState(ArcadeEngine.STATE.GAME_OVER);
+    this.sfxMap['game-over'] = savedGO;
+  };
 
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, W, H);
+  // ════════════════════════════════════════════════════════════
+  // UPDATE
+  // ════════════════════════════════════════════════════════════
 
-    var numColors = [ph, '#4488ff', '#44cc44', '#ff4444', '#aa44ff', '#ff8800', '#44ffff', '#ff44ff', '#ffffff'];
+  Minesweeper.prototype.onUpdate = function (dt) {
+    // Track elapsed time for scoring
+    this._elapsedTime += dt;
+  };
 
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var cell = grid[r * cols + c];
-        var x = c * CELL;
-        var y = r * CELL + 20;
+  // ════════════════════════════════════════════════════════════
+  // DRAW
+  // ════════════════════════════════════════════════════════════
+
+  Minesweeper.prototype.onDraw = function (ctx, W, H) {
+    var ph = this.colors.phosphor;
+    var dim = this.colors.phosphorDim;
+    var C = this._cellSize;
+    var ox = this._gridOffsetX;
+    var oy = this._gridOffsetY;
+
+    // Color palette for numbers 1-8
+    var numColors = [
+      ph,         // 0 (unused)
+      '#4488ff',  // 1 blue
+      '#44cc44',  // 2 green
+      '#ff4444',  // 3 red
+      '#aa44ff',  // 4 purple
+      '#ff8800',  // 5 orange
+      '#44ffff',  // 6 cyan
+      '#ff44ff',  // 7 pink
+      '#ffffff'   // 8 white
+    ];
+
+    // Draw cells
+    for (var r = 0; r < this._rows; r++) {
+      for (var c = 0; c < this._cols; c++) {
+        var cell = this._grid[r * this._cols + c];
+        var x = ox + c * C;
+        var y = oy + r * C;
 
         if (cell.revealed) {
+          // Revealed cell — dark flat background
           ctx.fillStyle = '#111';
-          ctx.fillRect(x, y, CELL, CELL);
+          ctx.fillRect(x, y, C, C);
           ctx.strokeStyle = '#1a1a1a';
-          ctx.strokeRect(x, y, CELL, CELL);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, C, C);
+
           if (cell.mine) {
-            ctx.fillStyle = '#f44';
-            ctx.beginPath();
-            ctx.arc(x + CELL / 2, y + CELL / 2, CELL / 4, 0, Math.PI * 2);
-            ctx.fill();
+            // Boom! Draw mine with glow
+            this.drawEmoji(ctx, '💣', x + C / 2, y + C / 2, C * 0.7, {
+              glow: true,
+              glowColor: '#ff4757',
+              glowRadius: 6
+            });
           } else if (cell.adjacent > 0) {
-            ctx.fillStyle = numColors[cell.adjacent] || ph;
-            ctx.font = 'bold 12px monospace';
+            // Draw number with appropriate color
+            var numColor = numColors[cell.adjacent] || ph;
+            ctx.save();
+            ctx.fillStyle = numColor;
+            ctx.shadowColor = numColor;
+            ctx.shadowBlur = 3;
+            ctx.font = 'bold ' + Math.floor(C * 0.6) + 'px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(String(cell.adjacent), x + CELL / 2, y + CELL / 2);
+            ctx.fillText(String(cell.adjacent), x + C / 2, y + C / 2);
+            ctx.restore();
           }
         } else {
+          // Hidden cell — dark raised appearance with phosphor border
           ctx.fillStyle = dim;
-          ctx.globalAlpha = 0.25;
-          ctx.fillRect(x, y, CELL, CELL);
+          ctx.globalAlpha = 0.4;
+          ctx.fillRect(x, y, C, C);
           ctx.globalAlpha = 1;
           ctx.strokeStyle = dim;
-          ctx.strokeRect(x, y, CELL, CELL);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, C, C);
+
+          // Draw as emoji hidden cell
+          this.drawEmoji(ctx, '⬛', x + C / 2, y + C / 2, C * 0.75);
+
+          // If flagged, draw flag emoji
           if (cell.flagged) {
-            ctx.fillStyle = '#ff0';
-            ctx.font = '12px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('⚑', x + CELL / 2, y + CELL / 2);
+            this.drawEmoji(ctx, '🚩', x + C / 2, y + C / 2, C * 0.6, {
+              glow: true,
+              glowColor: ph,
+              glowRadius: 4
+            });
           }
         }
       }
     }
 
     // HUD
-    var flagCount = grid.filter(function (c) { return c.flagged; }).length;
-    ctx.fillStyle = ph;
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText('MINES:' + mineCount + '  FLAGS:' + flagCount, 8, 4);
+    var mineCount = this._mineCount;
+    var flagCount = 0;
+    for (var i = 0; i < this._grid.length; i++) {
+      if (this._grid[i].flagged) flagCount++;
+    }
+    var elapsedSeconds = Math.floor(this._elapsedTime / 1000);
 
-    if (gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    var hudY = 14;
+    this.drawText(ctx, 'MINES: ' + mineCount + '  FLAGS: ' + flagCount + '  TIME: ' + elapsedSeconds + 's',
+      8, hudY, 11, ph);
+
+    // Game over overlay
+    if (this.state === ArcadeEngine.STATE.GAME_OVER) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
       ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = ph;
-      ctx.font = '16px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(won ? 'CLEARED!' : 'BOOM!', W / 2, H / 2 - 10);
-      ctx.font = '11px monospace';
-      ctx.fillText('[SPACE] RETRY', W / 2, H / 2 + 14);
-    }
-  }
 
-  function loop() {
-    draw();
-    raf = requestAnimationFrame(loop);
-  }
+      var message = this._won ? 'CLEARED!' : 'BOOM!';
+      var msgColor = this._won ? '#44cc44' : '#ff4444';
+      this.drawText(ctx, message, W / 2, H / 2 - 20, 20, msgColor, 'center');
 
-  function onClick(e) {
-    if (gameOver) return;
-    var rect = ctx.canvas.getBoundingClientRect();
-    var mx = (e.clientX - rect.left) * (W / rect.width);
-    var my = (e.clientY - rect.top) * (H / rect.height);
-    var c = Math.floor(mx / CELL);
-    var r = Math.floor((my - 20) / CELL);
-    if (c < 0 || c >= cols || r < 0 || r >= rows) return;
-    if (firstClick) {
-      placeMines(c, r);
-      firstClick = false;
-    }
-    reveal(c, r);
-  }
+      var scoreMsg = 'SCORE: ' + this.score;
+      this.drawText(ctx, scoreMsg, W / 2, H / 2 + 8, 12, ph, 'center');
 
-  function onContext(e) {
-    e.preventDefault();
-    if (gameOver) return;
-    var rect = ctx.canvas.getBoundingClientRect();
-    var mx = (e.clientX - rect.left) * (W / rect.width);
-    var my = (e.clientY - rect.top) * (H / rect.height);
-    var c = Math.floor(mx / CELL);
-    var r = Math.floor((my - 20) / CELL);
-    if (c < 0 || c >= cols || r < 0 || r >= rows) return;
-    var cell = grid[r * cols + c];
-    if (!cell.revealed) cell.flagged = !cell.flagged;
-  }
+      var timeMsg = 'TIME: ' + elapsedSeconds + 's';
+      this.drawText(ctx, timeMsg, W / 2, H / 2 + 24, 11, dim, 'center');
 
-  function onKeyDown(e) {
-    if (e.key === ' ' && gameOver) { e.preventDefault(); reset(); }
-  }
-
-  return {
-    start: function (canvas) {
-      ctx = canvas.getContext('2d');
-      W = canvas.width;
-      H = canvas.height;
-      reset();
-      canvas.addEventListener('click', onClick);
-      canvas.addEventListener('contextmenu', onContext);
-      document.addEventListener('keydown', onKeyDown);
-      loop();
-    },
-    stop: function () {
-      cancelAnimationFrame(raf);
-      if (ctx && ctx.canvas) {
-        ctx.canvas.removeEventListener('click', onClick);
-        ctx.canvas.removeEventListener('contextmenu', onContext);
-      }
-      document.removeEventListener('keydown', onKeyDown);
-    },
-    resize: function (canvas) {
-      W = canvas.width;
-      H = canvas.height;
-      reset();
+      this.drawText(ctx, '[SPACE] RETRY', W / 2, H / 2 + 45, 10, ph, 'center');
     }
   };
+
+  // ════════════════════════════════════════════════════════════
+  // EXPORT — MinigameModal compatible
+  // ════════════════════════════════════════════════════════════
+
+  var instance = new Minesweeper();
+  return instance.asMinigame();
 })();

@@ -351,8 +351,7 @@ window.JezzBallGame = (function () {
           lives--;
           playSFX('hit-' + (1 + Math.floor(Math.random() * 4)), 0.5);
           if (lives <= 0) {
-            lost = true;
-            playSFX('game-over-1', 0.6);
+            onJezzGameOver();
           }
           continue;
         }
@@ -404,8 +403,7 @@ window.JezzBallGame = (function () {
     lives--;
     playSFX('hit-' + (1 + Math.floor(Math.random() * 4)), 0.5);
     if (lives <= 0) {
-      lost = true;
-      playSFX('game-over-1', 0.6);
+      onJezzGameOver();
     }
     return true;
   }
@@ -683,6 +681,54 @@ window.JezzBallGame = (function () {
     playSFX(sound, vol);
   }
 
+  // ── Game over: save highscore + submit to leaderboard ──
+  var _jezzHighScore = 0;
+  (function loadJezzHigh() {
+    try {
+      var all = JSON.parse(localStorage.getItem('eyesonly_arcade_highscores') || '{}');
+      _jezzHighScore = all['jezzball'] || 0;
+    } catch (_) {}
+  })();
+
+  function onJezzGameOver() {
+    lost = true;
+    playSFX('game-over-1', 0.6);
+
+    // Personal best
+    if (score > _jezzHighScore) {
+      _jezzHighScore = score;
+      try {
+        var all = JSON.parse(localStorage.getItem('eyesonly_arcade_highscores') || '{}');
+        all['jezzball'] = score;
+        localStorage.setItem('eyesonly_arcade_highscores', JSON.stringify(all));
+      } catch (_) {}
+    }
+
+    // Submit to HighscoreState leaderboard
+    if (typeof HighscoreState !== 'undefined' && HighscoreState.submitHighscore) {
+      try {
+        HighscoreState.submitHighscore({
+          game_id: 'arcade_games',
+          arcade_game_id: 'jezzball',
+          mode: 'human',
+          display_name: 'Player',
+          score: score,
+          metadata: { level: level, pct: pct }
+        });
+      } catch (_) {}
+    }
+
+    // Currency
+    var earned = Math.floor(score * 0.015);
+    if (earned > 0) {
+      try {
+        var acct = JSON.parse(localStorage.getItem('eyesonly_account') || '{}');
+        acct.puzzleCoins = (acct.puzzleCoins || 0) + earned;
+        localStorage.setItem('eyesonly_account', JSON.stringify(acct));
+      } catch (_) {}
+    }
+  }
+
   function update() {
     if (lost) return;
 
@@ -930,11 +976,20 @@ window.JezzBallGame = (function () {
       ctx.fillStyle = ph;
       ctx.font = '16px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', W / 2, H / 2 - 16);
+      ctx.fillText('GAME OVER', W / 2, H / 2 - 24);
       ctx.font = '11px monospace';
-      ctx.fillText('LEVEL ' + level + ' — ' + pct + '% FILLED', W / 2, H / 2 + 4);
-      ctx.fillText('SCORE: ' + score, W / 2, H / 2 + 20);
-      ctx.fillText('TAP or [SPACE] to RETRY', W / 2, H / 2 + 40);
+      ctx.fillText('LEVEL ' + level + ' — ' + pct + '% FILLED', W / 2, H / 2 - 4);
+      ctx.fillText('SCORE: ' + score, W / 2, H / 2 + 12);
+      if (score >= _jezzHighScore && score > 0) {
+        ctx.fillStyle = '#ffb347';
+        ctx.fillText('NEW HIGH SCORE!', W / 2, H / 2 + 28);
+        ctx.fillStyle = ph;
+      } else if (_jezzHighScore > 0) {
+        ctx.fillStyle = '#ffb347';
+        ctx.fillText('HIGH SCORE: ' + _jezzHighScore, W / 2, H / 2 + 28);
+        ctx.fillStyle = ph;
+      }
+      ctx.fillText('TAP or [SPACE] to RETRY', W / 2, H / 2 + 48);
     }
   }
 

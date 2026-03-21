@@ -86,7 +86,8 @@
       'explosion':  'metal-hit-1',
       'shoot':      'drop-1',
       'drone-kill': 'metal-hit-1',
-      'game-start': 'power-up-1'
+      'game-start': 'power-up-1',
+      'level-up':   'toad'
     };
 
     // Pre-init all state so onDraw never reads undefined

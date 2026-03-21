@@ -613,6 +613,9 @@
     }
   </script>
 
+  <!-- Highscore state (leaderboard persistence) -->
+  <script src="js/highscore-state.js"></script>
+
   <!-- Arcade engine (Phase 0 shared infrastructure) -->
   <script src="js/arcade-input.js?v=20260320a"></script>
   <script src="js/arcade-engine.js?v=20260320a"></script>
@@ -853,9 +856,9 @@
 
         // Inject high score badge if the player has one
         try {
-          var hsKey = 'arcade_highscore_' + gameId;
-          var hs = parseInt(localStorage.getItem(hsKey), 10);
-          if (hs && hs > 0) {
+          var allScores = JSON.parse(localStorage.getItem('eyesonly_arcade_highscores') || '{}');
+          var hs = allScores[gameId] || 0;
+          if (hs > 0) {
             var badge = document.createElement('div');
             badge.className = 'games-arcade-hiscore';
             badge.innerHTML = 'HI <span class="games-arcade-hiscore-value">' + hs.toLocaleString() + '</span>';

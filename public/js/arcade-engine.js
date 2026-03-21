@@ -343,6 +343,23 @@ var ArcadeEngine = (function () {
     this.currencyEarned = Math.floor(this.score * this.currencyRate);
     this._awardCurrency(this.currencyEarned);
 
+    // Submit to HighscoreState leaderboard (if available)
+    if (typeof HighscoreState !== 'undefined' && HighscoreState.submitHighscore) {
+      try {
+        HighscoreState.submitHighscore({
+          game_id: 'arcade_games',
+          arcade_game_id: this.gameId,
+          mode: 'human',
+          display_name: 'Player',
+          score: this.score,
+          metadata: {
+            level: this.level,
+            currency_earned: this.currencyEarned
+          }
+        });
+      } catch (_) {}
+    }
+
     // SFX
     this.playSFX('game-over');
   };

@@ -464,7 +464,7 @@ window.SkiFreeGame = (function () {
     if (Math.random() < 0.004) {
       this._intel.push({
         x: margin + Math.random() * (W - margin * 2), y: H + 30,
-        w: T * 0.7, h: T * 0.7, emoji: EMOJI.intel
+        w: T * 0.35, h: T * 0.35, emoji: EMOJI.intel
       });
     }
 
@@ -483,7 +483,7 @@ window.SkiFreeGame = (function () {
       var ft = foodTypes[Math.floor(Math.random() * foodTypes.length)];
       this._foodPickups.push({
         x: margin + Math.random() * (W - margin * 2), y: H + 30,
-        w: T * 0.7, h: T * 0.7,
+        w: T * 0.35, h: T * 0.35,
         emoji: ft.emoji, heal: ft.heal, name: ft.name
       });
     }
@@ -767,14 +767,14 @@ window.SkiFreeGame = (function () {
     for (var ji = 0; ji < this._intel.length; ji++) {
       var pk = this._intel[ji];
       var bob = Math.sin(Date.now() * 0.005 + ji) * 3;
-      this.drawEmoji(ctx, pk.emoji, pk.x, pk.y + bob, T * 0.7, { glow: true, glowColor: this.colors.amber });
+      this.drawEmoji(ctx, pk.emoji, pk.x, pk.y + bob, T * 0.25, { glow: true, glowColor: this.colors.amber });
     }
 
     // ── Food / HP recovery pickups ──
     for (var fdi = 0; fdi < this._foodPickups.length; fdi++) {
       var fd = this._foodPickups[fdi];
       var fbob = Math.sin(Date.now() * 0.004 + fdi * 2) * 4;
-      this.drawEmoji(ctx, fd.emoji, fd.x, fd.y + fbob, T * 0.7, { glow: true, glowColor: '#FF6B9D' });
+      this.drawEmoji(ctx, fd.emoji, fd.x, fd.y + fbob, T * 0.25, { glow: true, glowColor: '#FF6B9D' });
     }
 
     // ── Projectiles (via ProjectileSystem) ──
