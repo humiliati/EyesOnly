@@ -177,6 +177,28 @@
   }
   .games-v2-nav-designer:hover { color: var(--paper-heading, #1a1610); }
 
+  /* Tool link buttons — louder, more tappable */
+  .games-v2-nav-link-btn {
+    display: block;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    color: var(--paper-text, #2a2418);
+    text-decoration: none;
+    padding: 5px 8px;
+    margin: 2px -4px;
+    border-radius: 3px;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, text-shadow 0.15s;
+  }
+  .games-v2-nav-link-btn:hover {
+    color: var(--paper-heading, #1a1610);
+    background: rgba(0, 0, 0, 0.06);
+    border-left-color: var(--theme-primary, #33ff33);
+  }
+
   /* CRT Monitor frame */
   .games-v2-monitor {
     position: relative;
@@ -793,7 +815,8 @@ body[data-theme] .games-v2-torso-btn {
   }
 
   .games-v2-nav-postit:hover .postit-label {
-    color: rgba(255,255,255,0.5) !important;
+    color: rgba(255,255,255,0.55) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
 
   .games-v2-nav-postit:hover .games-v2-nav-item,
@@ -805,6 +828,25 @@ body[data-theme] .games-v2-torso-btn {
     text-shadow:
       0 0 6px var(--theme-primary-glow, rgba(51, 255, 51, 0.4)),
       0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .games-v2-nav-postit:hover .games-v2-nav-link-btn {
+    position: relative;
+    z-index: 2;
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--theme-primary, #33ff33);
+    text-shadow:
+      0 0 8px var(--theme-primary-glow, rgba(51, 255, 51, 0.5)),
+      0 1px 3px rgba(0, 0, 0, 0.9);
+  }
+
+  .games-v2-nav-postit:hover .games-v2-nav-link-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    text-shadow:
+      0 0 12px var(--theme-primary-glow, rgba(51, 255, 51, 0.7)),
+      0 0 20px var(--theme-primary-glow, rgba(51, 255, 51, 0.3)),
+      0 1px 3px rgba(0, 0, 0, 0.9);
   }
 
   /* Hide tape strip during porthole mode */
