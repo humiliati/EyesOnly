@@ -619,6 +619,8 @@
   <script src="js/minigames/minesweeper.js"></script>
   <script src="js/minigames/breakout.js"></script>
   <script src="js/minigame-modal.js"></script>
+  <!-- Designer games (load after minigame-modal for self-registration) -->
+  <script src="js/minigames/goat-runner.js"></script>
 
   <!-- Puzzle popup system + puzzles -->
   <script src="js/puzzle-popup.js"></script>
@@ -786,6 +788,46 @@
         if (window.MinigameModal) MinigameModal.open(key);
       });
     });
+
+    /* ---- Dynamic arcade grid: inject tiles for runtime-registered games ---- */
+    (function injectDynamicArcadeTiles() {
+      if (!window.MinigameModal || !MinigameModal.getRegisteredIds) return;
+      var grid = document.querySelector('#arcade-body .games-arcade-grid');
+      if (!grid) return;
+
+      // Collect keys that already have a hardcoded button
+      var existing = {};
+      grid.querySelectorAll('[data-minigame]').forEach(function (el) {
+        existing[el.getAttribute('data-minigame')] = true;
+      });
+
+      // Inject a tile for each registered game that isn't already in the DOM
+      MinigameModal.getRegisteredIds().forEach(function (id) {
+        if (existing[id]) return;
+        var btn = document.createElement('button');
+        btn.className = 'games-arcade-tile';
+        btn.setAttribute('data-minigame', id);
+        btn.setAttribute('data-sound', 'ui-01');
+        // Derive display title from id: 'goat-runner' → 'GOAT RUNNER'
+        var title = id.replace(/-/g, ' ').toUpperCase();
+        btn.innerHTML =
+          '<span class="games-arcade-icon">&#127918;</span>' +
+          '<span class="games-arcade-title">' + title + '</span>' +
+          '<span class="games-arcade-desc">Designer game</span>';
+        btn.addEventListener('click', function () {
+          MinigameModal.open(id);
+        });
+        grid.appendChild(btn);
+      });
+
+      // Update the row count badge
+      var countEl = grid.closest('.games-row');
+      if (countEl) {
+        var badge = countEl.querySelector('.games-row-count');
+        var total = grid.querySelectorAll('.games-arcade-tile').length;
+        if (badge) badge.textContent = total + ' GAMES';
+      }
+    })();
 
     /* ---- Puzzle popup binding ---- */
     (function initPuzzles() {

@@ -377,5 +377,27 @@ window.MinigameModal = (function () {
     }
   }
 
-  return { open: open, close: closeForReal };
+  /* ── Dynamic game registration ──
+     Designer / runtime-loaded games call MinigameModal.register()
+     to add themselves to the GAMES map without touching this file.
+     The getter function should return an object with { start, stop, resize }.
+     For ArcadeEngine subclasses, use:  instance.asMinigame()            */
+  function register(gameId, getterFn) {
+    if (typeof gameId !== 'string' || !gameId) {
+      console.warn('MinigameModal.register: gameId must be a non-empty string');
+      return;
+    }
+    if (typeof getterFn !== 'function') {
+      console.warn('MinigameModal.register: getter must be a function');
+      return;
+    }
+    GAMES[gameId] = getterFn;
+  }
+
+  /* ── Query registered game IDs (for dynamic grid rendering) ── */
+  function getRegisteredIds() {
+    return Object.keys(GAMES);
+  }
+
+  return { open: open, close: closeForReal, register: register, getRegisteredIds: getRegisteredIds };
 })();

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>EYES ONLY // PUZZLE DESIGNER</title>
+  <title>EYES ONLY // CONTENT DESIGNER</title>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -78,6 +78,39 @@
     .toast { position: fixed; bottom: 20px; right: 20px; background: var(--phosphor-dim); color: #000; padding: 8px 16px; border-radius: 4px; font-size: 11px; opacity: 0; transition: opacity 0.3s; z-index: 999; }
     .toast.show { opacity: 1; }
 
+    /* Content-type toggle (PUZZLE / GAME) */
+    .content-type-toggle { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+    .content-type-btn { flex: 1; padding: 7px 0; text-align: center; font-family: var(--font); font-size: 11px; letter-spacing: 0.12em; background: var(--bg); color: #666; border: none; cursor: pointer; transition: all 0.2s; }
+    .content-type-btn:not(:last-child) { border-right: 1px solid var(--border); }
+    .content-type-btn.active { background: #0a2a1a; color: var(--phosphor); }
+    .content-type-btn:hover:not(.active) { color: #aaa; }
+
+    /* Game-specific fields */
+    .game-fields { display: none; }
+    .game-fields.visible { display: block; }
+    .puzzle-fields { display: block; }
+    .puzzle-fields.hidden { display: none; }
+
+    /* Game canvas preview */
+    .game-preview-container { position: relative; background: #060808; border: 1px solid var(--border); border-radius: 4px; min-height: 300px; }
+    .game-preview-canvas { display: block; width: 100%; background: #060808; image-rendering: pixelated; border-radius: 3px; }
+    .game-preview-controls { display: flex; gap: 6px; padding: 6px; background: var(--bg); border-top: 1px solid var(--border); border-radius: 0 0 3px 3px; }
+    .game-preview-controls .btn { font-size: 10px; padding: 4px 10px; }
+    .game-preview-status { margin-left: auto; font-size: 10px; color: #666; align-self: center; }
+
+    /* Validation results */
+    .validation-panel { margin-top: 8px; }
+    .validation-item { font-size: 10px; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+    .validation-pass { color: var(--phosphor); }
+    .validation-fail { color: var(--red); }
+    .validation-warn { color: var(--amber); }
+    .validation-icon { font-size: 12px; flex-shrink: 0; }
+
+    /* Type badge on cards */
+    .type-badge { font-size: 9px; padding: 1px 5px; border-radius: 2px; letter-spacing: 0.08em; margin-left: 4px; }
+    .type-badge-puzzle { background: #1a1a2a; color: var(--blue); }
+    .type-badge-game { background: #2a1a2a; color: #c084fc; }
+
     /* Responsive */
     @media (max-width: 1000px) {
       .layout { grid-template-columns: 1fr; }
@@ -87,7 +120,7 @@
 <body>
 
 <header>
-  <h1>EYES ONLY // PUZZLE DESIGNER</h1>
+  <h1>EYES ONLY // CONTENT DESIGNER</h1>
   <div class="meta">
     <a href="/games.html">VIEW LIVE FIELD KIT</a> &bull;
     <a href="/qr-stickers.html">PRINT STICKERS</a>
@@ -102,9 +135,18 @@
 
   <!-- LEFT: Puzzle List + Categories -->
   <div class="col" id="col-list">
-    <div class="col-header">PUZZLE INVENTORY</div>
+    <div class="col-header">CONTENT INVENTORY</div>
+
+    <!-- Content type filter -->
+    <div class="content-type-toggle" id="type-filter-toggle" style="margin-bottom:8px;">
+      <button class="content-type-btn active" data-type="all">ALL</button>
+      <button class="content-type-btn" data-type="puzzle">PUZZLES</button>
+      <button class="content-type-btn" data-type="game">GAMES</button>
+    </div>
+
     <div class="btn-row" style="margin-top:0;margin-bottom:6px;">
-      <button class="btn btn-primary" id="btn-new">+ NEW PUZZLE</button>
+      <button class="btn btn-primary" id="btn-new-puzzle">+ NEW PUZZLE</button>
+      <button class="btn btn-primary" id="btn-new-game" style="background:#1a0a2a;border-color:#7c3aed;color:#c084fc;">+ NEW GAME</button>
       <button class="btn" id="btn-refresh">REFRESH</button>
     </div>
 
@@ -134,17 +176,25 @@
 
   <!-- CENTER: Editor -->
   <div class="col" id="col-editor">
-    <div class="col-header">PUZZLE EDITOR</div>
+    <div class="col-header" id="editor-header">CONTENT EDITOR</div>
     <div id="editor-empty" style="color:#555;font-size:11px;padding:40px 0;text-align:center;">
-      Select a puzzle or create a new one.
+      Select an item or create a new puzzle or game.
     </div>
     <div id="editor-form" style="display:none;">
+
+      <!-- Content type toggle -->
+      <div class="content-type-toggle" id="content-type-toggle" style="margin-bottom:10px;">
+        <button class="content-type-btn active" data-type="puzzle">🔐 PUZZLE</button>
+        <button class="content-type-btn" data-type="game">🎮 GAME</button>
+      </div>
+
       <label>TITLE</label>
       <input type="text" id="f-title" placeholder="e.g. Café Cipher Challenge">
 
-      <label>DESCRIPTION (one-liner for the field kit list)</label>
+      <label>DESCRIPTION (one-liner for the arcade grid / field kit)</label>
       <input type="text" id="f-desc" placeholder="Decode the barista's secret message">
 
+      <!-- Shared fields: emoji row -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
         <div>
           <label>EMOJI</label>
@@ -154,13 +204,22 @@
           <label>TAG</label>
           <input type="text" id="f-tag" placeholder="CIPHER">
         </div>
-        <div>
+        <div class="puzzle-fields">
           <label>CHAIN ORDER</label>
           <input type="number" id="f-order" value="0" min="0">
         </div>
+        <div class="game-fields">
+          <label>DIFFICULTY</label>
+          <select id="f-difficulty">
+            <option value="easy">EASY</option>
+            <option value="medium" selected>MEDIUM</option>
+            <option value="hard">HARD</option>
+          </select>
+        </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <!-- Puzzle-specific: category + chain -->
+      <div class="puzzle-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div>
           <label>CATEGORY</label>
           <select id="f-category"><option value="">Uncategorized</option></select>
@@ -171,7 +230,22 @@
         </div>
       </div>
 
-      <label>PUZZLE CODE (JavaScript — must call PuzzlePopup.register())</label>
+      <!-- Game-specific: game ID -->
+      <div class="game-fields">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label>GAME ID (slug for registry)</label>
+            <input type="text" id="f-game-id" placeholder="e.g. rooftop-chase" style="font-size:11px;">
+          </div>
+          <div>
+            <label>CATEGORY</label>
+            <select id="f-game-category"><option value="">Uncategorized</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Code editor (label updates based on type) -->
+      <label id="code-label">PUZZLE CODE (JavaScript — must call PuzzlePopup.register())</label>
       <textarea class="code-editor" id="f-code" placeholder="// Your puzzle JS here...
 // Must call: PuzzlePopup.register('custom-YOUR-SLUG', { title, render, onSolve })
 // See the BLANK TEMPLATE on the right panel for a starting point."></textarea>
@@ -185,10 +259,29 @@
         <button class="btn" id="btn-restore" style="display:none;">RESTORE TO DRAFT</button>
       </div>
 
-      <!-- Live Preview -->
-      <label style="margin-top:16px;">LIVE PREVIEW</label>
-      <div class="preview-frame" id="preview-frame">
-        <div style="color:#555;font-size:11px;text-align:center;padding:40px 0;">Click SAVE to preview</div>
+      <!-- Validation results (game mode only) -->
+      <div class="validation-panel game-fields" id="validation-panel"></div>
+
+      <!-- Live Preview: puzzle mode -->
+      <div class="puzzle-fields" id="puzzle-preview-section">
+        <label style="margin-top:16px;">LIVE PREVIEW</label>
+        <div class="preview-frame" id="preview-frame">
+          <div style="color:#555;font-size:11px;text-align:center;padding:40px 0;">Enter code to preview</div>
+        </div>
+      </div>
+
+      <!-- Live Preview: game mode -->
+      <div class="game-fields" id="game-preview-section">
+        <label style="margin-top:16px;">GAME PREVIEW</label>
+        <div class="game-preview-container" id="game-preview-container">
+          <canvas class="game-preview-canvas" id="game-preview-canvas" width="560" height="360"></canvas>
+          <div class="game-preview-controls">
+            <button class="btn" id="btn-game-play">▶ PLAY</button>
+            <button class="btn" id="btn-game-stop">■ STOP</button>
+            <button class="btn" id="btn-game-restart">↻ RESTART</button>
+            <span class="game-preview-status" id="game-preview-status">STOPPED</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -214,37 +307,67 @@
       <div class="chain-viz" id="chain-viz"></div>
     </div>
 
-    <!-- Blank Template -->
-    <label style="margin-top:16px;">BLANK PUZZLE TEMPLATE</label>
-    <p style="font-size:10px;color:#666;margin-bottom:6px;">
-      Copy this template and paste it into Grok, ChatGPT, or any LLM with the prompt:
-      "Make me a new variant of this puzzle about [your theme]."
-    </p>
-    <div class="template-box">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:10px;color:var(--phosphor-dim);">COPY-PASTEABLE TEMPLATE</span>
-        <button class="copy-btn" id="btn-copy-template">COPY</button>
+    <!-- Blank Puzzle Template (shown in puzzle mode) -->
+    <div class="puzzle-fields" id="puzzle-template-section">
+      <label style="margin-top:16px;">BLANK PUZZLE TEMPLATE</label>
+      <p style="font-size:10px;color:#666;margin-bottom:6px;">
+        Copy this template and paste it into Grok, ChatGPT, or any LLM with the prompt:
+        "Make me a new variant of this puzzle about [your theme]."
+      </p>
+      <div class="template-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:10px;color:var(--phosphor-dim);">COPY-PASTEABLE TEMPLATE</span>
+          <button class="copy-btn" id="btn-copy-template">COPY</button>
+        </div>
+        <pre id="blank-template"></pre>
       </div>
-      <pre id="blank-template"></pre>
+    </div>
+
+    <!-- Blank Game Template (shown in game mode) -->
+    <div class="game-fields" id="game-template-section">
+      <label style="margin-top:16px;">BLANK GAME TEMPLATE</label>
+      <p style="font-size:10px;color:#666;margin-bottom:6px;">
+        ArcadeEngine subclass scaffold. Override the lifecycle hooks to build your game.
+        Uses the same input/rendering/scoring system as all arcade cabinet games.
+      </p>
+      <div class="template-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:10px;color:#7c3aed;">GAME TEMPLATE</span>
+          <button class="copy-btn" id="btn-copy-game-template">COPY</button>
+        </div>
+        <pre id="blank-game-template"></pre>
+      </div>
+
+      <label style="margin-top:12px;">VALIDATION CHECKLIST</label>
+      <div style="font-size:10px;color:#666;line-height:1.6;">
+        Your game code must:<br>
+        ✓ Call <span style="color:var(--phosphor);">ArcadeEngine.call(this, { gameId, title })</span><br>
+        ✓ Set prototype to <span style="color:var(--phosphor);">Object.create(ArcadeEngine.prototype)</span><br>
+        ✓ Define <span style="color:var(--phosphor);">onUpdate(dt)</span> and <span style="color:var(--phosphor);">onDraw(ctx, W, H)</span><br>
+        ✓ Call <span style="color:var(--phosphor);">MinigameModal.register(gameId, getter)</span><br>
+        ✗ Must NOT access DOM outside the canvas
+      </div>
     </div>
 
     <!-- Existing puzzle export -->
-    <label style="margin-top:12px;">EXPORT EXISTING PUZZLE AS TEMPLATE</label>
-    <select id="export-select">
-      <option value="">-- Select a static puzzle --</option>
-      <option value="qr-cipher">Field Cipher Wheel</option>
-      <option value="qr-jigsaw">Surveillance Recon (Jigsaw)</option>
-      <option value="qr-riddle">Intel Riddles</option>
-    </select>
-    <div class="btn-row">
-      <button class="btn" id="btn-export-puzzle">EXPORT AS TEMPLATE</button>
-    </div>
-    <div class="template-box" id="export-output" style="display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:10px;color:var(--phosphor-dim);">EXPORTED SOURCE</span>
-        <button class="copy-btn" id="btn-copy-export">COPY</button>
+    <div class="puzzle-fields">
+      <label style="margin-top:12px;">EXPORT EXISTING PUZZLE AS TEMPLATE</label>
+      <select id="export-select">
+        <option value="">-- Select a static puzzle --</option>
+        <option value="qr-cipher">Field Cipher Wheel</option>
+        <option value="qr-jigsaw">Surveillance Recon (Jigsaw)</option>
+        <option value="qr-riddle">Intel Riddles</option>
+      </select>
+      <div class="btn-row">
+        <button class="btn" id="btn-export-puzzle">EXPORT AS TEMPLATE</button>
       </div>
-      <pre id="export-code"></pre>
+      <div class="template-box" id="export-output" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:10px;color:var(--phosphor-dim);">EXPORTED SOURCE</span>
+          <button class="copy-btn" id="btn-copy-export">COPY</button>
+        </div>
+        <pre id="export-code"></pre>
+      </div>
     </div>
   </div>
 
@@ -258,6 +381,12 @@
 
 <!-- QR Code library (lightweight) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Arcade engine deps (for game preview) -->
+<script src="js/arcade-input.js"></script>
+<script src="js/arcade-engine.js"></script>
+<script src="js/arcade-hud.js"></script>
+<script src="js/minigame-modal.js"></script>
 
 <script>
 (function () {
@@ -298,6 +427,9 @@
   var categories = [];
   var showArchived = false;
   var categoryFilter = '';
+  var contentType = 'puzzle';  // 'puzzle' or 'game'
+  var typeFilter = 'all';      // 'all', 'puzzle', or 'game'
+  var _gamePreviewInstance = null; // active game preview
 
   // ---- Auth: use unified AuthGate ----
   function headers() {
@@ -318,6 +450,7 @@
   function populateCategorySelects() {
     var filter = document.getElementById('category-filter');
     var formSelect = document.getElementById('f-category');
+    var gameFormSelect = document.getElementById('f-game-category');
 
     var filterHtml = '<option value="">ALL CATEGORIES</option>';
     var formHtml = '<option value="">Uncategorized</option>';
@@ -330,6 +463,7 @@
 
     if (filter) filter.innerHTML = filterHtml;
     if (formSelect) formSelect.innerHTML = formHtml;
+    if (gameFormSelect) gameFormSelect.innerHTML = formHtml;
 
     // Restore filter
     if (filter && categoryFilter) filter.value = categoryFilter;
@@ -364,20 +498,47 @@
   }
 
   function savePuzzle(isNew) {
+    var isGame = contentType === 'game';
     var body = {
       title: document.getElementById('f-title').value,
       description: document.getElementById('f-desc').value,
-      emoji: document.getElementById('f-emoji').value || '🔐',
-      tag: document.getElementById('f-tag').value || 'PUZZLE',
+      emoji: document.getElementById('f-emoji').value || (isGame ? '🎮' : '🔐'),
+      tag: document.getElementById('f-tag').value || (isGame ? 'GAME' : 'PUZZLE'),
       puzzle_js: document.getElementById('f-code').value,
-      chain_order: parseInt(document.getElementById('f-order').value) || 0,
-      next_slug: document.getElementById('f-next').value || undefined,
-      category_slug: document.getElementById('f-category').value || undefined,
+      chain_order: isGame ? 0 : (parseInt(document.getElementById('f-order').value) || 0),
+      next_slug: isGame ? undefined : (document.getElementById('f-next').value || undefined),
+      category_slug: isGame
+        ? (document.getElementById('f-game-category').value || undefined)
+        : (document.getElementById('f-category').value || undefined),
     };
 
+    // Store content type + game metadata in tag_class as JSON metadata
+    // This lets us distinguish games from puzzles without DB changes
+    if (isGame) {
+      var gameMeta = {
+        type: 'game',
+        gameId: document.getElementById('f-game-id').value || '',
+        difficulty: document.getElementById('f-difficulty').value || 'medium'
+      };
+      body.tag_class = JSON.stringify(gameMeta);
+    } else {
+      body.tag_class = 'games-tag-narrative';
+    }
+
     if (!body.title || !body.puzzle_js) {
-      toast('Title and puzzle code are required');
+      toast('Title and code are required');
       return;
+    }
+
+    // Validate game code before save
+    if (isGame) {
+      var results = validateGameCode(body.puzzle_js);
+      var failCount = results.filter(function (r) { return r.pass === false; }).length;
+      if (failCount > 0) {
+        renderValidation(body.puzzle_js);
+        toast('Fix ' + failCount + ' validation error' + (failCount > 1 ? 's' : '') + ' before saving');
+        return;
+      }
     }
 
     var url = isNew ? API_BASE + '/puzzles' : API_BASE + '/puzzles/' + currentSlug;
@@ -388,10 +549,12 @@
       .then(function (data) {
         if (data.puzzle) {
           currentSlug = data.puzzle.slug;
-          toast(isNew ? 'Puzzle created!' : 'Puzzle saved!');
+          toast(isNew ? (isGame ? 'Game created!' : 'Puzzle created!') : (isGame ? 'Game saved!' : 'Puzzle saved!'));
           loadPuzzles();
-          showQR(data.puzzle);
-          renderPreview();
+          if (!isGame) {
+            showQR(data.puzzle);
+            renderPreview();
+          }
         } else {
           toast('Error: ' + (data.error || 'Unknown'));
         }
@@ -403,7 +566,7 @@
     fetch(API_BASE + '/puzzles/' + currentSlug + '/publish', { method: 'POST', headers: headers() })
       .then(function (r) { return r.json(); })
       .then(function () {
-        toast('Puzzle is LIVE!');
+        toast(contentType === 'game' ? 'Game is LIVE!' : 'Puzzle is LIVE!');
         loadPuzzles();
       });
   }
@@ -419,6 +582,29 @@
       });
   }
 
+  // ---- Helpers ----
+  function isGameItem(p) {
+    // Detect if a puzzle record is actually a game via tag_class metadata
+    if (p.tag_class) {
+      try {
+        var meta = JSON.parse(p.tag_class);
+        if (meta.type === 'game') return true;
+      } catch (_) {}
+    }
+    // Fallback: check tag
+    return (p.tag || '').toUpperCase() === 'GAME';
+  }
+
+  function getGameMeta(p) {
+    if (p.tag_class) {
+      try {
+        var meta = JSON.parse(p.tag_class);
+        if (meta.type === 'game') return meta;
+      } catch (_) {}
+    }
+    return null;
+  }
+
   // ---- Render ----
   function renderList() {
     var container = document.getElementById('puzzle-list');
@@ -428,21 +614,35 @@
     if (categoryFilter) {
       filtered = puzzles.filter(function (p) { return p.category_slug === categoryFilter; });
     }
+    // Type filter
+    if (typeFilter === 'puzzle') {
+      filtered = filtered.filter(function (p) { return !isGameItem(p); });
+    } else if (typeFilter === 'game') {
+      filtered = filtered.filter(function (p) { return isGameItem(p); });
+    }
 
     if (!filtered.length) {
-      var msg = showArchived ? 'No archived puzzles.' : (categoryFilter ? 'No puzzles in this category.' : 'No puzzles yet. Create one!');
+      var msg = showArchived ? 'No archived items.' :
+        (typeFilter === 'game' ? 'No games yet. Create one!' :
+         typeFilter === 'puzzle' ? 'No puzzles yet. Create one!' :
+         categoryFilter ? 'No items in this category.' : 'No content yet. Create a puzzle or game!');
       container.innerHTML = '<div style="color:#555;font-size:11px;padding:20px;text-align:center;">' + msg + '</div>';
       return;
     }
 
     container.innerHTML = filtered.map(function (p) {
+      var game = isGameItem(p);
       var catLabel = '';
       if (p.category_slug) {
         var cat = categories.find(function (c) { return c.slug === p.category_slug; });
         if (cat) catLabel = ' <span style="color:#4a8aff;font-size:9px;">' + (cat.emoji || '') + cat.label + '</span>';
       }
+      var typeBadge = game
+        ? '<span class="type-badge type-badge-game">GAME</span>'
+        : '<span class="type-badge type-badge-puzzle">PUZZLE</span>';
+
       return '<div class="puzzle-card' + (p.slug === currentSlug ? ' active' : '') + '" data-slug="' + p.slug + '">' +
-        '<div class="puzzle-card-title">' + (p.emoji || '🔐') + ' ' + escapeHtml(p.title) + '</div>' +
+        '<div class="puzzle-card-title">' + (p.emoji || (game ? '🎮' : '🔐')) + ' ' + escapeHtml(p.title) + typeBadge + '</div>' +
         '<div class="puzzle-card-meta">' +
           '<span class="puzzle-card-status status-' + p.status + '">' + p.status.toUpperCase() + '</span>' +
           ' &bull; ' + p.slug +
@@ -461,6 +661,7 @@
 
   function selectPuzzle(slug) {
     currentSlug = slug;
+    stopGamePreview(); // stop any running preview
     renderList();
 
     // Fetch full puzzle with source code
@@ -470,14 +671,27 @@
         var p = data.puzzle;
         if (!p) return;
 
+        // Detect content type from metadata
+        var game = isGameItem(p);
+        var gameMeta = getGameMeta(p);
+
+        setContentType(game ? 'game' : 'puzzle');
+
         document.getElementById('f-title').value = p.title || '';
         document.getElementById('f-desc').value = p.description || '';
-        document.getElementById('f-emoji').value = p.emoji || '🔐';
-        document.getElementById('f-tag').value = p.tag || 'PUZZLE';
+        document.getElementById('f-emoji').value = p.emoji || (game ? '🎮' : '🔐');
+        document.getElementById('f-tag').value = p.tag || (game ? 'GAME' : 'PUZZLE');
         document.getElementById('f-order').value = p.chain_order || 0;
         document.getElementById('f-next').value = p.next_slug || '';
         document.getElementById('f-category').value = p.category_slug || '';
         document.getElementById('f-code').value = p.puzzle_js || '';
+
+        // Game-specific fields
+        if (game && gameMeta) {
+          document.getElementById('f-game-id').value = gameMeta.gameId || '';
+          document.getElementById('f-difficulty').value = gameMeta.difficulty || 'medium';
+          document.getElementById('f-game-category').value = p.category_slug || '';
+        }
 
         // Show/hide lifecycle buttons based on status
         document.getElementById('btn-archive').style.display = (p.status === 'archived') ? 'none' : '';
@@ -485,9 +699,15 @@
         document.getElementById('btn-publish').style.display = (p.status === 'live') ? 'none' : '';
 
         showEditor(true);
-        showQR(p);
-        renderChain(p);
-        renderPreview();
+
+        if (game) {
+          document.getElementById('qr-section').style.display = 'none';
+          renderValidation(p.puzzle_js || '');
+        } else {
+          showQR(p);
+          renderChain(p);
+          renderPreview();
+        }
       });
   }
 
@@ -573,6 +793,213 @@
     var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // ---- Content Type Toggle ----
+  function setContentType(type) {
+    contentType = type;
+
+    // Update toggle buttons
+    var btns = document.querySelectorAll('#content-type-toggle .content-type-btn');
+    btns.forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-type') === type);
+    });
+
+    // Show/hide fields
+    var puzzleEls = document.querySelectorAll('.puzzle-fields');
+    var gameEls = document.querySelectorAll('.game-fields');
+    puzzleEls.forEach(function (el) {
+      el.classList.toggle('hidden', type === 'game');
+      el.style.display = type === 'game' ? 'none' : '';
+    });
+    gameEls.forEach(function (el) {
+      el.classList.toggle('visible', type === 'game');
+      el.style.display = type === 'game' ? '' : 'none';
+    });
+
+    // Update code label + placeholder
+    var codeLabel = document.getElementById('code-label');
+    var codeField = document.getElementById('f-code');
+    if (type === 'game') {
+      codeLabel.textContent = 'GAME CODE (JavaScript — ArcadeEngine subclass + MinigameModal.register())';
+      codeField.placeholder = '// Your game JS here...\n// Must subclass ArcadeEngine and call MinigameModal.register()\n// See the GAME TEMPLATE on the right panel.';
+    } else {
+      codeLabel.textContent = 'PUZZLE CODE (JavaScript — must call PuzzlePopup.register())';
+      codeField.placeholder = '// Your puzzle JS here...\n// Must call: PuzzlePopup.register(\'custom-YOUR-SLUG\', { title, render, onSolve })\n// See the BLANK TEMPLATE on the right panel for a starting point.';
+    }
+
+    // Update default tag
+    if (!document.getElementById('f-tag').value ||
+        document.getElementById('f-tag').value === 'PUZZLE' ||
+        document.getElementById('f-tag').value === 'GAME') {
+      document.getElementById('f-tag').value = type === 'game' ? 'GAME' : 'PUZZLE';
+    }
+  }
+
+  // ---- Game Validation ----
+  function validateGameCode(code) {
+    var results = [];
+
+    // Check ArcadeEngine.call
+    if (/ArcadeEngine\.call\s*\(\s*this/.test(code)) {
+      results.push({ pass: true, msg: 'Calls ArcadeEngine.call(this, config)' });
+    } else {
+      results.push({ pass: false, msg: 'Missing ArcadeEngine.call(this, config) — required for subclass' });
+    }
+
+    // Check prototype chain
+    if (/Object\.create\s*\(\s*ArcadeEngine\.prototype\s*\)/.test(code)) {
+      results.push({ pass: true, msg: 'Sets prototype to ArcadeEngine.prototype' });
+    } else {
+      results.push({ pass: false, msg: 'Missing Object.create(ArcadeEngine.prototype) — required for inheritance' });
+    }
+
+    // Check onDraw
+    if (/\.onDraw\s*=\s*function/.test(code)) {
+      results.push({ pass: true, msg: 'Defines onDraw() render hook' });
+    } else {
+      results.push({ pass: false, msg: 'Missing onDraw(ctx, W, H) — required for rendering' });
+    }
+
+    // Check onUpdate
+    if (/\.onUpdate\s*=\s*function/.test(code)) {
+      results.push({ pass: true, msg: 'Defines onUpdate() logic hook' });
+    } else {
+      results.push({ pass: false, msg: 'Missing onUpdate(dt) — required for game logic' });
+    }
+
+    // Check MinigameModal.register
+    if (/MinigameModal\.register\s*\(/.test(code)) {
+      results.push({ pass: true, msg: 'Calls MinigameModal.register()' });
+    } else {
+      results.push({ pass: false, msg: 'Missing MinigameModal.register() — game won\'t appear in arcade' });
+    }
+
+    // Check gameId in config
+    var gameIdMatch = code.match(/gameId\s*:\s*['"]([^'"]+)['"]/);
+    if (gameIdMatch) {
+      results.push({ pass: true, msg: 'Game ID: "' + gameIdMatch[1] + '"' });
+    } else {
+      results.push({ pass: false, msg: 'Missing gameId in ArcadeEngine config' });
+    }
+
+    // Warn about DOM access
+    if (/document\.getElementById|document\.querySelector|document\.getElement/.test(code)) {
+      results.push({ pass: null, msg: 'Warning: DOM access detected — games should only use the canvas' });
+    }
+
+    // Check for asMinigame
+    if (/\.asMinigame\s*\(\s*\)/.test(code)) {
+      results.push({ pass: true, msg: 'Exports via asMinigame()' });
+    } else {
+      results.push({ pass: null, msg: 'Tip: call instance.asMinigame() for MinigameModal compatibility' });
+    }
+
+    return results;
+  }
+
+  function renderValidation(code) {
+    var panel = document.getElementById('validation-panel');
+    if (contentType !== 'game') { panel.innerHTML = ''; return; }
+
+    var results = validateGameCode(code);
+    var html = '<label style="margin-top:8px;">CODE VALIDATION</label>';
+
+    results.forEach(function (r) {
+      var cls = r.pass === true ? 'validation-pass' : (r.pass === false ? 'validation-fail' : 'validation-warn');
+      var icon = r.pass === true ? '✓' : (r.pass === false ? '✗' : '⚠');
+      html += '<div class="validation-item ' + cls + '">' +
+        '<span class="validation-icon">' + icon + '</span>' +
+        '<span>' + escapeHtml(r.msg) + '</span>' +
+      '</div>';
+    });
+
+    var passCount = results.filter(function (r) { return r.pass === true; }).length;
+    var failCount = results.filter(function (r) { return r.pass === false; }).length;
+    html += '<div style="font-size:10px;margin-top:4px;color:' + (failCount > 0 ? 'var(--red)' : 'var(--phosphor)') + ';">' +
+      passCount + '/' + (passCount + failCount) + ' checks passed' +
+    '</div>';
+
+    panel.innerHTML = html;
+  }
+
+  // ---- Game Preview ----
+  function stopGamePreview() {
+    if (_gamePreviewInstance) {
+      try { _gamePreviewInstance.stop(); } catch (e) {}
+      _gamePreviewInstance = null;
+    }
+    var status = document.getElementById('game-preview-status');
+    if (status) status.textContent = 'STOPPED';
+  }
+
+  function startGamePreview() {
+    stopGamePreview();
+
+    var code = document.getElementById('f-code').value;
+    if (!code.trim()) {
+      document.getElementById('game-preview-status').textContent = 'NO CODE';
+      return;
+    }
+
+    var canvas = document.getElementById('game-preview-canvas');
+    var container = document.getElementById('game-preview-container');
+    var status = document.getElementById('game-preview-status');
+
+    // Size canvas to container
+    var rect = container.getBoundingClientRect();
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = Math.max(300, rect.width * 0.65) + 'px';
+
+    // Create a mock MinigameModal.register that captures the game
+    var capturedGame = null;
+    var mockRegister = function (id, getter) {
+      capturedGame = { id: id, getter: getter };
+    };
+
+    // Temporarily replace MinigameModal.register
+    var origRegister = null;
+    if (window.MinigameModal && MinigameModal.register) {
+      origRegister = MinigameModal.register;
+      MinigameModal.register = mockRegister;
+    }
+
+    try {
+      // Execute the game code in a function scope
+      var fn = new Function(code);
+      fn();
+
+      // Restore original register
+      if (origRegister) MinigameModal.register = origRegister;
+
+      if (!capturedGame) {
+        status.textContent = 'ERROR: No game registered';
+        status.style.color = 'var(--red)';
+        return;
+      }
+
+      var game = capturedGame.getter();
+      if (!game || !game.start) {
+        status.textContent = 'ERROR: Invalid game object';
+        status.style.color = 'var(--red)';
+        return;
+      }
+
+      _gamePreviewInstance = game;
+      game.start(canvas);
+      status.textContent = 'RUNNING';
+      status.style.color = 'var(--phosphor)';
+
+    } catch (err) {
+      if (origRegister) MinigameModal.register = origRegister;
+      status.textContent = 'ERROR: ' + err.message;
+      status.style.color = 'var(--red)';
+      console.error('Game preview error:', err);
+    }
+  }
+
+  function restartGamePreview() {
+    startGamePreview();
   }
 
   // ---- Blank Template ----
@@ -687,6 +1114,120 @@
 
   document.getElementById('blank-template').textContent = BLANK_TEMPLATE;
 
+  // ---- Blank Game Template ----
+  var BLANK_GAME_TEMPLATE = [
+    '// ============================================================',
+    '// EYES ONLY — Blank Game Template (ArcadeEngine subclass)',
+    '// ============================================================',
+    '// INSTRUCTIONS:',
+    '// This is a game template for the arcade cabinet system.',
+    '// The game runs inside a MinigameModal canvas with CRT styling.',
+    '//',
+    '// LIFECYCLE HOOKS (override these):',
+    '//   onInit()            — called once on first start',
+    '//   onStart()           — called on each new game / restart',
+    '//   onUpdate(dt)        — game logic, called at 60fps fixed step',
+    '//   onDraw(ctx, W, H)   — render to canvas',
+    '//   onInput(type, data) — handle tap, swipe, drag, keyaction',
+    '//   onResize(W, H)      — canvas resized',
+    '//',
+    '// BUILT-IN HELPERS:',
+    '//   this.drawEmoji(ctx, emoji, x, y, size, opts)',
+    '//   this.drawText(ctx, text, x, y, size, color, align)',
+    '//   this.addScore(points)  /  this.loseLife()',
+    '//   this.playSFX(name)     /  ArcadeEngine.collideAABB(a, b)',
+    '//   this.isKeyHeld("up"|"down"|"left"|"right"|"action")',
+    '// ============================================================',
+    '',
+    '(function () {',
+    '  "use strict";',
+    '',
+    '  var GAME_ID = "my-game";  // CHANGE THIS — unique slug',
+    '  var TITLE   = "MY GAME";  // CHANGE THIS — display name',
+    '',
+    '  function MyGame() {',
+    '    ArcadeEngine.call(this, {',
+    '      gameId: GAME_ID,',
+    '      title:  TITLE,',
+    '      lives:  3,',
+    '      currencyRate: 0.01',
+    '    });',
+    '  }',
+    '  MyGame.prototype = Object.create(ArcadeEngine.prototype);',
+    '  MyGame.prototype.constructor = MyGame;',
+    '',
+    '  // ── Setup (called on each new game) ──',
+    '  MyGame.prototype.onStart = function () {',
+    '    this._player = {',
+    '      x: this.logicalW / 2,',
+    '      y: this.logicalH / 2,',
+    '      size: 24',
+    '    };',
+    '    this._timer = 0;',
+    '  };',
+    '',
+    '  // ── Input ──',
+    '  MyGame.prototype.onInput = function (type, data) {',
+    '    var p = this._player;',
+    '    if (type === "keyaction") {',
+    '      if (data.action === "up")    p.y -= 10;',
+    '      if (data.action === "down")  p.y += 10;',
+    '      if (data.action === "left")  p.x -= 10;',
+    '      if (data.action === "right") p.x += 10;',
+    '    }',
+    '    if (type === "tap") {',
+    '      // Example: teleport to tap position',
+    '      p.x = data.x;',
+    '      p.y = data.y;',
+    '    }',
+    '  };',
+    '',
+    '  // ── Logic (60fps fixed timestep) ──',
+    '  MyGame.prototype.onUpdate = function (dt) {',
+    '    this._timer++;',
+    '    this.addScore(1);',
+    '',
+    '    // Held-key movement',
+    '    if (this.isKeyHeld("left"))  this._player.x -= 2;',
+    '    if (this.isKeyHeld("right")) this._player.x += 2;',
+    '    if (this.isKeyHeld("up"))    this._player.y -= 2;',
+    '    if (this.isKeyHeld("down"))  this._player.y += 2;',
+    '',
+    '    // Clamp to screen',
+    '    var p = this._player;',
+    '    if (p.x < 0) p.x = 0;',
+    '    if (p.x > this.logicalW) p.x = this.logicalW;',
+    '    if (p.y < 0) p.y = 0;',
+    '    if (p.y > this.logicalH) p.y = this.logicalH;',
+    '  };',
+    '',
+    '  // ── Render ──',
+    '  MyGame.prototype.onDraw = function (ctx, W, H) {',
+    '    var p = this._player;',
+    '',
+    '    // Draw player',
+    '    this.drawEmoji(ctx, "🚀", p.x, p.y, p.size, {',
+    '      glow: true,',
+    '      glowColor: this.colors.phosphor',
+    '    });',
+    '',
+    '    // Draw HUD',
+    '    this.drawText(ctx, "SCORE: " + this.score, 10, 20, 12,',
+    '                  this.colors.phosphor, "left");',
+    '  };',
+    '',
+    '  // ── Register with arcade system ──',
+    '  var instance = new MyGame();',
+    '  MinigameModal.register(GAME_ID, function () {',
+    '    return instance.asMinigame();',
+    '  });',
+    '',
+    '})();',
+  ].join('\n');
+
+  var gameTemplateEl = document.getElementById('blank-game-template');
+  if (gameTemplateEl) gameTemplateEl.textContent = BLANK_GAME_TEMPLATE;
+
   // ---- Export existing puzzle ----
   var STATIC_PUZZLE_URLS = {
     'qr-cipher': '/js/puzzles/qr-cipher-wheel.js',
@@ -707,25 +1248,65 @@
       });
   });
 
+  // ---- Content Type Toggle (Editor) ----
+  document.querySelectorAll('#content-type-toggle .content-type-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var type = btn.getAttribute('data-type');
+      setContentType(type);
+      // Re-render preview for new type
+      if (type === 'game') {
+        stopGamePreview();
+        renderValidation(document.getElementById('f-code').value);
+      } else {
+        stopGamePreview();
+        renderPreview();
+      }
+    });
+  });
+
+  // ---- Type Filter Toggle (Left panel) ----
+  document.querySelectorAll('#type-filter-toggle .content-type-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      typeFilter = btn.getAttribute('data-type');
+      document.querySelectorAll('#type-filter-toggle .content-type-btn').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-type') === typeFilter);
+      });
+      renderList();
+    });
+  });
+
   // ---- Event Handlers ----
-  document.getElementById('btn-new').addEventListener('click', function () {
+  function newContent(type) {
     currentSlug = null;
+    setContentType(type);
     document.getElementById('f-title').value = '';
     document.getElementById('f-desc').value = '';
-    document.getElementById('f-emoji').value = '🔐';
-    document.getElementById('f-tag').value = 'PUZZLE';
+    document.getElementById('f-emoji').value = type === 'game' ? '🎮' : '🔐';
+    document.getElementById('f-tag').value = type === 'game' ? 'GAME' : 'PUZZLE';
     document.getElementById('f-order').value = '0';
     document.getElementById('f-next').value = '';
     document.getElementById('f-category').value = categoryFilter || '';
-    document.getElementById('f-code').value = BLANK_TEMPLATE;
-    document.getElementById('qr-section').style.display = 'none';
+    document.getElementById('f-code').value = type === 'game' ? BLANK_GAME_TEMPLATE : BLANK_TEMPLATE;
+    if (type === 'game') {
+      document.getElementById('f-game-id').value = '';
+      document.getElementById('f-difficulty').value = 'medium';
+    }
+    document.getElementById('qr-section').style.display = type === 'game' ? 'none' : '';
     document.getElementById('btn-archive').style.display = '';
     document.getElementById('btn-restore').style.display = 'none';
     document.getElementById('btn-publish').style.display = '';
     showEditor(true);
     renderList();
-    renderPreview();
-  });
+    if (type === 'game') {
+      stopGamePreview();
+      renderValidation(BLANK_GAME_TEMPLATE);
+    } else {
+      renderPreview();
+    }
+  }
+
+  document.getElementById('btn-new-puzzle').addEventListener('click', function () { newContent('puzzle'); });
+  document.getElementById('btn-new-game').addEventListener('click', function () { newContent('game'); });
 
   document.getElementById('btn-refresh').addEventListener('click', function () {
     loadPuzzles();
@@ -824,6 +1405,32 @@
     navigator.clipboard.writeText(BLANK_TEMPLATE).then(function () { toast('Template copied!'); });
   });
 
+  // Game template copy
+  var btnCopyGameTpl = document.getElementById('btn-copy-game-template');
+  if (btnCopyGameTpl) {
+    btnCopyGameTpl.addEventListener('click', function () {
+      navigator.clipboard.writeText(BLANK_GAME_TEMPLATE).then(function () { toast('Game template copied!'); });
+    });
+  }
+
+  // Game preview controls
+  document.getElementById('btn-game-play').addEventListener('click', function () {
+    if (_gamePreviewInstance) {
+      // Resume if paused
+      if (_gamePreviewInstance.resume) _gamePreviewInstance.resume();
+      document.getElementById('game-preview-status').textContent = 'RUNNING';
+      document.getElementById('game-preview-status').style.color = 'var(--phosphor)';
+    } else {
+      startGamePreview();
+    }
+  });
+  document.getElementById('btn-game-stop').addEventListener('click', function () {
+    stopGamePreview();
+  });
+  document.getElementById('btn-game-restart').addEventListener('click', function () {
+    restartGamePreview();
+  });
+
   document.getElementById('btn-copy-export').addEventListener('click', function () {
     var code = document.getElementById('export-code').textContent;
     navigator.clipboard.writeText(code).then(function () { toast('Source copied!'); });
@@ -843,7 +1450,12 @@
   var previewTimer = null;
   document.getElementById('f-code').addEventListener('input', function () {
     clearTimeout(previewTimer);
-    previewTimer = setTimeout(renderPreview, 500);
+    var code = document.getElementById('f-code').value;
+    if (contentType === 'game') {
+      previewTimer = setTimeout(function () { renderValidation(code); }, 500);
+    } else {
+      previewTimer = setTimeout(renderPreview, 500);
+    }
   });
 
   // ---- Init ----
