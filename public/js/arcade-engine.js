@@ -40,11 +40,14 @@ var ArcadeEngine = (function () {
   var HIGHSCORE_KEY = 'eyesonly_arcade_highscores';
   var DIFFICULTY_KEY = 'eyesonly_arcade_difficulty';
 
-  // ── Difficulty tiers ──
-  var TIERS = [
-    { id: 1, label: 'CASUAL',   tag: 'T1', color: '#7dffca' },
-    { id: 2, label: 'STANDARD', tag: 'T2', color: '#ffb347' },
-    { id: 3, label: 'HARD',     tag: 'T3', color: '#ff4757' }
+  // ── Difficulty ubers ──
+  // "Ubers" = global challenge level for entire playthroughs (U1/U2/U3).
+  // Distinct from "tiers" which describe biome progression stages within a
+  // single run (tutorial → regular → endgame frenzy) in gone-rogue.
+  var UBERS = [
+    { id: 1, label: 'CASUAL',   tag: 'U1', color: '#7dffca' },
+    { id: 2, label: 'STANDARD', tag: 'U2', color: '#ffb347' },
+    { id: 3, label: 'HARD',     tag: 'U3', color: '#ff4757' }
   ];
 
   // ── Achievement thresholds per game (bronze / silver / gold) ──
@@ -138,7 +141,7 @@ var ArcadeEngine = (function () {
     // ── Boss adapter state ──
     this._bossState = null;
 
-    // ── Difficulty tier (1 = casual, 2 = standard, 3 = hard) ──
+    // ── Uber difficulty (1 = casual, 2 = standard, 3 = hard) ──
     this.difficulty = this._loadDifficulty();
 
     // ── Currency cascade particles ──
@@ -712,7 +715,7 @@ var ArcadeEngine = (function () {
   };
 
   // ════════════════════════════════════════════════════════════
-  // DIFFICULTY TIERS
+  // UBER DIFFICULTY
   // ════════════════════════════════════════════════════════════
 
   ArcadeEngine.prototype._loadDifficulty = function () {
@@ -743,14 +746,14 @@ var ArcadeEngine = (function () {
   };
 
   /**
-   * Get the current tier object { id, label, tag, color }.
+   * Get the current uber object { id, label, tag, color }.
    */
-  ArcadeEngine.prototype.getTier = function () {
-    return TIERS[this.difficulty - 1] || TIERS[1];
+  ArcadeEngine.prototype.getUber = function () {
+    return UBERS[this.difficulty - 1] || UBERS[1];
   };
 
   /**
-   * Difficulty multiplier: T1=0.7, T2=1.0, T3=1.4
+   * Difficulty multiplier: U1=0.7, U2=1.0, U3=1.4
    * Subclasses use this to scale speed, density, etc.
    */
   ArcadeEngine.prototype.difficultyMultiplier = function () {
@@ -858,7 +861,7 @@ var ArcadeEngine = (function () {
 
   // Expose constants for external use (e.g. games.html badge injection)
   ArcadeEngine.ACHIEVEMENT_THRESHOLDS = ACHIEVEMENT_THRESHOLDS;
-  ArcadeEngine.TIERS = TIERS;
+  ArcadeEngine.UBERS = UBERS;
 
   // ════════════════════════════════════════════════════════════
   // STATE OVERLAYS
@@ -877,11 +880,11 @@ var ArcadeEngine = (function () {
     this.drawText(ctx, this.title.toUpperCase(), cx, h * 0.2, 28,
                   this.colors.phosphorBright, 'center');
 
-    // Difficulty tier selector
-    var tier = this.getTier();
-    this.drawText(ctx, '[ ' + tier.tag + ' ' + tier.label + ' ]',
-                  cx, h * 0.32, 14, tier.color, 'center');
-    this.drawText(ctx, '\u25B2 \u25BC to change tier', cx, h * 0.38, 10,
+    // Uber difficulty selector
+    var uber = this.getUber();
+    this.drawText(ctx, '[ ' + uber.tag + ' ' + uber.label + ' ]',
+                  cx, h * 0.32, 14, uber.color, 'center');
+    this.drawText(ctx, '\u25B2 \u25BC to change uber', cx, h * 0.38, 10,
                   this.colors.phosphorDim, 'center');
 
     // Achievement badge for current high score
@@ -1000,10 +1003,10 @@ var ArcadeEngine = (function () {
     // Cascade coins
     this._drawCascade(ctx);
 
-    // Difficulty tier shown
-    var tier = this.getTier();
-    this.drawText(ctx, tier.tag + ' ' + tier.label, cx, h * 0.88, 10,
-                  tier.color, 'center');
+    // Uber difficulty shown
+    var uber = this.getUber();
+    this.drawText(ctx, uber.tag + ' ' + uber.label, cx, h * 0.88, 10,
+                  uber.color, 'center');
 
     this.drawText(ctx, 'TAP or SPACE to retry', cx, h * 0.93, 12,
                   this.colors.phosphorDim, 'center');

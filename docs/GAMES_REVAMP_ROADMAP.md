@@ -48,7 +48,18 @@ The six arcade minigames on `/games.html` are bare prototypes. They lack mobile 
 
 **5. Currency on score.** Every arcade session awards cryptocurrency (¢) proportional to score. Formula: `¢ = floor(score × GAME_RATE)` where `GAME_RATE` is tuned per game. Currency persists to `localStorage('eyesonly_account')` via `CurrencySystem.award()`.
 
-**6. Accessibility.** Per BOSS_DESIGN.md: portrait mode priority, adaptive controller support (sip/blow), T1 difficulty achievable without perfect execution.
+**6. Accessibility.** Per BOSS_DESIGN.md: portrait mode priority, adaptive controller support (sip/blow), U1 (Casual) difficulty achievable without perfect execution.
+
+**7. Tiers ≠ Ubers.** Two distinct difficulty axes exist across the system:
+
+- **Tiers** describe the _progression stages within a single gone-rogue run_. A run moves through biome tiers: early floors are tutorial-level (slow enemies, simple layouts), mid-floors are regular difficulty (full mechanics), and endgame floors are frenzy-level (all mechanics active, dense spawns). Tiers are _not_ a player-selected setting — they are the natural difficulty curve of a playthrough.
+
+- **Ubers** describe the _global challenge level_ selected by the player before starting any session (arcade or gone-rogue). Ubers scale the entire playthrough's baseline difficulty:
+  - **U1 CASUAL** — enemies have ×0.9 HP, slower speeds, +1 life, forgiving windows
+  - **U2 STANDARD** — baseline tuning (×1.0 everything)
+  - **U3 HARD** — enemies have ×1.15 HP, faster speeds, fewer lives, tighter windows
+
+  In arcade games, ubers are selected on the menu screen (swipe ▲▼). In gone-rogue, ubers apply to the entire run and persist per-game via `localStorage('eyesonly_arcade_difficulty')`.
 
 ---
 
@@ -154,7 +165,7 @@ These two map directly to shipped gone-rogue bosses AND the Phase 2/3 standalone
 | Score | +10 per forward hop, +100 per goal slot, +500 level clear |
 | Currency | `¢ = floor(score × 0.02)` — ~10¢ per level clear |
 | Boss adapter | `mount()` overlays Depot Warden (HP bar, sniper shots from boss position), `getHazards()` returns train collision rects, `onMythicCheck()` checks `TRAIN_IMPACT_KILL` |
-| Accessibility | Swipe works with head-tracking or switch scanning. T1 = slow trains, wide safe zones. |
+| Accessibility | Swipe works with head-tracking or switch scanning. U1 = slow trains, wide safe zones. |
 
 **Deliverables**: `js/minigames/frogger.js` (rewrite), boss adapter methods, audio hooks, currency integration, touch input.
 
@@ -173,7 +184,7 @@ These two map directly to shipped gone-rogue bosses AND the Phase 2/3 standalone
 | Score | Distance-based (1 per frame), speed multiplier, near-miss bonus (+25) |
 | Currency | `¢ = floor(distance × 0.005)` — ~5¢ per 1000m |
 | Boss adapter | `mount()` activates pursuit + ice physics, `updateRealTime()` spawns obstacles, `getHazards()` returns obstacle rects, `onMythicCheck()` checks escape without damage |
-| Accessibility | Drag steering works with single-finger or head-tracking. T1 = slow speed, wide gaps. |
+| Accessibility | Drag steering works with single-finger or head-tracking. U1 = slow speed, wide gaps. |
 
 **Deliverables**: `js/minigames/ski-free.js` (rewrite), boss adapter, audio, currency, touch.
 
@@ -352,7 +363,7 @@ Per AUDIO_WIRING_ROADMAP.md, boss encounters get dedicated music tracks from the
 | High score persistence | `localStorage('eyesonly_arcade_highscores')` keyed by game ID |
 | Leaderboard display | High score table on `/games.html` per game, shows top 10 + player rank |
 | Practice mode | Boss-mapped games offer "practice" (no currency) and "ranked" (currency + high score) |
-| Difficulty tiers | T1 (accessible), T2 (standard), T3 (hard) — affects speed, density, lives |
+| Uber difficulty | U1 (casual ×0.9), U2 (standard ×1.0), U3 (hard ×1.15) — affects speed, density, lives, enemy HP |
 | Achievement badges | Tied to score thresholds, displayed on `/games.html` next to game tile |
 | CRT post-process | Scanline + phosphor glow shader applied to all arcade canvases |
 | Game-over currency animation | 🪙 sprites cascade from score display to currency counter on game end |

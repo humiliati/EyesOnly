@@ -192,7 +192,7 @@ window.FroggerGame = (function () {
     var logGapExtra = Math.min(3, Math.floor((lvl - 1) / 3));
 
     // Global speed multiplier: gentle ramp starting at 0.5×, reaching 1× at lvl 10, then continuing
-    // Apply difficulty scaling on top (T1=0.7x, T2=1.0x, T3=1.4x)
+    // Apply uber scaling on top (U1=0.7x, U2=1.0x, U3=1.4x)
     var diffMul = this.difficultyMultiplier ? this.difficultyMultiplier() : 1.0;
     var speedMul = (0.5 + 0.5 * Math.min(1, (lvl - 1) / 9) + Math.max(0, (lvl - 10) * 0.06)) * diffMul;
 
