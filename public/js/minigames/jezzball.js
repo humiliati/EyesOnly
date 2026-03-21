@@ -26,7 +26,7 @@ window.JezzBallGame = (function () {
   var direction = 'h';             // next wall direction
   var won = false, lost = false;
   var MAX_BUILDERS = 4;            // max simultaneous builders
-  var BUILD_SPEED = 1.6;           // cells per frame (was 2.0 — ~20% slower)
+  var BUILD_SPEED = 1.36;          // cells per frame (~15% slower than 1.6)
   var buildAccum = 0;              // fractional accumulator for builder steps
 
   // ── Level transition animation ──
@@ -210,6 +210,8 @@ window.JezzBallGame = (function () {
     var builder = {
       id: id,
       dir: direction,
+      originC: c,              // spawn column (for two-color rendering)
+      originR: r,              // spawn row
       headA: { c: c, r: r },
       headB: { c: c, r: r },
       doneA: adj.disableA,   // pre-done if adjacent wall
@@ -227,7 +229,10 @@ window.JezzBallGame = (function () {
 
     // Advance each builder
     for (var bi = builders.length - 1; bi >= 0; bi--) {
+      // Guard: array may have shrunk during collision handling
+      if (bi >= builders.length) continue;
       var b = builders[bi];
+      if (!b) continue;
       var tag = builderTag(b);
       var destroyed = false;
 
@@ -236,8 +241,9 @@ window.JezzBallGame = (function () {
         var na = nextHead(b.headA, b.dir, -1);
         var naVal = getCellVal(na.c, na.r);
         if (naVal === 1) {
-          // Hit a sealed wall — done
+          // Hit a sealed wall — seal this half immediately (classic JezzBall)
           b.doneA = true;
+          sealHalf(b, 'A');
         } else if (naVal >= 2 && naVal !== tag) {
           // Hit another builder's in-progress wall
           destroyed = handleBuilderCollision(b, naVal - 2, bi);
@@ -255,7 +261,9 @@ window.JezzBallGame = (function () {
         var nb = nextHead(b.headB, b.dir, 1);
         var nbVal = getCellVal(nb.c, nb.r);
         if (nbVal === 1) {
+          // Hit a sealed wall — seal this half immediately (classic JezzBall)
           b.doneB = true;
+          sealHalf(b, 'B');
         } else if (nbVal >= 2 && nbVal !== tag) {
           destroyed = handleBuilderCollision(b, nbVal - 2, bi);
           if (destroyed) continue;
@@ -493,6 +501,49 @@ window.JezzBallGame = (function () {
     }
   }
 
+  // ── Seal one half of a builder immediately when that head reaches a wall ──
+  // Classic JezzBall behavior: anchored half becomes permanent wall instantly,
+  // while the other half keeps building. If the other half is destroyed by a
+  // ball, only the unanchored portion is lost — the sealed half stays.
+  function sealHalf(builder, side) {
+    var tag = builderTag(builder);
+    var sealed = 0;
+
+    for (var j = 0; j < grid.length; j++) {
+      if (grid[j] !== tag) continue;
+      var c = j % cols;
+      var r = Math.floor(j / cols);
+
+      var onSide = false;
+      if (side === 'A') {
+        // Head A goes in -1 direction (left for h, up for v)
+        onSide = builder.dir === 'h' ? (c <= builder.originC) : (r <= builder.originR);
+      } else {
+        // Head B goes in +1 direction (right for h, down for v)
+        onSide = builder.dir === 'h' ? (c >= builder.originC) : (r >= builder.originR);
+      }
+
+      if (onSide) {
+        grid[j] = 1;
+        sealed++;
+      }
+    }
+
+    if (sealed > 0) {
+      floodFillOpen();
+      calcPct();
+      score += sealed * 4;  // partial wall score (slightly less than full seal)
+      playSFX('metal-hit-1', 0.2);
+
+      if (pct >= 75 && !won) {
+        won = true;
+        score += 1000;
+        playSFX('toad', 0.6);
+        levelTransition = { timer: 1500 };
+      }
+    }
+  }
+
   function floodFillOpen() {
     var visited = new Uint8Array(cols * rows);
     for (var i = 0; i < balls.length; i++) {
@@ -604,6 +655,20 @@ window.JezzBallGame = (function () {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
 
+    // Build a lookup map for two-color rendering
+    var _builderMap = {};
+    for (var bi = 0; bi < builders.length; bi++) {
+      _builderMap[builders[bi].id] = builders[bi];
+    }
+
+    // Two-color pairs: [A-side, B-side] per builder slot
+    var sideColors = [
+      [ph, '#ff9b1c'],           // green / orange
+      ['#ff1c9b', '#1c9bff'],    // pink / blue
+      ['#ffff1c', '#9b1cff'],    // yellow / purple
+      ['#1cffff', '#ff1c1c']     // cyan / red
+    ];
+
     // Grid
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
@@ -612,13 +677,25 @@ window.JezzBallGame = (function () {
           ctx.fillStyle = dim;
           ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
         } else if (v >= 2) {
-          // Building wall — each builder gets a slightly different hue phase
-          var builderNum = v - 2;
-          var phaseOffset = builderNum * 1.5;
-          var pulse = 0.4 + 0.3 * Math.sin(Date.now() * 0.01 + phaseOffset);
-          // Alternate colors for different builders
-          var colors = [ph, '#ff9b1c', '#ff1c9b', '#1c9bff'];
-          ctx.fillStyle = colors[builderNum % colors.length] || ph;
+          // Two-color builder rendering — A-side vs B-side from spawn point
+          var builderId = v - 2;
+          var bld = _builderMap[builderId];
+          var pair = sideColors[builderId % sideColors.length];
+          var cellColor = pair[0];  // default to A-side color
+
+          if (bld) {
+            var isOrigin = (c === bld.originC && r === bld.originR);
+            var isBSide = bld.dir === 'h' ? (c > bld.originC) : (r > bld.originR);
+            if (isOrigin) {
+              cellColor = '#ffffff';  // bright white spawn point
+            } else if (isBSide) {
+              cellColor = pair[1];    // B-side color
+            }
+          }
+
+          var phaseOffset = builderId * 1.5;
+          var pulse = 0.5 + 0.3 * Math.sin(Date.now() * 0.01 + phaseOffset);
+          ctx.fillStyle = cellColor;
           ctx.globalAlpha = pulse;
           ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
           ctx.globalAlpha = 1;
