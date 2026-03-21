@@ -618,16 +618,7 @@
   <script src="js/arcade-engine.js?v=20260320a"></script>
   <script src="js/arcade-hud.js?v=20260320a"></script>
 
-  <!-- Arcade minigames -->
-  <script src="js/minigames/ski-free.js"></script>
-  <script src="js/minigames/jezzball.js"></script>
-  <script src="js/minigames/frogger.js"></script>
-  <script src="js/minigames/snake.js"></script>
-  <script src="js/minigames/minesweeper.js"></script>
-  <script src="js/minigames/breakout.js"></script>
-  <script src="js/minigame-modal.js"></script>
-
-  <!-- Genre helper modules (standalone, no deps — load before designer games) -->
+  <!-- Genre helper modules (standalone, no deps — load before ALL minigames) -->
   <script src="js/lib/side-scroll-camera.js"></script>
   <script src="js/lib/platform-physics.js"></script>
   <script src="js/lib/particle-emitter.js"></script>
@@ -637,7 +628,14 @@
   <script src="js/lib/screen-fx.js"></script>
   <script src="js/lib/loot-drop.js"></script>
 
-  <!-- Designer games (load after minigame-modal for self-registration) -->
+  <!-- Arcade minigames (depend on lib modules above) -->
+  <script src="js/minigames/ski-free.js"></script>
+  <script src="js/minigames/jezzball.js"></script>
+  <script src="js/minigames/frogger.js"></script>
+  <script src="js/minigames/snake.js"></script>
+  <script src="js/minigames/minesweeper.js"></script>
+  <script src="js/minigames/breakout.js"></script>
+  <script src="js/minigame-modal.js"></script>
   <script src="js/minigames/goat-runner.js"></script>
 
   <!-- Puzzle popup system + puzzles -->

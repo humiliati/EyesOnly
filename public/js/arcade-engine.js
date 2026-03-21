@@ -455,6 +455,7 @@ var ArcadeEngine = (function () {
     ctx.save();
     ctx.translate(x, y);
 
+    if (opts.flipX) ctx.scale(-1, 1);
     if (opts.rotation) ctx.rotate(opts.rotation);
     if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
 

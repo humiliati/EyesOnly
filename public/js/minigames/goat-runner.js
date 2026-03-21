@@ -1,7 +1,8 @@
 /* ============================================================
    GOAT RUNNER — ArcadeEngine subclass
-   Side-scrolling rooftop platformer with tether/vault mechanics
-   and goat followers. Uses Phase 3 genre helper modules:
+   Side-scrolling rooftop platformer with ceiling-grapple and
+   vault mechanics + goat followers.
+   Uses Phase 3 genre helper modules:
      - SideScrollCamera  (viewport, shake, parallax)
      - PlatformPhysics   (gravity, jump, collision)
      - ParticleEmitter   (burst/stream effects)
@@ -12,10 +13,12 @@
   /* ── Tile unit (scales with canvas) ── */
   var BASE_T = 28;
 
-  /* ── Tether constants ── */
-  var TETHER_DRAG_THRESHOLD = 12;
-  var TETHER_BRAKE_MAX      = 0.85;
-  var TETHER_LERP           = 0.12;
+  /* ── Ceiling grapple constants ── */
+  var GRAPPLE_RANGE      = 130;    // max distance to latch onto a grapple point
+  var GRAPPLE_DURATION   = 32;     // frames of brake effect
+  var GRAPPLE_BRAKE      = 0.25;   // vy multiplier while grappled
+  var GRAPPLE_FORWARD    = 0.6;    // vx boost while grappled
+  var GRAPPLE_CEILING_Y  = 0.08;   // grapple Y as fraction of screen height
 
   /* ── Terrain generation ── */
   var MIN_PLAT_W  = 120;
@@ -103,7 +106,7 @@
 
     // Player projectiles (tap-to-aim counter-fire)
     this._bullets = new ProjectileSystem({
-      speed: 8, range: 400, cooldown: 18, trailLength: 4
+      speed: 10, range: 800, cooldown: 14, trailLength: 6
     });
 
     // Drone projectiles (enemy fire — slower, no cooldown)
@@ -117,8 +120,9 @@
     // Loot drops (physics scatter + collect)
     this._loot = new LootDrop(30);
 
-    this._player = { x: 0, y: 0, vx: 0, vy: 0, w: 20, h: 24, grounded: false, tethering: false, canDoubleJump: true, ducking: false, invulnTimer: 0 };
-    this._tether = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, smoothAngle: 0, smoothBrake: 0 };
+    this._player = { x: 0, y: 0, vx: 0, vy: 0, w: 20, h: 24, grounded: false, canDoubleJump: true, ducking: false, invulnTimer: 0, facingRight: true };
+    this._grapplers = [];
+    this._grapple = { active: false, target: null, timer: 0 };
     this._goats = [];
     this._posHistory = [];
     this._posHistoryIdx = 0;
@@ -170,12 +174,13 @@
     this._player = {
       x: W * 0.25, y: H * 0.5, vx: 0, vy: 0,
       w: T * 0.8, h: T * 1.0,
-      grounded: false, tethering: false, canDoubleJump: true,
-      ducking: false, invulnTimer: 0
+      grounded: false, canDoubleJump: true,
+      ducking: false, invulnTimer: 0, facingRight: true
     };
 
-    // Tether
-    this._tether = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, smoothAngle: 0, smoothBrake: 0 };
+    // Ceiling grapple
+    this._grapplers = [];
+    this._grapple = { active: false, target: null, timer: 0 };
     this._inputBuffer = { vaultPending: false, timer: 0 };
     this._strikeAvailable = true;
     this._strikeCooldown = 0;
@@ -225,10 +230,15 @@
   // ──────────────────────────────────────────────────────────
 
   GoatRunner.prototype._seedInitialPlatforms = function (W, H) {
-    var groundY = H * 0.65;
-    this._platforms.push({ x: -50, y: groundY, w: W * 0.7, h: PLAT_H });
+    var groundY = Math.round(H * 0.65);
+    // Wide starting platform so player has room on launch
+    var startW = Math.max(W * 0.7, 350);
+    this._platforms.push({ x: -50, y: groundY, w: startW, h: PLAT_H });
+    this._player.x = W * 0.25;
     this._player.y = groundY - this._player.h;
-    this._nextPlatX = W * 0.7 - 50;
+    this._player.vy = 0;
+    this._player.grounded = true;
+    this._nextPlatX = startW - 50;
     this._generatePlatforms(W, H);
   };
 
@@ -250,6 +260,13 @@
 
       var platX = this._nextPlatX + gap;
       this._platforms.push({ x: platX, y: newY, w: platW, h: PLAT_H });
+
+      // Ceiling grapple point between this gap (most gaps get one)
+      if (gap > 50 && Math.random() < 0.85) {
+        var gpX = this._nextPlatX + gap * 0.5;
+        var gpY = H * GRAPPLE_CEILING_Y + Math.random() * H * 0.08;
+        this._grapplers.push({ x: gpX, y: gpY, used: false });
+      }
 
       // Obstacles (via DifficultyRamp obstChance + WeightedTable)
       if (Math.random() < obstChance && platW > 150) {
@@ -290,51 +307,72 @@
   GoatRunner.prototype.onInput = function (type, data) {
     var p = this._player;
 
-    if (type === 'tap') { this._doVault(false); return; }
+    // Tap / dragstart both trigger vault (uniform mobile + desktop)
+    if (type === 'tap' || type === 'dragstart') {
+      this._doVault();
+      return;
+    }
 
     if (type === 'doubletap') {
       if (this._strikeAvailable) { this._doPoleStrike(); }
-      else { this._doVault(false); }
+      else { this._doVault(); }
       return;
     }
 
-    if (type === 'dragstart') {
-      this._tether.active = true;
-      this._tether.startX = data.x; this._tether.startY = data.y;
-      this._tether.curX = data.x; this._tether.curY = data.y;
-      p.tethering = true;
-      return;
-    }
-    if (type === 'drag') {
-      if (this._tether.active) { this._tether.curX = data.x; this._tether.curY = data.y; }
-      return;
-    }
-    if (type === 'dragend') {
-      this._tether.active = false; p.tethering = false;
-      this._inputBuffer.vaultPending = true; this._inputBuffer.timer = 100;
-      return;
-    }
+    // Drag and dragend are no-ops now (tether removed)
+    if (type === 'drag' || type === 'dragend') return;
 
     if (type === 'keyaction') {
-      if (data.action === 'up' || data.action === 'action') this._doVault(false);
+      if (data.action === 'up' || data.action === 'action') this._doVault();
       if (data.action === 'down') p.ducking = true;
     }
   };
 
-  GoatRunner.prototype._doVault = function (charged) {
+  GoatRunner.prototype._doVault = function () {
     var p = this._player;
-    if (charged) {
-      // Charged vault: stronger force
-      if (p.grounded) {
-        p.vy = this._physics.jumpForce * 1.3;
-        p.grounded = false; p.canDoubleJump = true;
-        this.playSFX('hop');
-      }
-    } else {
-      // Use PlatformPhysics tryJump (handles ground + double jump)
-      if (this._physics.tryJump(p)) {
-        this.playSFX('hop');
-      }
+
+    // Ground jump
+    if (p.grounded) {
+      if (this._physics.tryJump(p)) this.playSFX('hop');
+      return;
+    }
+
+    // Air: try double jump first
+    if (p.canDoubleJump) {
+      if (this._physics.tryJump(p)) this.playSFX('hop');
+      return;
+    }
+
+    // Air + no double jump: try ceiling grapple
+    if (!this._grapple.active) {
+      this._tryGrapple();
+    }
+  };
+
+  // ── Ceiling grapple: latch onto nearest anchor point ──
+  GoatRunner.prototype._tryGrapple = function () {
+    var p = this._player;
+    var cam = this._cam;
+    var playerWX = p.x + cam.x + p.w / 2;
+    var playerWY = p.y + p.h / 2;
+    var bestDist = GRAPPLE_RANGE;
+    var best = null;
+
+    for (var i = 0; i < this._grapplers.length; i++) {
+      var gp = this._grapplers[i];
+      if (gp.used) continue;
+      var dist = Math.hypot(gp.x - playerWX, gp.y - playerWY);
+      if (dist < bestDist) { bestDist = dist; best = gp; }
+    }
+
+    if (best) {
+      best.used = true;
+      this._grapple = { active: true, target: best, timer: GRAPPLE_DURATION };
+      p.vy = Math.min(p.vy, -1.5);   // arrest fall with slight upward pull
+      this.playSFX('hop');
+      this._emitter.burst(best.x, best.y, {
+        emoji: '⚡', count: 5, speed: 2, life: 18, gravity: 0
+      });
     }
   };
 
@@ -428,21 +466,13 @@
     // Gravity (PlatformPhysics)
     phys.applyGravity(p);
 
-    // Tether physics (game-specific, not a generic module)
-    if (this._tether.active) {
-      var tdx = this._tether.curX - this._tether.startX;
-      var tdy = this._tether.curY - this._tether.startY;
-      var tDist = Math.hypot(tdx, tdy);
-      if (tDist > TETHER_DRAG_THRESHOLD) {
-        var tAngle = Math.atan2(tdy, tdx);
-        var brake = Math.min(tDist / 150, TETHER_BRAKE_MAX);
-        this._tether.smoothAngle = _lerp(this._tether.smoothAngle, tAngle, TETHER_LERP);
-        this._tether.smoothBrake = _lerp(this._tether.smoothBrake, brake, TETHER_LERP);
-        var speed = Math.hypot(p.vx, p.vy);
-        var targetVx = Math.cos(this._tether.smoothAngle) * speed * (1 - this._tether.smoothBrake * 0.4);
-        var targetVy = Math.sin(this._tether.smoothAngle) * speed * (1 - this._tether.smoothBrake * 0.4);
-        p.vx = _lerp(p.vx, targetVx, 0.15);
-        p.vy = _lerp(p.vy, targetVy, 0.15);
+    // Ceiling grapple physics — brake fall + forward push
+    if (this._grapple.active) {
+      this._grapple.timer--;
+      p.vy *= GRAPPLE_BRAKE;                        // dramatically slow descent
+      p.vx = _lerp(p.vx, cam.speed + GRAPPLE_FORWARD, 0.15);  // push forward
+      if (this._grapple.timer <= 0 || p.grounded) {
+        this._grapple.active = false;
       }
     }
 
@@ -452,6 +482,10 @@
     if (this.isKeyHeld('right')) nudgeDir += 1;
     phys.nudge(p, nudgeDir);
     p.ducking = this.isKeyHeld('down');
+
+    // Track facing direction (default right for side-scroller)
+    if (nudgeDir < 0) p.facingRight = false;
+    else if (nudgeDir > 0 || p.vx > 0.5) p.facingRight = true;
 
     // Integrate movement (PlatformPhysics)
     phys.integrate(p);
@@ -803,6 +837,7 @@
     this._platforms = this._platforms.filter(function (p) { return p.x + p.w > cutoff; });
     this._obstacles = this._obstacles.filter(function (o) { return o.x + o.w > cutoff; });
     this._collectibles = this._collectibles.filter(function (c) { return c.x > cutoff && !c.collected; });
+    this._grapplers = this._grapplers.filter(function (g) { return g.x > cutoff; });
   };
 
   // ──────────────────────────────────────────────────────────
@@ -869,33 +904,63 @@
       }
     }
 
-    // Goats
+    // Ceiling grapple points (render before entities)
+    for (var gri = 0; gri < this._grapplers.length; gri++) {
+      var gp = this._grapplers[gri];
+      var gpsx = cam.toScreen(gp.x);
+      if (gpsx < -50 || gpsx > W + 50) continue;
+      if (gp.used) continue;
+      // Pulsing diamond marker
+      var gpPulse = 0.3 + 0.2 * Math.sin(this._distance * 0.03 + gri * 2);
+      ctx.save();
+      ctx.globalAlpha = gpPulse;
+      ctx.fillStyle = this.colors.amber;
+      ctx.beginPath();
+      ctx.moveTo(gpsx, gp.y - 5);
+      ctx.lineTo(gpsx + 4, gp.y);
+      ctx.lineTo(gpsx, gp.y + 5);
+      ctx.lineTo(gpsx - 4, gp.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Goats (flipped to face right — game scrolls left-to-right)
     for (var gi = 0; gi < this._goats.length; gi++) {
       var goat = this._goats[gi];
       if (!goat.alive) continue;
       this.drawEmoji(ctx, '🐐', goat.x, goat.y + T * 0.3, T * 0.5, {
-        alpha: 0.6, glow: true, glowColor: this.colors.phosphorDim, glowRadius: 4
+        alpha: 0.6, glow: true, glowColor: this.colors.phosphorDim, glowRadius: 4,
+        flipX: true
       });
     }
 
-    // Player (blink during invulnerability)
+    // Player (blink during invulnerability, flip per facing direction)
     if (p.invulnTimer <= 0 || Math.floor(p.invulnTimer / 4) % 2 === 0) {
       var emoji = p.grounded ? '🏃' : '🤸';
       var size = p.ducking ? T * 0.7 : T * 1.0;
       this.drawEmoji(ctx, emoji, p.x + p.w / 2, p.y + p.h / 2, size, {
-        glow: true, glowColor: this.colors.phosphorBright, glowRadius: 6
+        glow: true, glowColor: this.colors.phosphorBright, glowRadius: 6,
+        flipX: p.facingRight
       });
     }
 
-    // Tether line
-    if (this._tether.active) {
-      ctx.strokeStyle = this.colors.amber; ctx.lineWidth = 2;
+    // Grapple line (from player to anchor point while grappled)
+    if (this._grapple.active && this._grapple.target) {
+      var gt = this._grapple.target;
+      var gtsx = cam.toScreen(gt.x);
+      var gAlpha = this._grapple.timer / GRAPPLE_DURATION;
+      ctx.save();
+      ctx.globalAlpha = gAlpha * 0.7;
+      ctx.strokeStyle = this.colors.amber; ctx.lineWidth = 1.5;
       ctx.shadowColor = this.colors.amber; ctx.shadowBlur = 6;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([3, 3]);
       ctx.beginPath();
-      ctx.moveTo(p.x + p.w / 2, p.y + p.h / 2);
-      ctx.lineTo(this._tether.curX, this._tether.curY);
-      ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0;
+      ctx.moveTo(p.x + p.w / 2, p.y);
+      ctx.lineTo(gtsx, gt.y);
+      ctx.stroke();
+      ctx.setLineDash([]); ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     // Enemies
@@ -1019,7 +1084,7 @@
     if (this._tutorialPhase >= 3) return;
     var texts = [
       'TAP / SPACE to vault over gaps',
-      'DRAG to tether & control descent',
+      'TAP again mid-air to GRAPPLE ceiling anchors',
       'DOUBLE-TAP for emergency strike'
     ];
     var text = texts[this._tutorialPhase] || '';
