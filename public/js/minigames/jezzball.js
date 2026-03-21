@@ -53,6 +53,99 @@ window.JezzBallGame = (function () {
   // ── Pre-rendered honeycomb lattice (overlapping sphere reflections) ──
   var latticeCanvas = null;
 
+  // ── Splash screen state ──
+  var SPLASH_DURATION = 120;    // frames (~2 seconds at 60fps)
+  var SPLASH_INPUT_GUARD = 40;  // swallow clicks for first N frames
+  var _splashTimer = 0;
+  var _inSplash = false;
+  var JEZZBALL_SPLASH_ART = [
+    '╔══════════════════════════════════════════╗',
+    '║                                          ║',
+    '║   ╔═╗╔═╗╔╗╔╔╦╗╔═╗╦╔╗╔╔╦╗╔═╗╔╗╔╔╦╗    ║',
+    '║   ║  ║ ║║║║ ║ ╠═╣║║║║║║║║╣ ║║║ ║      ║',
+    '║   ╚═╝╚═╝╝╚╝ ╩ ╩ ╩╩╝╚╝╩ ╩╚═╝╝╚╝ ╩     ║',
+    '║                                          ║',
+    '║   ╔═╗╦═╗╔═╗╔╦╗╔═╗╔═╗╔═╗╦    ╔═╗╔═╗   ║',
+    '║   ╠═╝╠╦╝║ ║ ║ ║ ║║  ║ ║║    ║ ║╠═╣   ║',
+    '║   ╩  ╩╚═╚═╝ ╩ ╚═╝╚═╝╚═╝╩═╝  ╚═╝╩ ╩   ║',
+    '║                                          ║',
+    '║        🔴  FIELD CONTAINMENT  🔴         ║',
+    '║                                          ║',
+    '║   ░░▒▒▓▓████  PROTOCOL 03  ████▓▓▒▒░░  ║',
+    '║                                          ║',
+    '╚══════════════════════════════════════════╝'
+  ].join('\n');
+
+  function drawSplash() {
+    var ph = getComputedStyle(document.documentElement).getPropertyValue('--phosphor').trim() || '#1cff9b';
+    var font = '"Courier New", Courier, monospace';
+
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    var lines = JEZZBALL_SPLASH_ART.split('\n');
+    while (lines.length && lines[0].trim() === '') lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+
+    var maxLen = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].length > maxLen) maxLen = lines[i].length;
+    }
+
+    var charW = (W * 0.9) / Math.max(maxLen, 1);
+    var fontSize = Math.min(Math.floor(charW / 0.6), 14);
+    var lineH = fontSize * 1.3;
+    var totalH = lines.length * lineH;
+    if (totalH > H * 0.75) {
+      fontSize = Math.floor((H * 0.75) / (lines.length * 1.3));
+      lineH = fontSize * 1.3;
+      totalH = lines.length * lineH;
+    }
+    fontSize = Math.max(fontSize, 5);
+
+    var alpha = 1;
+    if (_splashTimer < 30) alpha = _splashTimer / 30;
+    else if (_splashTimer > SPLASH_DURATION - 20) alpha = (SPLASH_DURATION - _splashTimer) / 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = fontSize + 'px ' + font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = ph;
+    ctx.shadowColor = ph;
+    ctx.shadowBlur = 6;
+
+    var cx = W / 2;
+    var startY = (H - totalH) / 2 + lineH / 2;
+    for (var j = 0; j < lines.length; j++) {
+      ctx.fillText(lines[j], cx, startY + j * lineH);
+    }
+
+    var dotCount = Math.floor(_splashTimer / 15) % 4;
+    var dots = '';
+    for (var d = 0; d < dotCount; d++) dots += '.';
+    var dim = getComputedStyle(document.documentElement).getPropertyValue('--phosphor-dim').trim() || '#1a6b4a';
+    ctx.font = '10px ' + font;
+    ctx.fillStyle = dim;
+    ctx.shadowBlur = 2;
+    ctx.fillText('INITIALIZING' + dots, cx, H * 0.93);
+
+    ctx.restore();
+  }
+
+  function splashLoop() {
+    _splashTimer++;
+    drawSplash();
+    if (_splashTimer >= SPLASH_DURATION) {
+      _inSplash = false;
+      reset();
+      loop();
+      return;
+    }
+    raf = requestAnimationFrame(splashLoop);
+  }
+
   function reset() {
     cols = Math.floor(W / CELL);
     rows = Math.floor(H / CELL);
@@ -1093,16 +1186,58 @@ window.JezzBallGame = (function () {
       if (typeof AudioSystem !== 'undefined' && AudioSystem.init) {
         try { AudioSystem.init(); } catch (_) {}
       }
-      reset();
-      canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-      canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-      canvas.addEventListener('touchend', onPointerUp, { passive: false });
-      canvas.addEventListener('mousedown', onPointerDown);
-      document.addEventListener('mousemove', onPointerMove);
-      document.addEventListener('mouseup', onPointerUp);
-      canvas.addEventListener('contextmenu', onContextMenu);
-      document.addEventListener('keydown', onKeyDown);
-      loop();
+      // Show splash screen first, then init game + bind input
+      _splashTimer = 0;
+      _inSplash = true;
+
+      // Bind a temporary handler to skip splash after guard period
+      var splashSkip = function (e) {
+        if (e.type === 'touchstart') e.preventDefault();
+        if (_inSplash && _splashTimer >= SPLASH_INPUT_GUARD) {
+          _splashTimer = SPLASH_DURATION;
+        }
+      };
+      canvas.addEventListener('touchstart', splashSkip, { passive: false });
+      canvas.addEventListener('mousedown', splashSkip);
+      canvas.addEventListener('keydown', splashSkip);
+
+      // Override splashLoop's exit to bind real input
+      var origSplashLoop = splashLoop;
+      var _splashDone = false;
+      var realInit = function () {
+        if (_splashDone) return;
+        _splashDone = true;
+        // Remove splash handlers
+        canvas.removeEventListener('touchstart', splashSkip);
+        canvas.removeEventListener('mousedown', splashSkip);
+        canvas.removeEventListener('keydown', splashSkip);
+        // Bind real game input
+        canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+        canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+        canvas.addEventListener('touchend', onPointerUp, { passive: false });
+        canvas.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('mousemove', onPointerMove);
+        document.addEventListener('mouseup', onPointerUp);
+        canvas.addEventListener('contextmenu', onContextMenu);
+        document.addEventListener('keydown', onKeyDown);
+      };
+
+      // Patch splashLoop to call realInit when done
+      var _origReset = reset;
+      var patchedSplashLoop;
+      patchedSplashLoop = function () {
+        _splashTimer++;
+        drawSplash();
+        if (_splashTimer >= SPLASH_DURATION) {
+          _inSplash = false;
+          realInit();
+          reset();
+          loop();
+          return;
+        }
+        raf = requestAnimationFrame(patchedSplashLoop);
+      };
+      raf = requestAnimationFrame(patchedSplashLoop);
     },
     stop: function () {
       cancelAnimationFrame(raf);
@@ -1118,9 +1253,15 @@ window.JezzBallGame = (function () {
       document.removeEventListener('keydown', onKeyDown);
     },
     resize: function (canvas) {
+      var oldW = W, oldH = H;
       W = canvas.width;
       H = canvas.height;
-      reset();
+      // Only rebuild lattice on resize — do NOT reset game state.
+      // The grid uses fixed CELL size so cols/rows don't change unless
+      // the canvas size changed drastically. Rebuild lattice for visuals.
+      cols = Math.floor(W / CELL);
+      rows = Math.floor(H / CELL);
+      buildLattice();
     }
   };
 })();

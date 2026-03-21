@@ -26,6 +26,21 @@ window.MinesweeperGame = (function () {
       currencyRate: 0.01
     });
 
+    // ── ASCII splash screen ──
+    this.splashArt = [
+      '╔══════════════════════════════════════╗',
+      '║                                      ║',
+      '║   ╔╦╗╦╔╗╔╔═╗╔═╗╦╔═╗╦  ╔╦╗         ║',
+      '║   ║║║║║║║║╣ ╠╣  ║║╣ ║   ║║         ║',
+      '║   ╩ ╩╩╝╚╝╚═╝╚   ╩╚═╝╩═╝═╩╝         ║',
+      '║                                      ║',
+      '║       💣  CLEAR THE SECTOR  💣        ║',
+      '║                                      ║',
+      '║   ████  THREAT LEVEL: UNKNOWN  ████  ║',
+      '║                                      ║',
+      '╚══════════════════════════════════════╝'
+    ].join('\n');
+
     this.sfxMap = {
       'reveal':      'drop-1',
       'flag':        'coin-2',

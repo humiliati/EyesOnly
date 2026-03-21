@@ -63,11 +63,16 @@ var ArcadeEngine = (function () {
 
   // ── Game states ──
   var STATE = {
+    SPLASH:    'SPLASH',
     MENU:      'MENU',
     PLAYING:   'PLAYING',
     PAUSED:    'PAUSED',
     GAME_OVER: 'GAME_OVER'
   };
+
+  // ── Splash screen config ──
+  var SPLASH_DURATION = 120;  // frames (~2 seconds at 60fps)
+  var SPLASH_INPUT_GUARD = 40; // swallow clicks for first N frames
 
   // ── CRT theme defaults (fallbacks if CSS vars unavailable) ──
   var CRT = {
@@ -144,6 +149,10 @@ var ArcadeEngine = (function () {
     // ── Uber difficulty (1 = casual, 2 = standard, 3 = hard) ──
     this.difficulty = this._loadDifficulty();
 
+    // ── Splash screen ──
+    this._splashTimer = 0;
+    this.splashArt = null;  // subclass sets this to an ASCII string
+
     // ── Currency cascade particles ──
     this._cascadeCoins = [];
 
@@ -195,9 +204,12 @@ var ArcadeEngine = (function () {
     // Let subclass initialise
     if (this.onInit) this.onInit();
 
-    // Enter menu or playing depending on mode
+    // Enter splash, menu, or playing depending on mode
     if (this.bossMode) {
       this.setState(STATE.PLAYING);
+    } else if (this.splashArt) {
+      this._splashTimer = 0;
+      this.setState(STATE.SPLASH);
     } else {
       this.setState(STATE.MENU);
     }
@@ -303,7 +315,12 @@ var ArcadeEngine = (function () {
     // Fixed-timestep updates
     var steps = 0;
     while (this._accumulator >= FIXED_DT && steps < MAX_FRAME_SKIP) {
-      if (this.state === STATE.PLAYING) {
+      if (this.state === STATE.SPLASH) {
+        this._splashTimer++;
+        if (this._splashTimer >= SPLASH_DURATION) {
+          this.setState(STATE.MENU);
+        }
+      } else if (this.state === STATE.PLAYING) {
         if (this.onUpdate) this.onUpdate(FIXED_DT);
       }
       this._accumulator -= FIXED_DT;
@@ -330,7 +347,9 @@ var ArcadeEngine = (function () {
     }
 
     // State overlays
-    if (this.state === STATE.MENU) {
+    if (this.state === STATE.SPLASH) {
+      this._drawSplashOverlay(ctx);
+    } else if (this.state === STATE.MENU) {
       this._drawMenuOverlay(ctx);
     } else if (this.state === STATE.PAUSED) {
       this._drawPauseOverlay(ctx);
@@ -407,6 +426,15 @@ var ArcadeEngine = (function () {
     events.forEach(function (evt) {
       self._input.on(evt, function (data) {
         // Global handlers (state transitions)
+
+        // SPLASH state: swallow early clicks, allow skip after guard
+        if (self.state === STATE.SPLASH) {
+          if (self._splashTimer < SPLASH_INPUT_GUARD) return; // swallow
+          if (evt === 'tap' || evt === 'keyaction') {
+            self._splashTimer = SPLASH_DURATION; // force transition
+          }
+          return;
+        }
 
         // Difficulty cycling in MENU (swipe up/down or arrow keys)
         if (self.state === STATE.MENU) {
@@ -866,6 +894,74 @@ var ArcadeEngine = (function () {
   // ════════════════════════════════════════════════════════════
   // STATE OVERLAYS
   // ════════════════════════════════════════════════════════════
+
+  ArcadeEngine.prototype._drawSplashOverlay = function (ctx) {
+    var w = this.logicalW;
+    var h = this.logicalH;
+    var cx = w / 2;
+
+    // Full black backdrop
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+
+    if (!this.splashArt) return;
+
+    // Split ASCII art into lines
+    var lines = this.splashArt.split('\n');
+    // Remove leading/trailing empty lines
+    while (lines.length && lines[0].trim() === '') lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+
+    // Calculate font size to fit width — measure the longest line
+    var maxLineLen = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].length > maxLineLen) maxLineLen = lines[i].length;
+    }
+
+    // Target ~90% of canvas width, with monospace char ratio ~0.6
+    var charW = (w * 0.9) / Math.max(maxLineLen, 1);
+    var fontSize = Math.min(Math.floor(charW / 0.6), 14);
+    // Also ensure it fits vertically
+    var lineH = fontSize * 1.3;
+    var totalH = lines.length * lineH;
+    if (totalH > h * 0.75) {
+      fontSize = Math.floor((h * 0.75) / (lines.length * 1.3));
+      lineH = fontSize * 1.3;
+      totalH = lines.length * lineH;
+    }
+    fontSize = Math.max(fontSize, 5); // floor
+
+    // Fade in during first 30 frames, hold, then fade out in last 20 frames
+    var alpha = 1;
+    var t = this._splashTimer;
+    if (t < 30) alpha = t / 30;
+    else if (t > SPLASH_DURATION - 20) alpha = (SPLASH_DURATION - t) / 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = fontSize + 'px ' + this.colors.font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = this.colors.phosphor;
+    ctx.shadowColor = this.colors.phosphor;
+    ctx.shadowBlur = 6;
+
+    var startY = (h - totalH) / 2 + lineH / 2;
+    for (var j = 0; j < lines.length; j++) {
+      ctx.fillText(lines[j], cx, startY + j * lineH);
+    }
+
+    // "Loading..." text at bottom, pulsing
+    var dotCount = Math.floor(t / 15) % 4;
+    var dots = '';
+    for (var d = 0; d < dotCount; d++) dots += '.';
+    ctx.font = '10px ' + this.colors.font;
+    ctx.fillStyle = this.colors.phosphorDim;
+    ctx.shadowBlur = 2;
+    ctx.fillText('INITIALIZING' + dots, cx, h * 0.93);
+
+    ctx.restore();
+  };
 
   ArcadeEngine.prototype._drawMenuOverlay = function (ctx) {
     var w = this.logicalW;

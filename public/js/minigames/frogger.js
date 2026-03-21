@@ -54,6 +54,25 @@ window.FroggerGame = (function () {
       currencyRate: 0.02
     });
 
+    // ── ASCII splash screen ──
+    this.splashArt = [
+      '╔══════════════════════════════════════╗',
+      '║                                      ║',
+      '║   ╔╦╗╔═╗╔═╗╔═╗╔╦╗                   ║',
+      '║    ║║║╣ ╠═╝║ ║ ║                     ║',
+      '║   ═╩╝╚═╝╩  ╚═╝ ╩                     ║',
+      '║                                      ║',
+      '║   ╔═╗╦═╗╔═╗╔═╗╔═╗╦╔╗╔╔═╗            ║',
+      '║   ║  ╠╦╝║ ║╚═╗╚═╗║║║║║ ╦            ║',
+      '║   ╚═╝╩╚═╚═╝╚═╝╚═╝╩╝╚╝╚═╝            ║',
+      '║                                      ║',
+      '║       🐸  NAVIGATE THE DEPOT  🐸      ║',
+      '║                                      ║',
+      '║   ▓▓▓▓  SECURITY LEVEL: HIGH  ▓▓▓▓  ║',
+      '║                                      ║',
+      '╚══════════════════════════════════════╝'
+    ].join('\n');
+
     // ── SFX mapping: generic engine keys → real audio manifest keys ──
     // Keys must match entries in audio-manifest.json (which maps to .webm files on disk).
     // DO NOT use sq-sq-* keys — those files are R2/CDN-only and don't exist locally.

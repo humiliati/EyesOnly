@@ -52,6 +52,25 @@ window.SnakeGame = (function () {
       currencyRate: 0.015
     });
 
+    // ── ASCII splash screen ──
+    this.splashArt = [
+      '┌──────────────────────────────────────┐',
+      '│                                      │',
+      '│   ╔╦╗╔═╗╔╦╗╔═╗                      │',
+      '│    ║║╠═╣ ║ ╠═╣                       │',
+      '│   ═╩╝╩ ╩ ╩ ╩ ╩                       │',
+      '│                                      │',
+      '│   ╦ ╦╔═╗╦╔═╗╔╦╗                     │',
+      '│   ╠═╣║╣ ║╚═╗ ║                      │',
+      '│   ╩ ╩╚═╝╩╚═╝ ╩                      │',
+      '│                                      │',
+      '│       🐍  INTERCEPT THE FEED  🐍      │',
+      '│                                      │',
+      '│   ░░░░  ENCRYPTION: ACTIVE  ░░░░     │',
+      '│                                      │',
+      '└──────────────────────────────────────┘'
+    ].join('\n');
+
     this.sfxMap = {
       'collect':    'coin-2',
       'encrypted':  'power-up-1',

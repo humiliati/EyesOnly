@@ -38,6 +38,21 @@ window.BreakoutGame = (function () {
       currencyRate: 0.02
     });
 
+    // ── ASCII splash screen ──
+    this.splashArt = [
+      '╔══════════════════════════════════════╗',
+      '║                                      ║',
+      '║   ╔╗ ╦═╗╔═╗╔═╗╦╔═╔═╗╦ ╦╔╦╗        ║',
+      '║   ╠╩╗╠╦╝║╣ ╠═╣╠╩╗║ ║║ ║ ║         ║',
+      '║   ╚═╝╩╚═╚═╝╩ ╩╩ ╩╚═╝╚═╝ ╩         ║',
+      '║                                      ║',
+      '║      🧱  BREACH THE FIREWALL  🧱      ║',
+      '║                                      ║',
+      '║   ▒▒▒▒  BARRIER INTEGRITY: 100%  ▒▒  ║',
+      '║                                      ║',
+      '╚══════════════════════════════════════╝'
+    ].join('\n');
+
     // SFX mapping: generic engine keys → real audio manifest keys
     this.sfxMap = {
       'bounce':      'drop-1',         // wall/paddle hit
