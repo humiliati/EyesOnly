@@ -1,7 +1,7 @@
 # Cross-Roadmap Execution Order — Unified Master
 
-> **Last Updated:** 2026-03-07
-> **Scope:** All 12 project roadmaps unified into execution tiers with cross-dependencies
+> **Last Updated:** 2026-04-13
+> **Scope:** All 13 project roadmaps unified into execution tiers with cross-dependencies
 > **Engine:** Gone Rogue · EYES ONLY
 
 ---
@@ -22,8 +22,9 @@
 | 10 | STR-HUD | [STR-HUD-DESIGNER-ROADMAP](./STR-HUD-DESIGNER-ROADMAP.md) | 7 phases | 0 | 7 | Design doc only |
 | 11 | AWOL | [AWOL_LAUNCH_SYSTEM_ROADMAP](./AWOL_LAUNCH_SYSTEM_ROADMAP.md) | 5 phases | 2 | 3 | Phases 1-2 ✅ |
 | 12 | UDG | [UNIFIED_DESIGNER_GUIDE](./UNIFIED_DESIGNER_GUIDE.md) | 6 sections | 0 | 6 | Portal exists, editors pending |
+| 13 | BOV | [BLOCKOUT_VISUALIZER_ROADMAP](./BLOCKOUT_VISUALIZER_ROADMAP.md) | 5 tiers + Phase 3 | 0 | 11 | Phase 3 blocker unresolved |
 
-**Totals:** ~76 work units across 12 roadmaps. ~18 complete, ~58 remaining.
+**Totals:** ~87 work units across 13 roadmaps. ~18 complete, ~69 remaining.
 
 ---
 
@@ -42,6 +43,7 @@ ROPE █░░░░░░░░░░░░░░░  1/9   11%   Rope system (
 STR  ░░░░░░░░░░░░░░░░  0/7    0%   STR HUD designer tools
 AWOL ██████░░░░░░░░░░  2/5   40%   AWOL launch system
 UDG  ░░░░░░░░░░░░░░░░  0/6    0%   Designer portal editors
+BOV  ░░░░░░░░░░░░░░░░  0/11   0%   Blockout visualizer (Phase 3 blocker)
 ```
 
 ---
@@ -161,6 +163,28 @@ Four tiers of world generation work, independent of card combat:
 
 **WBE T1 can start immediately.** Critical path within WBE: INT-1 → INT-2 → NPC-D → NPC-E. All 14 items are self-contained world generation work.
 
+#### Stream E: Blockout Visualizer (BOV)
+
+Independent of card combat. The visualizer is a standalone HTML tool in DCgamejam2026 (`tools/blockout-visualizer.html`).
+
+| Phase | Work | Depends On | Status |
+|-------|------|-----------|--------|
+| BOV P3 | Schema extraction — parse `tiles.js` predicates + `cards.json` + `strings/en.js` into `floor-data.json` | — | **Blocker** (not started) |
+| BOV T1a | Drawing tools — rect fill, flood fill, line, brush size, replace-all | BOV P3 | Planned |
+| BOV T1b | Selection + history + cross-floor clipboard — magic wand, redo, history panel, cross-floor copy-paste | BOV P3 | Planned |
+| BOV T2a | File integration — direct file write, autosave, watch mode | BOV T1a | Planned |
+| BOV T2b | Validation — walkability check, door contracts, spawn validity, heatmaps | BOV P3, BOV T1a | Planned |
+| BOV T2c | Synthesized layers — virtual layers from tile categories, per-layer visibility/opacity/lock | BOV P3 | Planned |
+| BOV T3a | Metadata editor — rooms, doorTargets, doorFaces, shops, spawn drag, biome picker | BOV T1b | Planned |
+| BOV T3b | 3D preview — sibling iframe with `?editor=true` mode | BOV T2b | Planned |
+| BOV T4a | Window-scene editor — detect window tiles, window-scene panel, cross-floor paste shortcut | BOV T1b | Planned |
+| BOV T4b | Tile height offset editor — per-cell overrides, visual indicator, bulk apply | BOV P3 | Planned |
+| BOV T4c | DOOR_FACADE recess visualization — chevron overlay, jamb validation | BOV P3 | Planned |
+
+**BOV P3 (schema extraction) can start immediately.** It is a 1–2 day task that unblocks all downstream work. Cross-floor copy-paste (BOV T1b) is the enabling primitive for the window-scene editor (BOV T4a).
+
+**Critical path within BOV:** P3 → T1a/T1b → T4a (window-scene editor, the motivating feature).
+
 ---
 
 ### Tier 3 — Late Dependencies (Require Tier 1 or Tier 2 completion)
@@ -216,6 +240,7 @@ Items that are non-blocking, optional, or post-launch scope.
 | ROPE Phase 8 (hardening) | ROPE | Edge cases, post-feature |
 | STR-HUD D6-D7 (boss builder + scripting) | STR-HUD | Late-stage designer tools |
 | WBE T4 (vulnerability, proc gen pipeline, scalar polish) | WBE | Aspirational scope |
+| BOV Tier 5 (procedural recipes, multi-floor view, collab editing, a11y check) | BOV | Aspirational / post-jam scope |
 
 ---
 
@@ -259,6 +284,12 @@ Items that are non-blocking, optional, or post-launch scope.
   │  │ 1-4    │  │  3-5    │  │  3-5    │  │ T1-T3   │  │  D1-D2  │  │
   │  │(no dep)│  │(no dep) │  │(EB soft)│  │(no dep) │  │(no dep) │  │
   │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  │
+  │                                                                      │
+  │  ┌─────────┐                                                        │
+  │  │  BOV    │  Blockout Visualizer: P3 (schema extraction) →         │
+  │  │P3→T1→T4│  T1a/T1b (tools + clipboard) → T4a (window-scene)     │
+  │  │(no dep) │                                                        │
+  │  └─────────┘                                                        │
   └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -270,13 +301,13 @@ Given a single-developer workflow, the recommended execution interleaves Tier 1 
 
 | Week | Primary (Tier 1) | Secondary (Tier 2) | Milestone |
 |------|------------------|--------------------|-----------|
-| 1-2 | EB Phases 4-5 | IDP Phases 1-2 | Explosive cards in pool, item drops functional |
-| 3-4 | ENI Phases 1-2 | AWOL Phase 3, OAR Phase 3 | Enemy capsules visible, seed validation |
-| 5-6 | ENI Phases 3-5 | WBE Tier 1 (INT-1, NPC-B) | Plant-detonate loop testable |
-| 7-8 | NCR Phase 2 (2.3-2.5) | IDP Phases 3-4, AWOL Phase 4 | Full animation polish |
+| 1-2 | EB Phases 4-5 | IDP Phases 1-2, **BOV P3 (schema extraction)** | Explosive cards in pool, item drops functional, visualizer schema unlocked |
+| 3-4 | ENI Phases 1-2 | AWOL Phase 3, OAR Phase 3, **BOV T1a-T1b (tools + clipboard)** | Enemy capsules visible, seed validation, visualizer drawing + cross-floor paste |
+| 5-6 | ENI Phases 3-5 | WBE Tier 1 (INT-1, NPC-B), **BOV T4a (window-scene editor)** | Plant-detonate loop testable, window-scene workflow functional |
+| 7-8 | NCR Phase 2 (2.3-2.5) | IDP Phases 3-4, AWOL Phase 4, BOV T2b (validation) | Full animation polish |
 | 9-10 | CHH Steps 5-6 | WBE Tier 1 (PAT-1), ROPE Phases 1-2 | Harmonization complete |
 | 11-12 | UDG Sprint 6 | STR-HUD D1-D2, OAR Phase 4 | Designer portal expansion |
-| 13+ | — | ROPE 3-7, WBE T2-T3, STR-HUD D3-D5 | Late-stage systems |
+| 13+ | — | ROPE 3-7, WBE T2-T3, STR-HUD D3-D5, BOV T3-T4 (metadata, 3D preview, height offsets) | Late-stage systems |
 
 ---
 
@@ -313,9 +344,13 @@ The following P0 bugs from [TODO.md](./TODO.md) intersect with roadmap work:
 | `floor-gen-core.js` | WBE | Floor generation pipeline (✅ exists) |
 | `interior-floor-system.js` | WBE | Interior biome resolution (✅ exists) |
 | `loot-spill-system.js` | IDP | Loot spread behavior (✅ exists, 125 lines, incomplete) |
+| `tools/extract-floors.js` | BOV | Floor + schema extraction script (✅ exists in DCgamejam2026, needs Phase 3 upgrade) |
+| `tools/blockout-visualizer.html` | BOV | Blockout editor tool (✅ exists in DCgamejam2026, hardcoded schema) |
+| `tools/floor-data.json` | BOV | Extracted floor data (✅ exists in DCgamejam2026, no schema yet) |
+| `engine/tiles.js` | BOV | Tile constants + predicates — 80 tiles, 12 predicates (✅ exists in DCgamejam2026) |
 
 ---
 
-**Document Version:** 3.0 — Unified across all 12 roadmaps
-**Previous Version:** 2.0 — Covered CHH/EB/ENI/NCR/IPR/UDG only (7 sprints)
-**Last Updated:** 2026-03-07
+**Document Version:** 4.0 — Unified across all 13 roadmaps (added BOV)
+**Previous Version:** 3.0 — Covered 12 roadmaps
+**Last Updated:** 2026-04-13
