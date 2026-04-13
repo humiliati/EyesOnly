@@ -487,8 +487,9 @@ This was previously a critical blocker (Option C in gap analysis) but has been *
 
 ### Why This Blocks Editor Work
 The blockout visualizer (`tools/blockout-visualizer.html` in DCgamejam2026) embeds a hardcoded
-77-entry `TILE_SCHEMA` copy-pasted from `engine/tiles.js`. Every time `tiles.js` changes (currently
-80 tile types with 12 predicate functions), the visualizer drifts. Without schema extraction:
+77-entry `TILE_SCHEMA` copy-pasted from `engine/tiles.js`. The engine now has 80 tile types with
+12 predicate functions — the visualizer is already 3 tiles behind. Every time `tiles.js` changes,
+the visualizer drifts further. Without schema extraction:
 - New tiles (WINDOW_SHOP, WINDOW_BAY, WINDOW_SLIT, DOOR_FACADE, TRAPDOOR_DN/UP) are invisible to the tool
 - Predicate results (isDoor, isWalkable, isOpaque, isFreeform, isFloating, isWindow, etc.) are not available
   to enforce constraints in the editor
