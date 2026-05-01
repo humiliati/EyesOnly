@@ -79,7 +79,7 @@ var RunStartSystem = (function() {
     document.body.classList.add('gone-rogue-active');
 
     // Initialize seeded generation for reproducible runs
-    _initRunSeed(ctx);
+    _initRunSeed(ctx, context);
 
     // Initialize highscore tracking
     ctx.setRunStartTime(Date.now());
@@ -233,16 +233,34 @@ var RunStartSystem = (function() {
    * Initialize seeded generation for reproducible runs.
    * @param {Object} ctx
    */
-  function _initRunSeed(ctx) {
+  function _initRunSeed(ctx, context) {
     if (typeof SeededRandom !== 'undefined') {
-      var seed = SeededRandom.generateRandomSeed();
-      var phrase = SeededRandom.generateSeedPhrase(seed);
+      context = context || {};
+      var requestedSeed = context.seed;
+      if ((requestedSeed === undefined || requestedSeed === null || requestedSeed === '') &&
+          typeof ctx.getCurrentSeed === 'function') {
+        requestedSeed = ctx.getCurrentSeed();
+      }
+
+      var seed = requestedSeed
+        ? SeededRandom.parseSeedPhrase(String(requestedSeed))
+        : SeededRandom.generateRandomSeed();
+      if (seed === null || isNaN(seed)) {
+        seed = SeededRandom.generateRandomSeed();
+      }
+
+      var phrase = requestedSeed && typeof requestedSeed === 'string'
+        ? requestedSeed.trim()
+        : SeededRandom.generateSeedPhrase(seed);
       var rng = new SeededRandom.SeededRNG(seed);
 
       ctx.setCurrentSeed(seed);
       ctx.setCurrentSeedPhrase(phrase);
       ctx.setSeedRNG(rng);
       ctx.setRunSeed(seed);
+      if (typeof SeededRNG !== 'undefined' && typeof SeededRNG.init === 'function') {
+        SeededRNG.init(seed);
+      }
 
       console.log('[GoneRogue] Run seed:', seed, '(' + phrase + ')');
       ctx.updateSeedDisplay();

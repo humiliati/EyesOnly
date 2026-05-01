@@ -35,6 +35,10 @@
     Missions.init().then(function () {
       StateMachine.init();
 
+      if (_handleInitialRogueLaunch()) {
+        return;
+      }
+
       var currentState = StateMachine.getState();
 
       // If returning user with access, skip to granted state
@@ -335,6 +339,98 @@
       }
       _enableInput(_promptForState(StateMachine.getState()));
     }, 'system-msg classified');
+  }
+
+  function _handleInitialRogueLaunch() {
+    var context = _getRogueLaunchContextFromLocation();
+    if (!context) return false;
+
+    _clearRogueLaunchUrl();
+    Terminal.writeLine('', 'system-msg');
+    Terminal.writeLine('INITIALIZING FIELD SYSTEMS...', 'system-msg');
+    _launchRogueWhenReady(context);
+    return true;
+  }
+
+  function _getRogueLaunchContextFromLocation() {
+    var params = null;
+    try {
+      params = new URLSearchParams(window.location.search || '');
+    } catch (e) {
+      params = null;
+    }
+
+    var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+    var wantsRogue = hash === 'rogue' || hash === 'gone-rogue' || hash === 'gone_rogue';
+
+    if (params) {
+      wantsRogue = wantsRogue ||
+        params.get('rogue') === '1' ||
+        params.get('game') === 'rogue' ||
+        params.get('mode') === 'rogue';
+    }
+
+    if (!wantsRogue) return null;
+
+    var seed = params ? (params.get('seed') || '') : '';
+    var tierRaw = params ? (params.get('tier') || params.get('difficulty') || '') : '';
+    var uberRaw = params ? (params.get('uber') || '') : '';
+    var tier = parseInt(tierRaw, 10);
+    if (uberRaw !== '') {
+      var uber = parseInt(uberRaw, 10);
+      if (uber >= 0 && uber <= 2) tier = uber + 1;
+    }
+    if (!(tier >= 1 && tier <= 3)) {
+      tier = (typeof AWOLDifficulty !== 'undefined' && AWOLDifficulty.getCurrentTier)
+        ? AWOLDifficulty.getCurrentTier()
+        : 1;
+    }
+
+    return {
+      reason: 'url',
+      seed: seed,
+      difficulty: tier
+    };
+  }
+
+  function _clearRogueLaunchUrl() {
+    try {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, document.title, window.location.pathname || '/');
+      }
+    } catch (e) {}
+  }
+
+  function _launchRogueWhenReady(context) {
+    function startNow() {
+      if (context.difficulty && typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
+        GoneRogue.setDifficulty(context.difficulty);
+      }
+      if (context.seed && typeof GoneRogue !== 'undefined' && typeof GoneRogue.setSeed === 'function') {
+        GoneRogue.setSeed(context.seed);
+      }
+
+      Terminal.writeLine('SYSTEMS ONLINE', 'system-msg');
+      Terminal.writeLine('', 'system-msg');
+      Terminal.flicker();
+
+      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+        _executeRogueAction(GAMESTATE.requestRogue(context));
+      } else if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
+        _executeRogueAction(GoneRogue.start(context));
+      } else {
+        _displayLines(['', 'GONE ROGUE MODE UNAVAILABLE', ''], function () {
+          _enableInput(_promptForState(StateMachine.getState()));
+        });
+      }
+    }
+
+    if (typeof RogueLoader !== 'undefined' && !RogueLoader.isLoaded()) {
+      RogueLoader.ensureLoaded(startNow);
+      return;
+    }
+
+    startNow();
   }
 
   /**

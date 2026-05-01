@@ -414,11 +414,23 @@ var GoneRogue = (function () {
     return 'ROGUE> ';
   }
 
+  function _applyLaunchContext(context) {
+    var tier = parseInt(context.difficulty || context.tier || '', 10);
+    if (tier >= 1 && tier <= 3) {
+      setDifficulty(tier);
+    }
+
+    if (context.seed) {
+      setSeed(context.seed);
+    }
+  }
+
   /**
    * Start Gone Rogue mode
    */
   function start(context) {
     context = context || {};
+    _applyLaunchContext(context);
 
     // === NEW RUN RESET ===
     // On a fresh run (not resume), reset player stats to defaults so that
@@ -2443,6 +2455,7 @@ var GoneRogue = (function () {
       setCurrentSeedPhrase: function(v) { _currentSeedPhrase = v; },
       setSeedRNG: function(v) { _seedRNG = v; },
       setRunSeed: function(v) { _runSeed = v; },
+      getCurrentSeed: function() { return _currentSeed; },
       updateSeedDisplay: function() { if (typeof _updateSeedDisplay === 'function') _updateSeedDisplay(); },
       beginGameplay: _beginGameplay,
       getPrompt: getPrompt
@@ -3200,9 +3213,19 @@ var GoneRogue = (function () {
    */
   function setSeed(seed) {
     if (typeof SeededRandom !== 'undefined') {
-      _currentSeed = seed;
-      _currentSeedPhrase = SeededRandom.generateSeedPhrase(seed);
-      _seedRNG = new SeededRandom.SeededRNG(seed);
+      var parsedSeed = (typeof SeededRandom.parseSeedPhrase === 'function')
+        ? SeededRandom.parseSeedPhrase(String(seed))
+        : parseInt(seed, 10);
+      if (parsedSeed === null || isNaN(parsedSeed)) return;
+
+      _currentSeed = parsedSeed;
+      _currentSeedPhrase = (typeof seed === 'string' && seed.trim())
+        ? seed.trim()
+        : SeededRandom.generateSeedPhrase(parsedSeed);
+      _seedRNG = new SeededRandom.SeededRNG(parsedSeed);
+      if (typeof SeededRNG !== 'undefined' && typeof SeededRNG.init === 'function') {
+        SeededRNG.init(parsedSeed);
+      }
       console.log('[GoneRogue] Seed set to:', _currentSeed, '(' + _currentSeedPhrase + ')');
     }
   }

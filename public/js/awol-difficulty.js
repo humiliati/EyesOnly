@@ -396,16 +396,6 @@ const AWOLDifficulty = (function () {
     // Update the input field to show the standardized seed
     if (seedInput) seedInput.value = seed;
 
-    // Set the difficulty tier
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
-      GoneRogue.setDifficulty(_currentTier);
-    }
-
-    // Set the seed
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setSeed === 'function') {
-      GoneRogue.setSeed(seed);
-    }
-
     // Close dropdown and set to running state
     _hideDropdown();
     _isPaused = false;
@@ -416,24 +406,48 @@ const AWOLDifficulty = (function () {
       UIControls.hideLoginOverlay();
     }
 
-    // Start the game — same code path as terminal `rogue` command
-    if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
-      console.log('[AWOL] Launching Gone Rogue — Tier: ' + _currentTier +
-        ' (' + TIER_LABELS[_currentTier] + '), Seed: ' + seed);
-
-      // Use same entry path as terminal command
-      // Check if we need to go through GAMESTATE request flow
-      if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
-        GAMESTATE.requestRogue();
-      } else {
-        GoneRogue.start({});
-      }
-    } else {
-      console.warn('[AWOL] GoneRogue module not available');
-    }
+    _startRogueWhenReady({
+      reason: 'awol',
+      difficulty: _currentTier,
+      seed: seed
+    });
   }
 
   // ─── Tier Selection (mid-run or pre-launch) ────────────────────
+
+  function _startRogueWhenReady(context) {
+    function startNow() {
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.setDifficulty === 'function') {
+        GoneRogue.setDifficulty(_currentTier);
+      }
+
+      if (context.seed && typeof GoneRogue !== 'undefined' && typeof GoneRogue.setSeed === 'function') {
+        GoneRogue.setSeed(context.seed);
+      }
+
+      if (typeof GoneRogue !== 'undefined' && typeof GoneRogue.start === 'function') {
+        console.log('[AWOL] Launching Gone Rogue - Tier: ' + _currentTier +
+          ' (' + TIER_LABELS[_currentTier] + '), Seed: ' + context.seed);
+
+        if (typeof GAMESTATE !== 'undefined' && typeof GAMESTATE.requestRogue === 'function') {
+          GAMESTATE.requestRogue(context);
+        } else {
+          GoneRogue.start(context);
+        }
+      } else {
+        _setButtonState('idle');
+        console.warn('[AWOL] GoneRogue module not available');
+      }
+    }
+
+    if (typeof RogueLoader !== 'undefined' && !RogueLoader.isLoaded()) {
+      console.log('[AWOL] Loading Gone Rogue modules before launch');
+      RogueLoader.ensureLoaded(startNow);
+      return;
+    }
+
+    startNow();
+  }
 
   function _selectTier(tier) {
     if (tier < 1 || tier > 3) return;
