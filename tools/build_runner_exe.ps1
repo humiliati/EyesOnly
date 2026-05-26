@@ -28,11 +28,16 @@ Set-Location $RepoRoot
 # ---------------------------------------------------------------------------
 Write-Host "[gone-rogue-runner] Checking vendor/sundog submodule..." -ForegroundColor Cyan
 
-if (-not (Test-Path "vendor\sundog\.git") -and -not (Test-Path "vendor\sundog\HEAD")) {
-    Write-Host "[gone-rogue-runner] Initialising submodule vendor/sundog..." -ForegroundColor Yellow
-    git submodule update --init --recursive vendor/sundog
+if (-not (Test-Path "vendor\sundog\runners\__init__.py")) {
+    if ((Test-Path ".gitmodules") -and ((Get-Content .gitmodules -Raw) -match "vendor/sundog")) {
+        Write-Host "[gone-rogue-runner] Initialising submodule vendor/sundog..." -ForegroundColor Yellow
+        git submodule update --init --recursive vendor/sundog
+    } else {
+        Write-Warning "[gone-rogue-runner] vendor/sundog/runners is missing and no .gitmodules entry - cannot continue."
+        exit 1
+    }
 } else {
-    Write-Host "[gone-rogue-runner] vendor/sundog already initialised." -ForegroundColor Green
+    Write-Host "[gone-rogue-runner] vendor/sundog already populated (runners present)." -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
@@ -78,7 +83,13 @@ try {
 # ---------------------------------------------------------------------------
 # 5. Install Playwright Chromium
 # ---------------------------------------------------------------------------
-Write-Host "[gone-rogue-runner] Installing Playwright Chromium..." -ForegroundColor Cyan
+# PLAYWRIGHT_BROWSERS_PATH=0 forces Playwright to install browsers inside
+# its driver package (.local-browsers), which is the path PyInstaller bundles
+# and the packaged exe looks at via sync_playwright().chromium.executable_path.
+# Without this, chromium goes to %LOCALAPPDATA%\ms-playwright and the bundled
+# exe can't find it.
+Write-Host "[gone-rogue-runner] Installing Playwright Chromium into driver bundle..." -ForegroundColor Cyan
+$env:PLAYWRIGHT_BROWSERS_PATH = "0"
 & "$VenvDir\Scripts\playwright.exe" install chromium
 
 # ---------------------------------------------------------------------------
@@ -91,8 +102,11 @@ Write-Host "[gone-rogue-runner] Running PyInstaller..." -ForegroundColor Cyan
 # 7. Write version.txt
 # ---------------------------------------------------------------------------
 $BuildTime  = (Get-Date -Format "o")
-$EyesOnlySha = (git rev-parse HEAD 2>$null) ?? "unknown"
-$SundogSha   = (git -C vendor\sundog rev-parse HEAD 2>$null) ?? "unknown"
+# Null-coalescing (??) is PS 7+; use if/else for Windows PowerShell 5.1 compat.
+$EyesOnlySha = git rev-parse HEAD 2>$null
+if (-not $EyesOnlySha) { $EyesOnlySha = "unknown" }
+$SundogSha   = git -C vendor\sundog rev-parse HEAD 2>$null
+if (-not $SundogSha) { $SundogSha = "unknown" }
 $PythonVer   = (& $Python --version 2>&1).ToString().Trim()
 
 $VersionContent = @"

@@ -50,7 +50,10 @@ def main() -> None:
 
     # Inject default base URL only when the env var is not already set.
     # sundog's own --eyesonly-url flag (parsed later) will take priority.
-    os.environ.setdefault("EYESONLY_BASE_URL", "http://localhost:8787/public/js")
+    # NOTE: as of 2026-05, the adapter expects the EyesOnly site root (where
+    # index.html is served), not the public/js subdir.  Legacy /public/js
+    # suffixes are still accepted (stripped by GoneRogueAdapter.__init__).
+    os.environ.setdefault("EYESONLY_BASE_URL", "http://localhost:8787")
 
     # Ensure vendor/sundog is importable when not installed as a package.
     base = _resolve_base_path()

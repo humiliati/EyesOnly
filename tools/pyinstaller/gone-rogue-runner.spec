@@ -11,13 +11,17 @@ import os
 # Repo root is two levels above this spec file.
 _spec_dir = os.path.dirname(os.path.abspath(SPEC))  # noqa: F821
 _repo_root = os.path.dirname(os.path.dirname(_spec_dir))
-_vendor_sundog = os.path.join(_repo_root, "vendor", "sundog")
+_vendor_dir = os.path.join(_repo_root, "vendor")
+_vendor_sundog = os.path.join(_vendor_dir, "sundog")
 
 block_cipher = None
 
+# pathex must include _vendor_dir (the PARENT of the sundog/ package), so
+# 'sundog' resolves as a top-level package.  Pointing at _vendor_sundog
+# would only expose sundog's submodules as top-level (wrong).
 a = Analysis(
     [os.path.join(_repo_root, "tools", "gonerogue_runner", "__main__.py")],
-    pathex=[_repo_root, _vendor_sundog],
+    pathex=[_repo_root, _vendor_dir],
     binaries=[],
     datas=[
         (
