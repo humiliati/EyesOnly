@@ -55,6 +55,7 @@ var GameStateAPI = (function() {
       items: ctx.items.slice(),
       currencies: ctx.currencies.slice(),
       strCombatActive: ctx.strCombatActive,
+      strCombatPhase: ctx.strCombatPhase || null,
       alertLevel: ctx.getAlertLevel(),
       bossFloorActive: ctx.getBossFloorActive(),
       // True while a floor transition's deferred work (fade + generate)

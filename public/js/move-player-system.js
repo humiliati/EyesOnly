@@ -98,6 +98,16 @@ var MovePlayerSystem = (function() {
     player.y = newY;
     ctx.incrementTurn();
 
+    // Keep the smooth-movement system's logical position in lockstep with
+    // discrete (keyboard/agent) moves. Without this, GoneRogueMovement's
+    // logical position goes stale and the next tap-to-move pathfinds from
+    // the wrong tile — its tween freezes and tap input appears dead.
+    // (Skip while a tap tween is active: the tween owns the position then.)
+    if (typeof GoneRogueMovement !== 'undefined' && GoneRogueMovement.setPosition &&
+        (!GoneRogueMovement.isMoving || !GoneRogueMovement.isMoving())) {
+      GoneRogueMovement.setPosition(newX, newY);
+    }
+
     // ── Footstep SFX ──
     if (typeof AudioSystem !== 'undefined' && AudioSystem.playFootstep) {
       var biomeName = null;

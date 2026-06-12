@@ -2474,6 +2474,7 @@ var GoneRogue = (function () {
     return {
       get active() { return _active; },
       get strCombatActive() { return _strCombatActive; },
+      get strCombatPhase() { return _strCombatPhase; },
       player: _player,
       grid: _grid,
       enemies: _enemies,

@@ -63,7 +63,20 @@ const CharacterCreation = (function () {
   }
 
   function skip() {
+    // Skip must still COMPLETE the run-start chain. RunStartSystem wires
+    // beginGameplay into onComplete — if skip only cleans up, the floor is
+    // never generated and the player is stranded on a dead terminal.
+    var cb = _onComplete;
     _cleanup();
+    if (typeof cb === 'function') {
+      var fallback = AVATARS[0];
+      cb({
+        callsign: _callsign || 'ROGUE',
+        avatarId: fallback.id,
+        avatarEmoji: fallback.emoji,
+        skipped: true
+      });
+    }
   }
 
   function isShowing() {
