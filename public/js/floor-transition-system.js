@@ -31,6 +31,32 @@ var FloorTransitionSystem = (function () {
 
   function isTransitioning() { return _transitionLock; }
 
+  // ── Transition forensics ring buffer ──────────────────────────────
+  // Every advance/retreat attempt (accepted OR lock-rejected) is recorded
+  // with its caller stack at window.__floorTransLog. Cheap (60-entry cap),
+  // and the only way to identify rogue transition callers in timing-
+  // dependent multi-advance reports. Read via:
+  //   GoneRogue-hosting page: window.__floorTransLog
+  function _logTransition(fn, ctx, accepted) {
+    try {
+      var w = (typeof window !== 'undefined') ? window : null;
+      if (!w) return;
+      w.__floorTransLog = w.__floorTransLog || [];
+      w.__floorTransLog.push({
+        t: Date.now(),
+        fn: fn,
+        floor: (ctx && ctx.getFloor) ? ctx.getFloor() : null,
+        player: (ctx && ctx.player) ? { x: ctx.player.x, y: ctx.player.y } : null,
+        accepted: accepted,
+        stack: String((new Error()).stack || '')
+          .split('\n').slice(2, 9)
+          .map(function (l) { return l.trim(); })
+          .join(' <- ')
+      });
+      if (w.__floorTransLog.length > 60) w.__floorTransLog.shift();
+    } catch (e) { /* forensics must never break gameplay */ }
+  }
+
   function _noopResponse(ctx) {
     return { lines: [], prompt: ctx.getPrompt ? ctx.getPrompt() : '', stayActive: true };
   }
@@ -255,7 +281,11 @@ var FloorTransitionSystem = (function () {
   // ------------------------------------------------------------------
   function exitInteriorFloor(ctx, exitDoorMeta) {
     if (ctx.interiorFloorStack.length === 0) return;
-    if (_transitionLock) return;
+    if (_transitionLock) {
+      _logTransition('exitInteriorFloor', ctx, false);
+      return;
+    }
+    _logTransition('exitInteriorFloor', ctx, true);
     _transitionLock = true;
 
     var prev = ctx.interiorFloorStack.pop();
@@ -383,7 +413,11 @@ var FloorTransitionSystem = (function () {
     }
 
     if (ctx.getFloor() <= 0) return;
-    if (_transitionLock) return;
+    if (_transitionLock) {
+      _logTransition('retreatFloor', ctx, false);
+      return;
+    }
+    _logTransition('retreatFloor', ctx, true);
     _transitionLock = true;
 
     try { ctx.setLastExitPos({ x: ctx.player.x, y: ctx.player.y }); } catch (e0) {}
@@ -426,7 +460,11 @@ var FloorTransitionSystem = (function () {
   // advanceFloor — secret floor checks, vendor reset, heal, generate
   // ------------------------------------------------------------------
   function advanceFloor(ctx) {
-    if (_transitionLock) return _noopResponse(ctx);
+    if (_transitionLock) {
+      _logTransition('advanceFloor', ctx, false);
+      return _noopResponse(ctx);
+    }
+    _logTransition('advanceFloor', ctx, true);
     _transitionLock = true;
 
     // Check for queued secret floor
