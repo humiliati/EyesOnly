@@ -434,8 +434,13 @@ var BreakableSystem = (function() {
       // Run all loot generation (collected, not yet placed)
       if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
         _spawnLootTableLoot(breakable, collectCtx);
+        // Designer-explicit key drops (drops.item) must fire on BOTH loot
+        // paths. Historically this lived only inside _spawnFallbackLoot, so
+        // whenever LootTableManager was loaded the tutorial key breakables
+        // (e.g. floor 3 Marked Crate → rusty_key) silently dropped nothing.
+        _spawnDesignerKeyDrop(breakable, collectCtx);
       } else {
-        _spawnFallbackLoot(breakable, collectCtx);
+        _spawnFallbackLoot(breakable, collectCtx); // includes designer key drop
       }
       _spawnItemDrop(breakable, collectCtx);
 
@@ -469,8 +474,11 @@ var BreakableSystem = (function() {
       // Fallback: original behavior (no scatter)
       if (typeof LootTableManager !== 'undefined' && LootTableManager.rollBreakableLoot) {
         _spawnLootTableLoot(breakable, ctx);
+        // Loot-table path skips _spawnFallbackLoot, so fire designer key
+        // drops explicitly (see note in the spill branch above).
+        _spawnDesignerKeyDrop(breakable, ctx);
       } else {
-        _spawnFallbackLoot(breakable, ctx);
+        _spawnFallbackLoot(breakable, ctx); // includes designer key drop
       }
       _spawnItemDrop(breakable, ctx);
     }
@@ -643,37 +651,49 @@ var BreakableSystem = (function() {
   }
 
   /**
+   * Designer-explicit key drop (breakable.drops.item = '<key_id>').
+   * Unconditional — this is authored content (e.g. floor 3 Marked Crate
+   * drops rusty_key), not a probability roll. Called from BOTH loot paths
+   * in _spawnBreakableLoot.
+   * @returns {boolean} true if a key item was spawned
+   */
+  function _spawnDesignerKeyDrop(breakable, ctx) {
+    if (typeof EnvironmentalSynergy === 'undefined') return false;
+    if (!breakable || !breakable.drops || !breakable.drops.item) return false;
+
+    var requested = ('' + breakable.drops.item).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    if (requested === 'RUSTY_KEY' || requested === 'RUSTYKEY' || requested === 'RUSTY__KEY') requested = 'RUSTY_KEY';
+
+    var keyDefs2 = EnvironmentalSynergy.getKeyDefinitions();
+    var def2 = keyDefs2[requested];
+    if (!def2) return false;
+
+    var keyItem2 = {
+      x: breakable.x,
+      y: breakable.y,
+      type: 'key',
+      keyType: requested,
+      emoji: def2.emoji,
+      name: def2.name,
+      description: def2.description,
+      spawnTime: Date.now(),
+      decayTime: 60000
+    };
+    if (typeof WorldItems !== 'undefined') { WorldItems.addItem(keyItem2); } else { ctx.items.push(keyItem2); }
+    console.log('[Breakable] Designer key drop: ' + requested + ' at (' + breakable.x + ',' + breakable.y + ')');
+    return true;
+  }
+
+  /**
    * Handle key drops from specific breakable types.
    */
   function _spawnKeyDrops(breakable, ctx) {
     if (typeof EnvironmentalSynergy === 'undefined' || !breakable.name) return;
 
-    var keyDropped = false;
     var rng = ctx.rng;
 
     // Tutorial / designer-defined key breakables can explicitly drop a key by id
-    if (breakable.drops && breakable.drops.item) {
-      var requested = ('' + breakable.drops.item).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-      if (requested === 'RUSTY_KEY' || requested === 'RUSTYKEY' || requested === 'RUSTY__KEY') requested = 'RUSTY_KEY';
-
-      var keyDefs2 = EnvironmentalSynergy.getKeyDefinitions();
-      var def2 = keyDefs2[requested];
-      if (def2) {
-        var keyItem2 = {
-          x: breakable.x,
-          y: breakable.y,
-          type: 'key',
-          keyType: requested,
-          emoji: def2.emoji,
-          name: def2.name,
-          description: def2.description,
-          spawnTime: Date.now(),
-          decayTime: 60000
-        };
-        if (typeof WorldItems !== 'undefined') { WorldItems.addItem(keyItem2); } else { ctx.items.push(keyItem2); }
-        keyDropped = true;
-      }
-    }
+    var keyDropped = _spawnDesignerKeyDrop(breakable, ctx);
 
     // Terminal breakables can drop thumb drives (OFFICE biome)
     if (breakable.name === 'Terminal' && rng() < 0.15) {

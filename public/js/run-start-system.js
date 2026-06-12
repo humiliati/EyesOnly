@@ -18,6 +18,16 @@ var RunStartSystem = (function() {
     ctx.setActive(true);
     ctx.setLoaded(true);
 
+    // Defensive combat-state reset: a prior run that ended mid-STR-combat
+    // (death, abandon, page-state reuse) must not leak strCombatActive into
+    // this run — it would soft-lock all movement from the first move.
+    try {
+      if (typeof StrCombatEngine !== 'undefined' && StrCombatEngine.forceReset) StrCombatEngine.forceReset();
+      if (ctx.setStrCombatActive) ctx.setStrCombatActive(false);
+      if (ctx.setStrCombatPhase) ctx.setStrCombatPhase('idle');
+      if (ctx.setStrCombatEnemy) ctx.setStrCombatEnemy(null);
+    } catch (eStrReset) {}
+
     // Show onboarding splash ("YOU'VE GONE ROGUE") for new runs.
     var _needsCharCreation = false;
     if (!context.resume && typeof CharacterCreation !== 'undefined') {

@@ -16,12 +16,40 @@ var AgentAPISystem = (function() {
       return [];
     }
 
+    // Re-sync floor items from WorldItems — the monolith's _items snapshot
+    // only refreshes on game ticks, so freshly-spawned loot (e.g. the 400ms
+    // delayed breakable drops) would otherwise be invisible to the agent.
+    if (typeof WorldItems !== 'undefined') {
+      if (WorldItems.getFloorItems) ctx.items = WorldItems.getFloorItems();
+      if (WorldItems.getCurrencies) ctx.currencies = WorldItems.getCurrencies();
+    }
+
     var actions = [];
     var player = ctx.player;
 
-    // During STR combat, only card actions are legal
+    // During STR combat, only card actions are legal.
+    // The combat hand lives in CardStateAuthority (hand of CardRefs) — NOT
+    // player.deck (legacy, usually empty). Play via cardId.
     if (ctx.strCombatActive) {
-      if (player.deck && player.deck.length > 0) {
+      var hand = [];
+      if (typeof CardStateAuthority !== 'undefined' && CardStateAuthority.getHand) {
+        hand = CardStateAuthority.getHand() || [];
+      }
+      if (hand.length > 0) {
+        hand.forEach(function(ref, index) {
+          var def = null;
+          try {
+            if (CardStateAuthority.hydrateCard) def = CardStateAuthority.hydrateCard(ref);
+          } catch (eHyd) {}
+          actions.push({
+            type: 'useCard',
+            cardIndex: index,
+            cardId: ref.id,
+            card: def ? { id: def.id, name: def.name, emoji: def.emoji, cost: def.cost, effects: def.effects } : { id: ref.id }
+          });
+        });
+      } else if (player.deck && player.deck.length > 0) {
+        // Legacy fallback
         player.deck.forEach(function(card, index) {
           actions.push({
             type: 'useCard',
@@ -90,6 +118,61 @@ var AgentAPISystem = (function() {
       actions.push({ type: 'exit' });
     }
 
+    // Kick actions — one per live breakable in the 4 adjacent tiles.
+    // Kick is the always-available breakable attack (no ammo dependency);
+    // mirrors the terminal `KICK <dir>` command.
+    if (typeof ctx.getBreakableAt === 'function') {
+      directions.forEach(function(dir) {
+        var bx = player.x + dir.dx;
+        var by = player.y + dir.dy;
+        var b = ctx.getBreakableAt(bx, by);
+        if (b && b.hp > 0) {
+          actions.push({
+            type: 'kick',
+            direction: dir.name,
+            dx: dir.dx,
+            dy: dir.dy,
+            targetX: bx,
+            targetY: by,
+            breakable: { name: b.name, emoji: b.emoji, hp: b.hp, maxHp: b.maxHp }
+          });
+        }
+      });
+    }
+
+    // Shoot actions — ranged breakable/enemy attack (consumes ammo; may
+    // misfire when empty). Mirrors the terminal `SHOOT <dir>` command.
+    directions.forEach(function(dir) {
+      actions.push({
+        type: 'shoot',
+        direction: dir.name,
+        dx: dir.dx,
+        dy: dir.dy
+      });
+    });
+
+    // Interact action — locked gates/chests, vents, signs, NPC quest
+    // turn-ins. Offered when something interactable is detectably adjacent;
+    // mirrors the terminal `INTERACT` command.
+    var canInteract = false;
+    if (ctx.tileMetadata) {
+      var adjDirs = [{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1},{dx:-1,dy:0}];
+      for (var ai = 0; ai < adjDirs.length; ai++) {
+        var md = ctx.tileMetadata[(player.x + adjDirs[ai].dx) + ',' + (player.y + adjDirs[ai].dy)];
+        if (md && (md.type === 'locked_gate' || md.type === 'locked_chest')) { canInteract = true; break; }
+      }
+    }
+    if (!canInteract && grid[player.y][player.x] === TILES.VENT) canInteract = true;
+    if (!canInteract && typeof InteractiveItems !== 'undefined' && InteractiveItems.getNearestItem) {
+      var near = InteractiveItems.getNearestItem(player.x, player.y);
+      if (near && InteractiveItems.canInteractWith && InteractiveItems.canInteractWith(player.x, player.y, near)) {
+        canInteract = true;
+      }
+    }
+    if (canInteract) {
+      actions.push({ type: 'interact' });
+    }
+
     // Active item use
     if (player.activeItem) {
       actions.push({
@@ -134,9 +217,18 @@ var AgentAPISystem = (function() {
         result.state = ctx.getState();
       }
       else if (action.type === 'useCard' && ctx.strCombatActive) {
-        var cardResult = ctx.handleCardSwipe(action.cardIndex, 'up');
-        result.success = true;
-        result.messages = cardResult.lines || [];
+        var cardResult;
+        if (action.cardId && typeof ctx.playCardFromHand === 'function') {
+          // Canonical combat play path (CardStateAuthority hand by id)
+          cardResult = ctx.playCardFromHand(action.cardId);
+          result.success = !!(cardResult && cardResult.success !== false);
+          result.messages = (cardResult && cardResult.lines) || [];
+        } else {
+          // Legacy swipe path (loose-inventory index)
+          cardResult = ctx.handleCardSwipe(action.cardIndex, 'up');
+          result.success = true;
+          result.messages = (cardResult && cardResult.lines) || [];
+        }
         result.state = ctx.getState();
       }
       else if (action.type === 'flee' && ctx.strCombatActive) {
@@ -157,9 +249,30 @@ var AgentAPISystem = (function() {
         result.state = ctx.getState();
       }
       else if (action.type === 'exit') {
-        var exitResult = ctx.process('exit');
+        // 'extract' advances the floor when standing on the exit tile.
+        // (Historically this mapped to the 'exit' command, which quits
+        // Gone Rogue entirely — wrong semantics for the agent action.)
+        var exitResult = ctx.process('extract');
         result.success = true;
         result.messages = exitResult.lines || [];
+        result.state = ctx.getState();
+      }
+      else if (action.type === 'kick') {
+        var kickResult = ctx.process('kick ' + (action.direction || 'north'));
+        result.success = true;
+        result.messages = kickResult.lines || [];
+        result.state = ctx.getState();
+      }
+      else if (action.type === 'shoot') {
+        var shootResult = ctx.process('shoot ' + (action.direction || 'north'));
+        result.success = true;
+        result.messages = shootResult.lines || [];
+        result.state = ctx.getState();
+      }
+      else if (action.type === 'interact') {
+        var interactResult = ctx.process('interact');
+        result.success = true;
+        result.messages = interactResult.lines || [];
         result.state = ctx.getState();
       }
       else if (action.type === 'useActiveItem') {

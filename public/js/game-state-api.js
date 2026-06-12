@@ -56,7 +56,17 @@ var GameStateAPI = (function() {
       currencies: ctx.currencies.slice(),
       strCombatActive: ctx.strCombatActive,
       alertLevel: ctx.getAlertLevel(),
-      bossFloorActive: ctx.getBossFloorActive()
+      bossFloorActive: ctx.getBossFloorActive(),
+      // True while a floor transition's deferred work (fade + generate)
+      // is pending. Runners should wait for this to clear before
+      // reading the grid after stepping on a door.
+      transitioning: (typeof FloorTransitionSystem !== 'undefined' && FloorTransitionSystem.isTransitioning)
+        ? FloorTransitionSystem.isTransitioning() : false,
+      npcs: (ctx.npcs || []).map(function(n) {
+        return { id: n.id, x: n.x, y: n.y, name: n.name, emoji: n.emoji,
+                 gate: n.gate ? { type: n.gate.type } : null,
+                 released: n.state ? !!n.state.released : false };
+      })
     };
   }
 
@@ -66,11 +76,30 @@ var GameStateAPI = (function() {
    * @returns {Object} Grid snapshot with dimensions and tile constants
    */
   function getGrid(ctx) {
+    // tileMetadata disambiguates door kinds (forward/back/building),
+    // locked gates, and NPC zones — the grid glyphs alone can't
+    // (TILES.DOOR and TILES.EXIT share the same glyph).
+    var metadata = {};
+    if (ctx.tileMetadata) {
+      for (var k in ctx.tileMetadata) {
+        if (!Object.prototype.hasOwnProperty.call(ctx.tileMetadata, k)) continue;
+        var md = ctx.tileMetadata[k];
+        metadata[k] = md ? {
+          type: md.type,
+          doorKind: md.doorKind,
+          requiredKey: md.requiredKey,
+          npcId: md.npcId,
+          targetFloorId: md.targetFloorId,
+          name: md.name
+        } : md;
+      }
+    }
     return {
       grid: ctx.grid.map(function(row) { return row.slice(); }),
       width: ctx.GRID_WIDTH,
       height: ctx.GRID_HEIGHT,
-      tiles: ctx.TILES
+      tiles: ctx.TILES,
+      metadata: metadata
     };
   }
 

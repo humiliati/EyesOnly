@@ -88,6 +88,17 @@ var DeathExitSystem = (function () {
     var currencyBefore = (typeof GAMESTATE !== 'undefined' && GAMESTATE.getCryptos) ? GAMESTATE.getCryptos() : 0;
     var currencyLost = Math.floor(currencyBefore * 0.5);
 
+    // Hard-clear STR combat STATE on player death — not just the UI.
+    // Without this, strCombatActive stays true through exitRogue, and the
+    // next run start (RunStartSystem doesn't reset combat flags) boots into
+    // a soft-lock: every move returns "MOVEMENT LOCKED - STR COMBAT".
+    try {
+      if (typeof StrCombatEngine !== 'undefined' && StrCombatEngine.forceReset) StrCombatEngine.forceReset();
+      if (ctx.setStrCombatActive) ctx.setStrCombatActive(false);
+      if (ctx.setStrCombatPhase) ctx.setStrCombatPhase('idle');
+      if (ctx.setStrCombatEnemy) ctx.setStrCombatEnemy(null);
+    } catch (eStrClear) {}
+
     // Hide the STR combat window + minimized capsule before the death overlay.
     // Without this, the combat window/capsule persists behind the death screen
     // and stays on-screen after the overlay fades.

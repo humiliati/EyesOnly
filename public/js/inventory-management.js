@@ -232,12 +232,28 @@ var InventoryManagement = (function() {
   function consumeKeyFromInventory(requiredKey) {
     if (typeof GAMESTATE === 'undefined') return false;
 
+    // Matches both inventory shapes:
+    //   legacy full object — { type: 'key', keyType: 'RUSTY_KEY', tier: 2 }
+    //   normalized ref     — { id: 'ITM-017', qty: 1, meta: { type: 'key', keyType: 'RUSTY_KEY', tier: 2 } }
+    // (addToPersistent normalizes to the ref shape via GAMESTATE._normalizeItemRef)
+    function _matchesKey(entry) {
+      if (!entry) return false;
+      if (entry.type === 'key' && (entry.keyType || entry.itemId) === requiredKey) return true;
+      if (entry.meta && entry.meta.type === 'key' && (entry.meta.keyType || entry.id) === requiredKey) return true;
+      return false;
+    }
+    function _keyTierOf(entry, fallback) {
+      if (entry && typeof entry.tier === 'number') return entry.tier;
+      if (entry && entry.meta && typeof entry.meta.tier === 'number') return entry.meta.tier;
+      return fallback;
+    }
+
     var loose = GAMESTATE.getLooseInventory ? GAMESTATE.getLooseInventory() : [];
     for (var i = 0; i < loose.length; i++) {
       var it = loose[i];
-      if (it && it.type === 'key' && (it.keyType || it.itemId) === requiredKey) {
+      if (_matchesKey(it)) {
         if (GAMESTATE.removeFromLoose) GAMESTATE.removeFromLoose(i);
-        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, it.tier || 1); } catch (e) {}
+        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, _keyTierOf(it, 1)); } catch (e) {}
         return true;
       }
     }
@@ -245,9 +261,9 @@ var InventoryManagement = (function() {
     var persistent = GAMESTATE.getPersistentInventory ? GAMESTATE.getPersistentInventory() : [];
     for (var j = 0; j < persistent.length; j++) {
       var pit = persistent[j];
-      if (pit && pit.type === 'key' && (pit.keyType || pit.itemId) === requiredKey) {
+      if (_matchesKey(pit)) {
         if (GAMESTATE.removeFromPersistent) GAMESTATE.removeFromPersistent(j);
-        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, pit.tier || 2); } catch (e) {}
+        try { if (GAMESTATE.removeKeyCount) GAMESTATE.removeKeyCount(requiredKey, _keyTierOf(pit, 2)); } catch (e) {}
         return true;
       }
     }

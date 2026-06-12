@@ -48,9 +48,21 @@ var KeyLootGen = (function() {
       var persistent = GAMESTATE.getPersistentInventory();
       var allItems = loose.concat(persistent);
       for (var j = 0; j < allItems.length; j++) {
-        if (allItems[j].type === 'key') {
-          if (excludeQuest && allItems[j].subtype === 'quest') continue;
-          keys.push(allItems[j].keyType || allItems[j].itemId);
+        var entry = allItems[j];
+        if (!entry) continue;
+        // Legacy full-object shape: { type: 'key', keyType: 'RUSTY_KEY', ... }
+        if (entry.type === 'key') {
+          if (excludeQuest && entry.subtype === 'quest') continue;
+          keys.push(entry.keyType || entry.itemId);
+          continue;
+        }
+        // Normalized ref shape from GAMESTATE.addToPersistent:
+        // { id: 'ITM-017', qty: 1, meta: { type: 'key', keyType: 'RUSTY_KEY', ... } }
+        // Without this branch every key stored in persistent inventory is
+        // invisible to locked gates ("key doesn't work" bug).
+        if (entry.meta && entry.meta.type === 'key') {
+          if (excludeQuest && entry.meta.subtype === 'quest') continue;
+          keys.push(entry.meta.keyType || entry.id);
         }
       }
     }

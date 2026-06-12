@@ -1235,7 +1235,10 @@ var StrCombatEngine = (function () {
           if (!gateNpc.state.rewardGiven && gateNpc.reward) {
             gateNpc.state.rewardGiven = true;
             if (gateNpc.reward.currency) {
-              GAMESTATE.addMoney(gateNpc.reward.currency);
+              // GAMESTATE's currency API is addCryptos — addMoney never
+              // existed, so this call threw on Trainer victory and aborted
+              // exitCombat mid-way (gate released but combat never ended).
+              if (GAMESTATE.addCryptos) GAMESTATE.addCryptos(gateNpc.reward.currency);
               lines.push('💰 REWARD: +' + gateNpc.reward.currency);
             }
           }
@@ -1440,9 +1443,13 @@ var StrCombatEngine = (function () {
       // by death-exit-system.handleEnemyDeath — not duplicated here.
 
       // ── LootSpillSystem: restore interceptors and scatter boss-only ground drops ──
+      // NOTE: _lootPending/_origAddItem/_origItemsPush are only initialized in
+      // the normal enemy-death branch above. The NPC-gate victory branch never
+      // sets them — guard each so the gate path doesn't throw on undefined
+      // (which aborted exitCombat and wedged combat after Trainer victories).
       if (_origAddItem) { WorldItems.addItem = _origAddItem; }
-      ctx.items.push = _origItemsPush;
-      if (_lootPending.length > 0 && typeof LootSpillSystem !== 'undefined') {
+      if (typeof _origItemsPush === 'function') { ctx.items.push = _origItemsPush; }
+      if (_lootPending && _lootPending.length > 0 && typeof LootSpillSystem !== 'undefined') {
         LootSpillSystem.scatterItems(_enemy.x, _enemy.y, _lootPending, ctx);
         var ENEMY_DECAY_FLOOR = 45000;
         for (var lp = 0; lp < _lootPending.length; lp++) {
@@ -1489,6 +1496,12 @@ var StrCombatEngine = (function () {
           _advantage = 'neutral';
           _round = 0;
           _log = [];
+
+          // Re-sync the monolith's shadow combat vars — exitCombat already
+          // returned (and synced) BEFORE this deferred callback, so without
+          // this the monolith's strCombatActive stays true forever and all
+          // movement stays locked after every victory.
+          if (typeof ctx.syncCombatState === 'function') ctx.syncCombatState();
 
           ctx.disableCombatZoom();
 
@@ -1570,6 +1583,9 @@ var StrCombatEngine = (function () {
           _advantage = 'neutral';
           _round = 0;
           _log = [];
+
+          // Re-sync monolith shadow vars (see victory callback note).
+          if (typeof ctx.syncCombatState === 'function') ctx.syncCombatState();
 
           ctx.disableCombatZoom();
 

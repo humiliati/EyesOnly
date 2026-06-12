@@ -12,6 +12,30 @@ var FloorTransitionSystem = (function () {
   'use strict';
 
   // ------------------------------------------------------------------
+  // Transition lock (2026-05-25)
+  //
+  // Floor transitions complete inside deferred setTimeouts (~300-900ms
+  // for door audio + fade). During that window the player is still
+  // standing on the door tile, and BOTH the move handler
+  // (move-player-system.js EXIT check) and the per-tick interaction
+  // sweep (game-tick-system → checkPlayerInteractions → _handleDoorTile)
+  // call attemptExtract/retreatFloor again. Each call scheduled another
+  // setFloor(±1), so a single door step could advance 2+ floors —
+  // skipping tutorial floor 2 entirely and double-generating floors
+  // (the long-standing "crash advancing into the first procgen floor").
+  //
+  // The lock makes transitions idempotent: while one is pending, all
+  // further advance/retreat/exit-interior requests are no-ops.
+  // ------------------------------------------------------------------
+  var _transitionLock = false;
+
+  function isTransitioning() { return _transitionLock; }
+
+  function _noopResponse(ctx) {
+    return { lines: [], prompt: ctx.getPrompt ? ctx.getPrompt() : '', stayActive: true };
+  }
+
+  // ------------------------------------------------------------------
   // Shared fade helpers
   // ------------------------------------------------------------------
 
@@ -231,6 +255,8 @@ var FloorTransitionSystem = (function () {
   // ------------------------------------------------------------------
   function exitInteriorFloor(ctx, exitDoorMeta) {
     if (ctx.interiorFloorStack.length === 0) return;
+    if (_transitionLock) return;
+    _transitionLock = true;
 
     var prev = ctx.interiorFloorStack.pop();
     ctx.setCurrentInteriorFloorId(prev.floorId);
@@ -270,6 +296,7 @@ var FloorTransitionSystem = (function () {
     }, _exitPreDelay);
 
     setTimeout(function () {
+      try {
       if (prev.floorId) {
         // Returning to a parent interior (nested interior exit)
         ctx.enterInteriorFloor(prev.floorId);
@@ -340,6 +367,9 @@ var FloorTransitionSystem = (function () {
         _playBiomeMusic(ctx);
       }
       _fadeIn(ctx);
+      } finally {
+        _transitionLock = false;
+      }
     }, 260 + _exitPreDelay);
   }
 
@@ -353,6 +383,8 @@ var FloorTransitionSystem = (function () {
     }
 
     if (ctx.getFloor() <= 0) return;
+    if (_transitionLock) return;
+    _transitionLock = true;
 
     try { ctx.setLastExitPos({ x: ctx.player.x, y: ctx.player.y }); } catch (e0) {}
     ctx.setSpawnFromLastExitPos('retreat');
@@ -367,22 +399,26 @@ var FloorTransitionSystem = (function () {
     setTimeout(function () { _fadeOut(ctx); }, _retPreDelay);
 
     setTimeout(function () {
-      ctx.setFloor(Math.max(0, ctx.getFloor() - 1));
-      ctx.setTurn(0);
+      try {
+        ctx.setFloor(Math.max(0, ctx.getFloor() - 1));
+        ctx.setTurn(0);
 
-      // Track floor revisit for gate/breakable respawn rules
-      if (typeof FloorStateTracker !== 'undefined') {
-        FloorStateTracker.incrementVisit(ctx.getFloor());
+        // Track floor revisit for gate/breakable respawn rules
+        if (typeof FloorStateTracker !== 'undefined') {
+          FloorStateTracker.incrementVisit(ctx.getFloor());
+        }
+
+        ctx.generateFloor();
+        ctx.startGameLoop();
+        ctx.saveState();
+
+        // ── Audio: start biome-appropriate music ──
+        _playBiomeMusic(ctx);
+
+        _fadeIn(ctx);
+      } finally {
+        _transitionLock = false;
       }
-
-      ctx.generateFloor();
-      ctx.startGameLoop();
-      ctx.saveState();
-
-      // ── Audio: start biome-appropriate music ──
-      _playBiomeMusic(ctx);
-
-      _fadeIn(ctx);
     }, 260 + _retPreDelay);
   }
 
@@ -390,6 +426,9 @@ var FloorTransitionSystem = (function () {
   // advanceFloor — secret floor checks, vendor reset, heal, generate
   // ------------------------------------------------------------------
   function advanceFloor(ctx) {
+    if (_transitionLock) return _noopResponse(ctx);
+    _transitionLock = true;
+
     // Check for queued secret floor
     var secretFloorData = null;
     if (typeof SecretFloors !== 'undefined' && SecretFloors.hasQueuedSecretFloor()) {
@@ -433,6 +472,7 @@ var FloorTransitionSystem = (function () {
     }, _advPreDelay);
 
     setTimeout(function () {
+      try {
       var isSecretFloor = !!secretFloorData;
       var secretFloorType = isSecretFloor ? secretFloorData.type : null;
 
@@ -527,6 +567,9 @@ var FloorTransitionSystem = (function () {
           stayActive: true
         };
       }
+      } finally {
+        _transitionLock = false;
+      }
     }, 300 + _advPreDelay);
 
     return { lines: ['EXTRACTING...'], prompt: ctx.getPrompt(), stayActive: true };
@@ -539,6 +582,7 @@ var FloorTransitionSystem = (function () {
     exitInteriorFloor: exitInteriorFloor,
     retreatFloor: retreatFloor,
     advanceFloor: advanceFloor,
+    isTransitioning: isTransitioning,
     playBiomeMusic: _playBiomeMusic  // exposed for interior-floor-system entry
   };
 })();
