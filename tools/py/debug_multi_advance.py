@@ -54,11 +54,22 @@ def main():
             print("[repro] tutorial failed — aborting")
             return 2
 
+        stuck_floor = None
+        stuck_count = 0
         while True:
             state = a.get_state() or {}
             floor = state.get("floor")
             if floor is None or floor >= TARGET:
                 break
+            # Stuck-floor exit: unlike the soak (which FAILs and returns),
+            # this loop would otherwise retry an unadvanceable floor forever.
+            if floor == stuck_floor:
+                stuck_count += 1
+                if stuck_count >= 3:
+                    print(f"[repro] floor {floor} unadvanceable after 3 outer retries — stopping (no multi-advance seen)")
+                    return 4
+            else:
+                stuck_floor, stuck_count = floor, 0
 
             collect_cards(a, 2)
             exits = find_doors(a, "forward")

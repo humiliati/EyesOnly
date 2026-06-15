@@ -56,6 +56,10 @@ var GameStateAPI = (function() {
       currencies: ctx.currencies.slice(),
       strCombatActive: ctx.strCombatActive,
       strCombatPhase: ctx.strCombatPhase || null,
+      // Non-null while inside a building interior (e.g. '1.2' church).
+      // Interiors do NOT change the floor counter — drivers must watch
+      // this field to notice an accidental building entry.
+      interiorFloorId: ctx.currentInteriorFloorId || null,
       alertLevel: ctx.getAlertLevel(),
       bossFloorActive: ctx.getBossFloorActive(),
       // True while a floor transition's deferred work (fade + generate)

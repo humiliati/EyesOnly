@@ -394,7 +394,11 @@ var TutorialFloors = (function() {
       '#......................................#',
       '#.............####....####.............#',
       '#.............#..#....#..#.............#',
-      '#.............#..#....#..#.............#',
+      // Row 9 spans the full arena width: the flanks connect the cover
+      // boxes to the side walls so the ONLY route south is the 4-tile
+      // gap at cols 18-21 — where the locked gate is stamped. Without
+      // this, the key-gate lesson was bypassable around either flank.
+      '###############..#....#..###############',
       '#.............#..#....#..#.............#',
       '#.............####....####.............#',
       '#......................................#',
@@ -552,8 +556,10 @@ var TutorialFloors = (function() {
         }
       },
       {
+        // (12,8): row 9 is now the full-width funnel wall — the bee's old
+        // tile (12,9) is inside it. One row north keeps it a pre-gate target.
         x: 12,
-        y: 9,
+        y: 8,
         emoji: '🐝',
         name: 'Drowsy Bee',
         hp: 2,

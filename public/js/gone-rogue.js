@@ -1229,6 +1229,7 @@ var GoneRogue = (function () {
       player: _player, grid: _grid, tileMetadata: _tileMetadata,
       items: _items, impactEffects: _impactEffects, npcs: _npcs,
       TILES: TILES, rng: _rng,
+      getFloor: function() { return _floor; },
       getPrompt: getPrompt, renderGrid: _renderGrid, saveState: _saveState,
       rebuildWallCache: _rebuildWallCache,
       getPlayerKeys: _getPlayerKeys, getKeyTier: _getKeyTier,
@@ -2392,6 +2393,15 @@ var GoneRogue = (function () {
       maybeHintNearbyDoors: _maybeHintNearbyDoors,
       getBreakableAt: _getBreakableAt,
       attemptExtract: _attemptExtract,
+      // Door-kind routing + guardrail lifecycle for discrete (keyboard/agent)
+      // moves — previously only the tick/tap path had these, so keyboard
+      // players ADVANCED when stepping on retreat doors (DOOR and EXIT share
+      // the same glyph) and door guardrails never expired.
+      retreatFloor: _retreatFloor,
+      enterInteriorFloor: _enterInteriorFloor,
+      exitInteriorFloor: _exitInteriorFloor,
+      getDoorSpawnProtect: function() { return DoorContractSystem.getDoorSpawnProtect(); },
+      clearDoorSpawnProtect: function() { DoorContractSystem.clearDoorSpawnProtect(); },
       pickupItem: _pickupItem,
       revealDiscovery: _revealDiscovery,
       applyTileEffects: _applyTileEffects,
@@ -2475,6 +2485,7 @@ var GoneRogue = (function () {
       get active() { return _active; },
       get strCombatActive() { return _strCombatActive; },
       get strCombatPhase() { return _strCombatPhase; },
+      get currentInteriorFloorId() { return _currentInteriorFloorId; },
       player: _player,
       grid: _grid,
       enemies: _enemies,

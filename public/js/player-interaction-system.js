@@ -52,10 +52,25 @@ var PlayerInteractionSystem = (function() {
     _handleCurrencyPickup(x, y, ctx);
 
     // Auto-pickup ALL floor items at this tile (ammo, gem, cards, keys).
-    // while-loop ensures multi-content breakables are fully collected in one pass.
-    // pickupItem() removes one item per call via filterItems(), so loop terminates.
-    while (ctx.items.find(function(i) { return i.x === x && i.y === y; })) {
+    // while-loop collects multi-content breakable drops in one pass.
+    //
+    // BOUNDED + progress-checked: pickupItem() can FAIL without removing
+    // the item (e.g. a tier-2 key with persistent inventory full returns
+    // "DROP SOMETHING FIRST" and leaves it on the floor). The unguarded
+    // while-loop then spun forever and froze the entire tab — for GUI
+    // players too, every time they stepped on a key with full pockets.
+    // (The sibling sweep in move-player-system.js already had this guard.)
+    var _pickupSafety = 0;
+    var _itemsHere = function () {
+      return ctx.items.filter(function(i) { return i.x === x && i.y === y; }).length;
+    };
+    var _remaining = _itemsHere();
+    while (_pickupSafety < 20 && _remaining > 0) {
       ctx.pickupItem();
+      _pickupSafety++;
+      var _now = _itemsHere();
+      if (_now >= _remaining) break; // pickup made no progress (full inventory)
+      _remaining = _now;
     }
 
     // Food auto-pickup from interactive items

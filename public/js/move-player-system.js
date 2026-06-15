@@ -151,9 +151,47 @@ var MovePlayerSystem = (function() {
     // Update position history for pet following
     ctx.updatePositionHistory();
 
-    // Check if player walked onto EXIT tile
-    if (tile === ctx.TILES.EXIT) {
-      return ctx.attemptExtract();
+    // ── Door guardrail lifecycle for discrete moves ──
+    // The spawn-door protect (~5 steps) must decrement on NON-door steps,
+    // exactly like the tick path does (player-interaction-system.js).
+    // Without this, keyboard/agent players could never re-use the door
+    // they spawned beside — the guardrail never expired on this path.
+    var _isDoorTile = (tile === ctx.TILES.EXIT || tile === ctx.TILES.DOOR);
+    if (!_isDoorTile && typeof ctx.getDoorSpawnProtect === 'function') {
+      var _dspTick = ctx.getDoorSpawnProtect();
+      if (_dspTick && _dspTick.stepsRemaining > 0) {
+        _dspTick.stepsRemaining--;
+        if (_dspTick.stepsRemaining <= 0 && ctx.clearDoorSpawnProtect) ctx.clearDoorSpawnProtect();
+      }
+    }
+
+    // ── Door-kind-aware arrival routing ──
+    // TILES.DOOR and TILES.EXIT share the same glyph, so the tile value
+    // alone can't distinguish retreat/building/forward doors — only the
+    // tile METADATA can. The old check here (`tile === TILES.EXIT →
+    // attemptExtract`) made every door ADVANCE for keyboard/agent moves:
+    // stepping on a retreat door moved the player a floor DEEPER.
+    if (_isDoorTile) {
+      var _dsp = (typeof ctx.getDoorSpawnProtect === 'function') ? ctx.getDoorSpawnProtect() : null;
+      var _doorProtected = !!(_dsp && _dsp.x === newX && _dsp.y === newY && _dsp.stepsRemaining > 0);
+      if (!_doorProtected) {
+        var _doorMd = ctx.tileMetadata[newX + ',' + newY];
+        if (_doorMd && _doorMd.type === 'door' && _doorMd.doorKind === 'back' && ctx.retreatFloor) {
+          ctx.retreatFloor();
+          return { lines: ['RETREATING...', ''].concat(ctx.renderGrid()), prompt: ctx.getPrompt(), stayActive: true };
+        }
+        if (_doorMd && _doorMd.type === 'door' && _doorMd.doorKind === 'interior_exit' && ctx.exitInteriorFloor) {
+          ctx.exitInteriorFloor(_doorMd);
+          return { lines: ['EXITING...', ''].concat(ctx.renderGrid()), prompt: ctx.getPrompt(), stayActive: true };
+        }
+        if (_doorMd && _doorMd.type === 'building_door' && _doorMd.targetFloorId && ctx.enterInteriorFloor) {
+          ctx.enterInteriorFloor(_doorMd.targetFloorId);
+          return { lines: ['ENTERING...', ''].concat(ctx.renderGrid()), prompt: ctx.getPrompt(), stayActive: true };
+        }
+        // Forward door (doorKind 'forward' or unmarked exit tile)
+        return ctx.attemptExtract();
+      }
+      // Guardrailed door: inert — fall through as an ordinary tile.
     }
 
     // Check if player walked onto SHOP tile
@@ -221,12 +259,21 @@ var MovePlayerSystem = (function() {
     }
 
     // Auto-pickup ALL floor items at new position (handles multi-content breakables).
-    // while-loop collects every item in one pass; pickupItem() removes one per call.
+    // Bounded AND progress-checked: pickupItem() can fail without removing the
+    // item (full inventory) — without the progress break we'd burn all 20
+    // iterations on every step over an uncollectable item.
     // NOTE: Use ctx.items (getter) each iteration — filterItems replaces the array reference.
     var _pickupSafety = 0;
-    while (_pickupSafety < 20 && ctx.items.find(function(it) { return it.x === newX && it.y === newY; })) {
+    var _itemsAtNew = function() {
+      return ctx.items.filter(function(it) { return it.x === newX && it.y === newY; }).length;
+    };
+    var _pickRemaining = _itemsAtNew();
+    while (_pickupSafety < 20 && _pickRemaining > 0) {
       ctx.pickupItem();
       _pickupSafety++;
+      var _pickNow = _itemsAtNew();
+      if (_pickNow >= _pickRemaining) break; // no progress (full inventory)
+      _pickRemaining = _pickNow;
     }
 
     // Check for food item pickup (auto-pickup from interactive items)

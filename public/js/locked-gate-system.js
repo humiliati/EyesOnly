@@ -118,6 +118,22 @@ var LockedGateSystem = (function () {
     delete ctx.tileMetadata[gx + ',' + gy];
     ctx.rebuildWallCache();
 
+    // Persist the unlock for floor revisits. Without this, regenerating
+    // the floor (retreat/backtrack) re-stamps the gate LOCKED while the
+    // key was already consumed — with the funnel walls sealed, a player
+    // retreating from below would be permanently trapped behind it.
+    try {
+      if (typeof FloorStateTracker !== 'undefined' && ctx.getFloor) {
+        var _unlockFloor = ctx.getFloor();
+        FloorStateTracker.recordGateDestroyed(_unlockFloor, gx, gy, 'LOCKED_GATE');
+        if (meta.positions && Array.isArray(meta.positions)) {
+          meta.positions.forEach(function (pos) {
+            FloorStateTracker.recordGateDestroyed(_unlockFloor, pos.x, pos.y, 'LOCKED_GATE');
+          });
+        }
+      }
+    } catch (eRecord) { /* persistence is best-effort */ }
+
     // POOF EFFECT
     try {
       var poofEffect = { x: gx, y: gy, type: 'poof', time: Date.now(), char: '💨' };

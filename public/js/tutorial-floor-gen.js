@@ -304,10 +304,18 @@ var TutorialFloorGen = (function() {
       }
     }
 
-    // Place locked gate (floor 2)
+    // Place locked gate (floor 3 key gate)
     // Implemented as a wall tile with metadata so it renders as a door and can be unlocked via INTERACT.
+    // Positions the player already unlocked this run stay OPEN on revisit
+    // (FloorStateTracker) — the funnel walls make the gate the only route,
+    // so re-locking it after the key was consumed would trap backtrackers.
     if (floorData.lockedGate) {
       floorData.lockedGate.positions.forEach(function(pos) {
+        if (typeof FloorStateTracker !== 'undefined' &&
+            FloorStateTracker.isGateDestroyed(ctx.getFloor(), pos.x, pos.y)) {
+          ctx.grid[pos.y][pos.x] = ctx.TILES.EMPTY; // unlocked earlier this run
+          return;
+        }
         ctx.grid[pos.y][pos.x] = ctx.TILES.WALL; // blocked until unlocked
 
         var k = pos.x + ',' + pos.y;
