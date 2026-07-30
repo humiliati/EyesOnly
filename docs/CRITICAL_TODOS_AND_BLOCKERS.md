@@ -478,6 +478,70 @@ This was previously a critical blocker (Option C in gap analysis) but has been *
 
 ---
 
+## 🟡 BLOCKER #5: Blockout Visualizer — Phase 3 Schema Extraction
+
+**Status**: ❌ Not started
+**Location**: `BLOCKOUT_VISUALIZER_ROADMAP.md` (Phase 3), DCgamejam2026 `tools/extract-floors.js`
+**Impact**: Blocks all meaningful expansion of the blockout visualizer editor
+**Estimated Effort**: 1–2 days
+
+### Why This Blocks Editor Work
+The blockout visualizer (`tools/blockout-visualizer.html` in DCgamejam2026) embeds a hardcoded
+77-entry `TILE_SCHEMA` copy-pasted from `engine/tiles.js`. The engine now has 80 tile types with
+12 predicate functions — the visualizer is already 3 tiles behind. Every time `tiles.js` changes,
+the visualizer drifts further. Without schema extraction:
+- New tiles (WINDOW_SHOP, WINDOW_BAY, WINDOW_SLIT, DOOR_FACADE, TRAPDOOR_DN/UP) are invisible to the tool
+- Predicate results (isDoor, isWalkable, isOpaque, isFreeform, isFloating, isWindow, etc.) are not available
+  to enforce constraints in the editor
+- Builder metadata (shops, spawn, doorTargets, doorFaces, biome) cannot be surfaced as editable fields
+- The entire Tier 1–4 feature roadmap is gated behind correct schema data
+
+### What Exists Today
+- `tools/extract-floors.js` — Node script that loads `tiles.js` + `floor-manager.js` + all
+  `floor-blockout-*.js` in a VM sandbox and extracts grid data into `tools/floor-data.json`
+- `tools/floor-data.json` — Currently contains grid/rooms/doors/spawn/biome per floor, but **no
+  tile schema, no predicate results, no card manifest, no string index**
+
+### What Phase 3 Adds
+Upgrade `extract-floors.js` to emit three additional sections in `floor-data.json`:
+
+1. **Tile schema** (mandatory, loaded immediately by visualizer):
+   - For each tile ID: name, numeric value, category, comment/description
+   - Predicate results: `isWalkable`, `isOpaque`, `isDoor`, `isHazard`, `isTorch`, `isFloating`,
+     `isCrenellated`, `isFloatingBackFace`, `isFloatingMoss`, `isFloatingLid`, `isFreeform`, `isWindow`
+   - Derived `categoryOf(tileId)` buckets for synthesized layer display
+
+2. **Card manifest** (lazy-loaded enrichment for entity/metadata panels):
+   - Parse `data/cards.json` → id, name, emoji, rarity, type per card
+
+3. **String index** (lazy-loaded enrichment for display name resolution):
+   - Parse `data/strings/en.js` → entity/shop/NPC display names
+
+### Implementation Notes
+- The VM sandbox in `extract-floors.js` already loads `tiles.js` into `sandbox.TILES` — the
+  predicates are callable. Phase 3 iterates all tile IDs (0–79), calls each predicate, and emits
+  the results.
+- `cards.json` and `strings/en.js` are plain data files — parse with `JSON.parse` / regex extraction.
+- Output goes into the existing `floor-data.json` under new top-level keys (`tileSchema`, `cardManifest`,
+  `stringIndex`) so the visualizer can feature-detect and lazy-load.
+
+### What This Unlocks
+- **Tier 1**: Cross-floor copy-paste, drawing tools, selection improvements, history — all need
+  correct tile metadata for constraints and display
+- **Tier 2**: Synthesized layers (via `categoryOf`), validation (walkability flood-fill, door
+  contracts), file integration
+- **Tier 4**: Window-scene editor (detect window tiles on interior floors), tile height offset
+  editor, DOOR_FACADE recess visualization
+
+### Files to Modify (in DCgamejam2026)
+- `tools/extract-floors.js` — Add tile schema extraction loop + card/string parsing
+- `tools/floor-data.json` — Output gains `tileSchema`, `cardManifest`, `stringIndex` keys
+- `tools/blockout-visualizer.html` — Replace hardcoded `TILE_SCHEMA` with `floor-data.json` load
+
+**Priority**: 🟡 **MEDIUM** — Blocks designer tooling expansion, not production rollout
+
+---
+
 ## Additional Code-Level TODOs (Lower Priority)
 
 ### Inline TODOs Found in Codebase
@@ -508,6 +572,7 @@ The following TODOs are **intentional** parts of the ARG gameplay and should NOT
 | 3 | Kernel Persistence | MEDIUM | 1 week | 🟡 P2 | NO - Agent feature only |
 | 4 | Card Database Expansion | MEDIUM-HIGH | 2+ weeks | 🟡 P2 | NO - Depth enhancement |
 | 5 | Strategic Direction (A vs B) | STRATEGIC | Decision | ⚠️ P3 | NO - Post-alpha |
+| 6 | Blockout Visualizer Schema Extraction | MEDIUM | 1–2 days | 🟡 P2 | NO - Designer tooling |
 
 ---
 
